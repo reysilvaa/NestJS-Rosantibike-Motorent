@@ -68,13 +68,13 @@ export class PrismaService {
 
   // Mock models with proper parameter handling
   unitMotor = {
-    findUnique: async (params: any) => ({ 
-      id: 'mock-id', 
+    findUnique: async (params: any) => ({
+      id: 'mock-id',
       platNomor: 'AB1234XY',
       status: StatusMotor.TERSEDIA,
       hargaSewa: 100000,
       jenisId: 'jenis-id',
-      unitId: 'unit-id'
+      unitId: 'unit-id',
     }),
     findMany: async (params: any) => [],
     count: async (params: any) => 0,
@@ -102,9 +102,9 @@ export class PrismaService {
           id: 'jenis-id',
           merk: 'Honda',
           model: 'Vario',
-          cc: 125
-        }
-      }
+          cc: 125,
+        },
+      },
     }),
     findMany: async (params: any) => [],
     findFirst: async (params: any) => ({
@@ -115,7 +115,7 @@ export class PrismaService {
       tanggalMulai: new Date(),
       tanggalSelesai: new Date(),
       status: StatusTransaksi.AKTIF,
-      totalBiaya: 200000
+      totalBiaya: 200000,
     }),
     count: async (params: any) => 0,
     create: async (params: any) => ({}),
@@ -128,7 +128,7 @@ export class PrismaService {
       id: 'jenis-id',
       merk: 'Honda',
       model: 'Vario',
-      cc: 125
+      cc: 125,
     }),
     findMany: async (params: any) => [],
     count: async (params: any) => 0,
@@ -143,7 +143,7 @@ export class PrismaService {
       judul: 'Test Blog',
       slug: 'test-blog',
       konten: 'Test Content',
-      status: StatusArtikel.TERBIT
+      status: StatusArtikel.TERBIT,
     }),
     findMany: async (params: any) => [],
     count: async (params: any) => 0,
@@ -167,29 +167,31 @@ export class PrismaService {
   };
 
   admin = {
-    findUnique: async (params: { where: { username: string } }): Promise<AdminType> => ({ 
-      id: 'mock-id', 
-      username: 'admin', 
+    findUnique: async (params: { where: { username: string } }): Promise<AdminType> => ({
+      id: 'mock-id',
+      username: 'admin',
       password: 'hashed-password',
-      nama: 'Admin'
+      nama: 'Admin',
     }),
-    create: async (params: { data: { password: string; username: string; nama: string } }): Promise<AdminType> => ({ 
-      id: 'mock-id', 
-      username: 'admin', 
+    create: async (params: {
+      data: { password: string; username: string; nama: string };
+    }): Promise<AdminType> => ({
+      id: 'mock-id',
+      username: 'admin',
       password: 'hashed-password',
-      nama: 'Admin' 
+      nama: 'Admin',
     }),
-    update: async (params: { where: { id: string }; data: any }): Promise<AdminType> => ({ 
-      id: 'mock-id', 
-      username: 'admin', 
+    update: async (params: { where: { id: string }; data: any }): Promise<AdminType> => ({
+      id: 'mock-id',
+      username: 'admin',
       password: 'hashed-password',
-      nama: 'Admin'
+      nama: 'Admin',
     }),
-    delete: async (params: { where: { id: string } }): Promise<AdminType> => ({ 
-      id: 'mock-id', 
-      username: 'admin', 
+    delete: async (params: { where: { id: string } }): Promise<AdminType> => ({
+      id: 'mock-id',
+      username: 'admin',
       password: 'hashed-password',
-      nama: 'Admin'
+      nama: 'Admin',
     }),
   };
 

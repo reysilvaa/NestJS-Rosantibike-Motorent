@@ -13,7 +13,7 @@ export class JenisMotorService {
   async findOne(id: string) {
     try {
       return await this.prisma.jenisMotor.findUnique({
-        where: { id }
+        where: { id },
       });
     } catch {
       throw new NotFoundException(`Jenis motor dengan ID ${id} tidak ditemukan`);
@@ -22,7 +22,7 @@ export class JenisMotorService {
 
   async create(createJenisMotorDto: CreateJenisMotorDto) {
     return this.prisma.jenisMotor.create({
-      data: createJenisMotorDto
+      data: createJenisMotorDto,
     });
   }
 
@@ -30,7 +30,7 @@ export class JenisMotorService {
     try {
       return await this.prisma.jenisMotor.update({
         where: { id },
-        data: updateJenisMotorDto
+        data: updateJenisMotorDto,
       });
     } catch {
       throw new NotFoundException(`Jenis motor dengan ID ${id} tidak ditemukan`);
@@ -40,7 +40,7 @@ export class JenisMotorService {
   async remove(id: string) {
     try {
       return await this.prisma.jenisMotor.delete({
-        where: { id }
+        where: { id },
       });
     } catch (_error) {
       throw new NotFoundException(`Jenis motor dengan ID ${id} tidak ditemukan`);

@@ -1,7 +1,12 @@
 import { Process, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { PrismaService, StatusMotor, StatusTransaksi, TransaksiWithRelations } from '../../../common';
+import {
+  PrismaService,
+  StatusMotor,
+  StatusTransaksi,
+  TransaksiWithRelations,
+} from '../../../common';
 import * as fs from 'fs';
 import {
   makeWASocket,
@@ -159,10 +164,9 @@ export class TransaksiProcessor {
       const { transaksiId } = job.data;
 
       // Mock data untuk testing
-      const transaksi =
-        (await this.prisma.transaksiSewa.findUnique({
-          where: { id: transaksiId },
-        })) as unknown as TransaksiWithRelations;
+      const transaksi = (await this.prisma.transaksiSewa.findUnique({
+        where: { id: transaksiId },
+      })) as unknown as TransaksiWithRelations;
 
       if (!transaksi) {
         this.logger.error(`Transaksi ${transaksiId} tidak ditemukan`);
@@ -190,10 +194,9 @@ export class TransaksiProcessor {
       const { transaksiId } = job.data;
 
       // Mock data untuk testing
-      const transaksi =
-        (await this.prisma.transaksiSewa.findUnique({
-          where: { id: transaksiId },
-        })) as unknown as TransaksiWithRelations;
+      const transaksi = (await this.prisma.transaksiSewa.findUnique({
+        where: { id: transaksiId },
+      })) as unknown as TransaksiWithRelations;
 
       if (!transaksi) {
         this.logger.error(`Transaksi ${transaksiId} tidak ditemukan`);
@@ -227,10 +230,9 @@ export class TransaksiProcessor {
       const { transaksiId } = job.data;
 
       // Mock data untuk testing
-      const transaksi =
-        (await this.prisma.transaksiSewa.findUnique({
-          where: { id: transaksiId },
-        })) as unknown as TransaksiWithRelations;
+      const transaksi = (await this.prisma.transaksiSewa.findUnique({
+        where: { id: transaksiId },
+      })) as unknown as TransaksiWithRelations;
 
       if (!transaksi) {
         this.logger.error(`Transaksi ${transaksiId} tidak ditemukan`);
@@ -255,13 +257,13 @@ export class TransaksiProcessor {
         // Update status transaksi menjadi OVERDUE
         await this.prisma.transaksiSewa.update({
           where: { id: transaksiId },
-          data: { status: StatusTransaksi.OVERDUE }
+          data: { status: StatusTransaksi.OVERDUE },
         });
 
         // Update status motor menjadi OVERDUE
         await this.prisma.unitMotor.update({
           where: { id: transaksi.unitId },
-          data: { status: StatusMotor.OVERDUE }
+          data: { status: StatusMotor.OVERDUE },
         });
 
         // Kirim notifikasi WhatsApp
@@ -295,10 +297,9 @@ export class TransaksiProcessor {
       const { transaksiId } = job.data;
 
       // Mock data untuk testing
-      const transaksi =
-        (await this.prisma.transaksiSewa.findUnique({
-          where: { id: transaksiId },
-        })) as unknown as TransaksiWithRelations;
+      const transaksi = (await this.prisma.transaksiSewa.findUnique({
+        where: { id: transaksiId },
+      })) as unknown as TransaksiWithRelations;
 
       if (!transaksi) {
         this.logger.error(`Transaksi ${transaksiId} tidak ditemukan`);
