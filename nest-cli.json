@@ -3,9 +3,6 @@
   "collection": "@nestjs/schematics",
   "sourceRoot": "src",
   "compilerOptions": {
-    "deleteOutDir": true,
-    "watchOptions": {
-      "watchDelay": 1000
-    }
+    "deleteOutDir": true
   }
 }
