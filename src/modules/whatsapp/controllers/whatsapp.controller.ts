@@ -17,7 +17,16 @@ export class WhatsappController {
   @ApiResponse({ status: 200, description: 'Pesan berhasil dikirim' })
   @ApiResponse({ status: 500, description: 'Gagal mengirim pesan' })
   async sendMessage(@Body() sendMessageDto: SendMessageDto) {
+    if (!sendMessageDto) {
+      throw new HttpException('Data yang diperlukan tidak lengkap', HttpStatus.BAD_REQUEST);
+    }
+    
     const { to, message } = sendMessageDto;
+    
+    if (!to || !message) {
+      throw new HttpException('Nomor tujuan dan pesan diperlukan', HttpStatus.BAD_REQUEST);
+    }
+    
     const result = await this.whatsappService.sendMessage(to, message);
 
     if (!result) {
@@ -31,7 +40,12 @@ export class WhatsappController {
   @ApiOperation({ summary: 'Kirim pesan ke admin WhatsApp' })
   @ApiResponse({ status: 200, description: 'Pesan berhasil dikirim ke admin' })
   @ApiResponse({ status: 500, description: 'Gagal mengirim pesan ke admin' })
-  async sendToAdmin(@Body() { message }: { message: string }) {
+  async sendToAdmin(@Body() body: { message: string }) {
+    if (!body || !body.message) {
+      throw new HttpException('Pesan diperlukan', HttpStatus.BAD_REQUEST);
+    }
+    
+    const { message } = body;
     const result = await this.whatsappService.sendToAdmin(message);
 
     if (!result) {
@@ -57,6 +71,46 @@ export class WhatsappController {
   @ApiResponse({ status: 200, description: 'Status koneksi WhatsApp' })
   async getStatus() {
     const status = await this.whatsappService.getConnectionStatus();
-    return { status };
+    const reconnecting = status.status === 'reconnecting';
+    const connected = status.status === 'connected';
+    const authenticating = status.status === 'authenticated';
+
+    let statusMessage = '';
+    
+    if (reconnecting) {
+      statusMessage = `Sedang mencoba menyambungkan kembali (Percobaan ${status.retryCount}/${this.whatsappService.maxRetries})`;
+    } else if (connected) {
+      statusMessage = 'WhatsApp terhubung';
+    } else if (authenticating) {
+      statusMessage = 'Proses autentikasi sedang berlangsung, harap tunggu...';
+    } else if (status.status === 'connecting') {
+      statusMessage = 'Sedang mencoba terhubung ke WhatsApp...';
+    } else if (status.status === 'error') {
+      statusMessage = 'Terjadi kesalahan koneksi WhatsApp, silakan reset koneksi';
+    } else {
+      statusMessage = 'WhatsApp tidak terhubung, silakan scan QR code';
+    }
+
+    return { 
+      status,
+      isReconnecting: reconnecting,
+      isConnected: connected,
+      isAuthenticating: authenticating,
+      message: statusMessage
+    };
+  }
+
+  @Get('qrcode')
+  @ApiOperation({ summary: 'Dapatkan QR code terakhir untuk koneksi WhatsApp' })
+  @ApiResponse({ status: 200, description: 'QR code terakhir' })
+  @ApiResponse({ status: 404, description: 'QR code tidak tersedia' })
+  async getQrCode() {
+    const qrData = await this.whatsappService.getLastQrCode();
+    
+    if (!qrData.hasQrCode) {
+      throw new HttpException('QR code belum tersedia, silakan reset koneksi', HttpStatus.NOT_FOUND);
+    }
+    
+    return qrData;
   }
 }
