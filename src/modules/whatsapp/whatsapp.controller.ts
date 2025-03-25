@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param, HttpStatus, HttpException } from '@nestjs/common';
+import { Controller, Post, Body, Get, HttpStatus, HttpException } from '@nestjs/common';
 import { WhatsappService } from './whatsapp.service';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
