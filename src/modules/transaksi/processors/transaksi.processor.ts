@@ -8,149 +8,33 @@ import {
   TransaksiWithRelations,
 } from '../../../common';
 import * as fs from 'fs';
-import makeWASocket, {
-  DisconnectReason,
-  useMultiFileAuthState,
-  makeInMemoryStore,
-  delay,
-  ConnectionState,
-} from '@whiskeysockets/baileys';
-import pino from 'pino';
+import { delay } from '@whiskeysockets/baileys';
 import { NotificationGateway } from '../../../common/gateway/notification.gateway';
-import * as qrcodeTerminal from 'qrcode-terminal';
-import { Boom } from '@hapi/boom';
+import { WhatsappService } from '../../whatsapp/whatsapp.service';
 
 @Processor('transaksi')
 export class TransaksiProcessor {
   private readonly logger = new Logger(TransaksiProcessor.name);
-  private whatsappClient: ReturnType<typeof makeWASocket>;
-  private isConnected = false;
-  private sessionPath: string;
-  private connectingPromise: Promise<void> | null = null;
-  private store: ReturnType<typeof makeInMemoryStore>;
 
   constructor(
     private prisma: PrismaService,
     private notificationGateway: NotificationGateway,
+    private whatsappService: WhatsappService,
   ) {
-    this.sessionPath = process.env.BAILEYS_SESSION_PATH || './whatsapp-sessions';
-
-    // Pastikan direktori session ada
-    if (!fs.existsSync(this.sessionPath)) {
-      fs.mkdirSync(this.sessionPath, { recursive: true });
-    }
-
-    this.store = makeInMemoryStore({});
-
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    this.initWhatsApp();
-  }
-
-  async initWhatsApp() {
-    try {
-      this.logger.log('Initializing WhatsApp client');
-
-      if (this.connectingPromise) {
-        await this.connectingPromise;
-        return;
-      }
-
-      this.connectingPromise = this._connect();
-      await this.connectingPromise;
-      this.connectingPromise = null;
-
-      this.logger.log('WhatsApp client initialized');
-    } catch (error) {
-      this.logger.error('Failed to initialize WhatsApp client', error);
-      this.connectingPromise = null;
-    }
-  }
-
-  private async _connect() {
-    try {
-      const { state, saveCreds } = await useMultiFileAuthState(this.sessionPath);
-
-      // Buat logger untuk baileys dengan level minimal
-      const logger = pino({ level: 'silent' });
-
-      // Buat client WhatsApp
-      this.whatsappClient = makeWASocket({
-        printQRInTerminal: true,
-        auth: state,
-        logger,
-      });
-
-      // Simpan state untuk digunakan nanti
-      this.store.bind(this.whatsappClient.ev);
-
-      // Event listener untuk update kredensial
-      this.whatsappClient.ev.on('creds.update', saveCreds);
-
-      // Event listener untuk koneksi
-      this.whatsappClient.ev.on('connection.update', async (update: Partial<ConnectionState>) => {
-        const { connection, lastDisconnect, qr } = update;
-
-        if (qr) {
-          // Tampilkan QR code di terminal
-          qrcodeTerminal.generate(qr, { small: true });
-          this.logger.log('QR Code telah dihasilkan di terminal');
-        }
-
-        if (connection === 'close') {
-          const shouldReconnect =
-            (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
-
-          this.logger.log(
-            `Koneksi WhatsApp terputus karena ${lastDisconnect?.error?.message || 'alasan tidak diketahui'}`,
-          );
-          this.isConnected = false;
-
-          if (shouldReconnect) {
-            this.logger.log('Mencoba menghubungkan kembali ke WhatsApp...');
-            await this.initWhatsApp();
-          }
-        } else if (connection === 'open') {
-          this.logger.log('WhatsApp berhasil terhubung!');
-          this.isConnected = true;
-        }
-      });
-    } catch (error) {
-      this.logger.error('Error while connecting to WhatsApp', error);
-      throw error;
-    }
-  }
-
-  private async ensureConnected() {
-    if (!this.isConnected) {
-      this.logger.log('WhatsApp belum terhubung, mencoba menghubungkan...');
-      await this.initWhatsApp();
-
-      // Tunggu hingga terhubung maksimal 30 detik
-      let attempts = 0;
-      while (!this.isConnected && attempts < 30) {
-        await delay(1000);
-        attempts++;
-      }
-
-      if (!this.isConnected) {
-        throw new Error('Tidak dapat terhubung ke WhatsApp setelah beberapa kali percobaan');
-      }
-    }
+    this.logger.log('TransaksiProcessor initialized');
   }
 
   private async sendWhatsAppMessage(to: string, message: string) {
     try {
-      await this.ensureConnected();
-
       // Format nomor WhatsApp (pastikan pakai kode negara)
       const formattedNumber = to.startsWith('+') ? to.substring(1) : to;
       const whatsappId = `${formattedNumber}@s.whatsapp.net`;
 
-      // Kirim pesan
-      await this.whatsappClient.sendMessage(whatsappId, { text: message });
+      // Kirim pesan menggunakan WhatsappService
+      const result = await this.whatsappService.sendMessage(whatsappId, message);
 
       this.logger.log(`Pesan WhatsApp berhasil dikirim ke ${to}`);
-      return true;
+      return result;
     } catch (error) {
       this.logger.error(`Gagal mengirim pesan WhatsApp ke ${to}`, error);
       return false;

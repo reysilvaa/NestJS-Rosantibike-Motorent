@@ -98,10 +98,12 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
         auth: state,
         printQRInTerminal: true,
         qrTimeout: 60000,
-        connectTimeoutMs: 60000,
+        connectTimeoutMs: 120000,
         retryRequestDelayMs: 1000,
-        defaultQueryTimeoutMs: 60000,
+        defaultQueryTimeoutMs: 120000,
         keepAliveIntervalMs: 30000,
+        browser: ['Rental App', 'Chrome', '10.0.0'],
+        syncFullHistory: false,
       });
 
       this.client.ev.on('connection.update', async (update: Partial<ConnectionState>) => {
@@ -124,8 +126,17 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
           this.connectionStatus = 'disconnected';
           const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
           const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+          const errorMessage = (lastDisconnect?.error as Boom)?.output?.payload?.message || '';
 
-          this.logger.error(`WhatsApp connection closed. Status code: ${statusCode}`);
+          this.logger.error(
+            `WhatsApp connection closed. Status code: ${statusCode}, Message: ${errorMessage}`,
+          );
+
+          // Jika terjadi konflik atau error, bersihkan sesi dan mulai ulang
+          if (errorMessage.includes('conflict') || statusCode === 409 || statusCode === 440) {
+            this.logger.log('Detected conflict with another session, cleaning all session files');
+            await this.cleanupSessionFiles();
+          }
 
           if (shouldReconnect && this.retryCount < this.maxRetries) {
             this.retryCount++;
@@ -183,11 +194,18 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
         'app-state-sync-version-regular.json',
         'app-state-sync-version-regular_high.json',
         'app-state-sync-version-critical_unblock_low.json',
+        'app-state-sync-version-critical_block.json',
+        'app-state-sync-version-critical.json',
+        'session-',
       ];
 
-      for (const file of appStateFiles) {
-        const filePath = `${this.sessionPath}/${file}`;
-        if (fs.existsSync(filePath)) {
+      // Baca semua file di direktori sesi
+      const files = fs.readdirSync(this.sessionPath);
+
+      // Hapus file yang cocok dengan pola
+      for (const file of files) {
+        if (appStateFiles.some(pattern => file.startsWith(pattern)) || file.endsWith('.json')) {
+          const filePath = `${this.sessionPath}/${file}`;
           this.logger.log(`Removing potentially corrupted file: ${file}`);
           fs.unlinkSync(filePath);
         }
@@ -205,21 +223,32 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
 
     try {
       this.logger.log(`Sending message to ${to}`);
-      await this.client.sendMessage(to, { text: message });
+      const result = await Promise.race([
+        this.client.sendMessage(to, { text: message }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Send message timeout')), 30000),
+        ),
+      ]);
+
       this.logger.log(`Message sent successfully to ${to}`);
-      return true;
+      return result;
     } catch (error) {
       this.logger.error(`Error sending WhatsApp message to ${to}: ${error.message}`);
 
-      // Jika error karena koneksi, coba reconnect dan kirim ulang
       if (
         error.message.includes('Connection Closed') ||
-        error.message.includes('lost connection')
+        error.message.includes('lost connection') ||
+        error.message.includes('Timed Out') ||
+        error.message.includes('Send message timeout')
       ) {
         this.logger.log('Connection issue detected, attempting to reconnect...');
-        await this.connect();
 
-        // Coba kirim ulang pesan setelah reconnect
+        if (error.message.includes('Timed Out') || error.message.includes('Send message timeout')) {
+          await this.resetConnection();
+        } else {
+          await this.connect();
+        }
+
         try {
           this.logger.log(`Retrying message to ${to} after reconnection`);
           await this.client.sendMessage(to, { text: message });
