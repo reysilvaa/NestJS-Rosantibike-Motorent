@@ -14,7 +14,8 @@ export default [
   js.configs.recommended,
   ...compat.extends(
     'plugin:@typescript-eslint/recommended',
-    'plugin:prettier/recommended'
+    'plugin:prettier/recommended',
+    'plugin:unicorn/recommended'
   ),
   {
     ignores: [
@@ -51,6 +52,55 @@ export default [
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-invalid-void-type': 'off',
       'no-console': 'off',
+      '@typescript-eslint/naming-convention': [
+        'error',
+        {
+          'selector': 'default',
+          'format': ['camelCase']
+        },
+        {
+          'selector': 'variable',
+          'format': ['camelCase', 'UPPER_CASE']
+        },
+        {
+          'selector': 'parameter',
+          'format': ['camelCase'],
+          'leadingUnderscore': 'allow'
+        },
+        {
+          'selector': 'memberLike',
+          'modifiers': ['private'],
+          'format': ['camelCase'],
+          'leadingUnderscore': 'allow'
+        },
+        {
+          'selector': 'typeLike',
+          'format': ['PascalCase']
+        },
+        {
+          'selector': 'class',
+          'format': ['PascalCase']
+        },
+        {
+          'selector': 'interface',
+          'format': ['PascalCase'],
+          'prefix': ['I']
+        },
+        {
+          'selector': 'enum',
+          'format': ['PascalCase']
+        },
+        {
+          'selector': 'enumMember',
+          'format': ['UPPER_CASE']
+        }
+      ],
+      'unicorn/filename-case': [
+        'error',
+        {
+          'case': 'kebabCase'
+        }
+      ]
     },
   },
 ];

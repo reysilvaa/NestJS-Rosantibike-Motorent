@@ -1,8 +1,8 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Query } from '@nestjs/common';
-import { BlogService } from './blog.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { BlogService } from '../services/blog.service';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { CreateBlogPostDto, UpdateBlogPostDto, FilterBlogPostDto } from './dto';
+import { CreateBlogPostDto, UpdateBlogPostDto, FilterBlogPostDto } from '../dto';
 
 @ApiTags('Blog')
 @Controller('blog')

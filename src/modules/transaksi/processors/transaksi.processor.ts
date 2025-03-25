@@ -10,7 +10,7 @@ import {
 import * as fs from 'fs';
 import { delay } from '@whiskeysockets/baileys';
 import { NotificationGateway } from '../../../common/gateway/notification.gateway';
-import { WhatsappService } from '../../whatsapp/whatsapp.service';
+import { WhatsappService } from '../../whatsapp/services/whatsapp.service';
 
 @Processor('transaksi')
 export class TransaksiProcessor {

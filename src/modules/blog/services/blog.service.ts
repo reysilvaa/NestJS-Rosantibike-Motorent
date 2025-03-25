@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../../common/prisma/prisma.service';
-import { CreateBlogPostDto, UpdateBlogPostDto, FilterBlogPostDto } from './dto';
-import { StatusArtikel } from '../../common/enums/status.enum';
+import { PrismaService } from '../../../common/prisma/prisma.service';
+import { CreateBlogPostDto, UpdateBlogPostDto, FilterBlogPostDto } from '../dto';
+import { StatusArtikel } from '../../../common/enums/status.enum';
 
 @Injectable()
 export class BlogService {

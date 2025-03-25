@@ -10,7 +10,9 @@ export class UnitMotorService {
     const where = {
       ...(filter.jenisId && { jenisId: filter.jenisId }),
       ...(filter.status && { status: filter.status }),
-      ...(filter.search && { platNomor: { contains: filter.search, mode: 'insensitive' as const } }),
+      ...(filter.search && {
+        platNomor: { contains: filter.search, mode: 'insensitive' as const },
+      }),
     };
 
     // Hapus filter yang undefined

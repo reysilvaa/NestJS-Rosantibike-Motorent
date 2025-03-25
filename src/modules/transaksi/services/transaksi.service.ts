@@ -50,26 +50,22 @@ export class TransaksiService {
     const skip = (page - 1) * limit;
 
     const [total, data] = await Promise.all([
-      this.prisma.transaksiSewa.count({ 
+      this.prisma.transaksiSewa.count({
         where: {
           ...(where.unitId && { unitId: where.unitId }),
-          ...(where.status && { 
-            status: typeof where.status === 'object' 
-              ? where.status 
-              : { equals: where.status } 
+          ...(where.status && {
+            status: typeof where.status === 'object' ? where.status : { equals: where.status },
           }),
           ...(where.OR && { OR: where.OR }),
           ...(where.tanggalMulai && { tanggalMulai: where.tanggalMulai }),
           ...(where.tanggalSelesai && { tanggalSelesai: where.tanggalSelesai }),
-        } 
+        },
       }),
       this.prisma.transaksiSewa.findMany({
         where: {
           ...(where.unitId && { unitId: where.unitId }),
-          ...(where.status && { 
-            status: typeof where.status === 'object' 
-              ? where.status 
-              : { equals: where.status } 
+          ...(where.status && {
+            status: typeof where.status === 'object' ? where.status : { equals: where.status },
           }),
           ...(where.OR && { OR: where.OR }),
           ...(where.tanggalMulai && { tanggalMulai: where.tanggalMulai }),

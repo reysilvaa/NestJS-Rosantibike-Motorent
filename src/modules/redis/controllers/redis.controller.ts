@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Post, Body, Delete, Query } from '@nestjs/common';
-import { RedisService } from './redis.service';
+import { RedisService } from '../services/redis.service';
 import { ApiTags, ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
 
 interface CacheItem {

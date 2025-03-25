@@ -1,5 +1,5 @@
 import { Controller, Post, Body, Get, HttpStatus, HttpException } from '@nestjs/common';
-import { WhatsappService } from './whatsapp.service';
+import { WhatsappService } from '../services/whatsapp.service';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 interface SendMessageDto {

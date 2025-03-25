@@ -248,29 +248,18 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
         } else {
           await this.connect();
         }
-
-        try {
-          this.logger.log(`Retrying message to ${to} after reconnection`);
-          await this.client.sendMessage(to, { text: message });
-          this.logger.log(`Retry successful, message sent to ${to}`);
-          return true;
-        } catch (retryError) {
-          this.logger.error(`Retry failed, could not send message to ${to}: ${retryError.message}`);
-          return false;
-        }
       }
 
-      return false;
+      return null;
     }
   }
 
   async sendToAdmin(message: string) {
     if (!this.adminNumber) {
-      this.logger.error('Admin WhatsApp number is not configured');
-      throw new Error('Admin WhatsApp number is not configured');
+      this.logger.error('Admin WhatsApp number not configured');
+      return null;
     }
 
-    this.logger.log(`Sending message to admin: ${this.adminNumber}`);
     return this.sendMessage(this.adminNumber, message);
   }
 }

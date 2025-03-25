@@ -41,6 +41,7 @@ lerna-debug.log*
 
 # WhatsApp sessions
 /whatsapp-sessions/
+/storage/whatsapp-sessions/
 
 # Prisma
 /prisma/migrations/
