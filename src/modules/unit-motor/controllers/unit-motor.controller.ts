@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { UnitMotorService } from '../services/unit-motor.service';
-import { CreateUnitMotorDto, UpdateUnitMotorDto, FilterUnitMotorDto } from '../dto';
+import { CreateUnitMotorDto, UpdateUnitMotorDto, FilterUnitMotorDto, CheckAvailabilityDto } from '../dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('Unit Motor')
@@ -13,6 +13,14 @@ export class UnitMotorController {
   @ApiResponse({ status: 200, description: 'Daftar unit motor berhasil diambil' })
   findAll(@Query() filter: FilterUnitMotorDto) {
     return this.unitMotorService.findAll(filter);
+  }
+
+  @Get('availability')
+  @ApiOperation({ summary: 'Memeriksa ketersediaan motor untuk rentang tanggal tertentu' })
+  @ApiResponse({ status: 200, description: 'Data ketersediaan berhasil diambil' })
+  @ApiResponse({ status: 400, description: 'Format tanggal tidak valid' })
+  checkAvailability(@Query() checkAvailabilityDto: CheckAvailabilityDto) {
+    return this.unitMotorService.checkAvailability(checkAvailabilityDto);
   }
 
   @Get(':id')

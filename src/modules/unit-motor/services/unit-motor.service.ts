@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService, StatusMotor } from '../../../common';
-import { CreateUnitMotorDto, UpdateUnitMotorDto, FilterUnitMotorDto } from '../dto';
+import { PrismaService, StatusMotor, StatusTransaksi } from '../../../common';
+import { CreateUnitMotorDto, UpdateUnitMotorDto, FilterUnitMotorDto, CheckAvailabilityDto } from '../dto';
 
 @Injectable()
 export class UnitMotorService {
@@ -141,5 +141,115 @@ export class UnitMotorService {
       }
       throw new NotFoundException(`Unit motor dengan ID ${id} tidak ditemukan`);
     }
+  }
+
+  async checkAvailability(checkAvailabilityDto: CheckAvailabilityDto) {
+    const { startDate, endDate, jenisId } = checkAvailabilityDto;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    // Validasi tanggal
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      throw new BadRequestException('Format tanggal tidak valid');
+    }
+
+    if (start > end) {
+      throw new BadRequestException('Tanggal mulai harus sebelum tanggal selesai');
+    }
+
+    // Dapatkan semua unit motor yang tersedia
+    const whereClause: any = {};
+    if (jenisId) {
+      whereClause.jenisId = jenisId;
+    }
+
+    const unitMotors = await this.prisma.unitMotor.findMany({
+      where: whereClause,
+      include: {
+        jenis: true,
+        sewa: {
+          where: {
+            OR: [
+              {
+                // Transaksi yang rentang waktunya tumpang tindih dengan permintaan
+                AND: [
+                  { tanggalMulai: { lte: end } },
+                  { tanggalSelesai: { gte: start } },
+                  { status: { in: [StatusTransaksi.AKTIF, StatusTransaksi.OVERDUE] } },
+                ],
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    // Buat array tanggal untuk periode yang diminta
+    const dayList = this.generateDayList(start, end);
+    
+    // Buat respons ketersediaan untuk setiap motor
+    const availabilityData = unitMotors.map(unit => {
+      const bookedDates: Date[] = [];
+      
+      // Periksa setiap transaksi sewa untuk unit ini
+      for (const sewa of unit.sewa) {
+        const sewaStart = new Date(sewa.tanggalMulai);
+        const sewaEnd = new Date(sewa.tanggalSelesai);
+        
+        // Tambahkan tanggal yang dipesan ke dalam array
+        const bookedRange = this.generateDayList(
+          sewaStart < start ? start : sewaStart,
+          sewaEnd > end ? end : sewaEnd
+        );
+        
+        bookedDates.push(...bookedRange);
+      }
+
+      // Hapus duplikat
+      const uniqueBookedDates = [...new Set(bookedDates.map(date => date.toISOString().split('T')[0]))];
+      
+      // Buat data ketersediaan untuk setiap hari
+      const dailyAvailability = dayList.map(day => {
+        const dayString = day.toISOString().split('T')[0];
+        return {
+          date: dayString,
+          isAvailable: !uniqueBookedDates.includes(dayString),
+        };
+      });
+
+      return {
+        unitId: unit.id,
+        platNomor: unit.platNomor,
+        jenisMotor: {
+          id: unit.jenis.id,
+          merk: unit.jenis.merk,
+          model: unit.jenis.model,
+          cc: unit.jenis.cc,
+        },
+        hargaSewa: unit.hargaSewa,
+        status: unit.status,
+        availability: dailyAvailability,
+      };
+    });
+
+    return {
+      startDate: startDate,
+      endDate: endDate,
+      totalUnits: availabilityData.length,
+      units: availabilityData,
+    };
+  }
+
+  // Fungsi bantuan untuk menghasilkan array tanggal
+  private generateDayList(startDate: Date, endDate: Date): Date[] {
+    const dayList: Date[] = [];
+    const currentDate = new Date(startDate);
+    
+    while (currentDate <= endDate) {
+      dayList.push(new Date(currentDate));
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    return dayList;
   }
 }
