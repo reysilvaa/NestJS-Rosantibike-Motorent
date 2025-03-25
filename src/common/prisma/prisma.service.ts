@@ -1,6 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import { PrismaClient, Prisma } from '@prisma/client';
+import type { Prisma as _Prisma } from '@prisma/client';
 
-// Dummy enums to use while Prisma is broken
+/**
+ * Enum status motor yang tersedia dalam sistem
+ * Digunakan untuk tracking kondisi unit motor
+ */
 export enum StatusMotor {
   TERSEDIA = 'TERSEDIA',
   DISEWA = 'DISEWA',
@@ -56,147 +61,68 @@ export interface AdminType {
 }
 
 @Injectable()
-export class PrismaService {
-  // Dummy methods to avoid errors
-  async $connect() {
-    console.log('Mock connect called');
+export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(PrismaService.name);
+
+  constructor() {
+    super({
+      log: [
+        { emit: 'event', level: 'query' },
+        { emit: 'stdout', level: 'info' },
+        { emit: 'stdout', level: 'warn' },
+        { emit: 'stdout', level: 'error' },
+      ],
+    });
   }
 
-  async $disconnect() {
-    console.log('Mock disconnect called');
+  async onModuleInit() {
+    this.logger.log('Connecting to database...');
+    await this.$connect();
+    this.logger.log('Connected to database');
+
+    // Debugging event for query
+    (this as any).$on('query', (e: any) => {
+      this.logger.debug(`Query: ${e.query}`);
+      this.logger.debug(`Params: ${e.params}`);
+      this.logger.debug(`Duration: ${e.duration}ms`);
+    });
   }
 
-  // Mock models with proper parameter handling
-  unitMotor = {
-    findUnique: async (params: any) => ({
-      id: 'mock-id',
-      platNomor: 'AB1234XY',
-      status: StatusMotor.TERSEDIA,
-      hargaSewa: 100000,
-      jenisId: 'jenis-id',
-      unitId: 'unit-id',
-    }),
-    findMany: async (params: any) => [],
-    count: async (params: any) => 0,
-    create: async (params: any) => ({}),
-    update: async (params: any) => ({}),
-    delete: async (params: any) => ({}),
-  };
+  async onModuleDestroy() {
+    this.logger.log('Disconnecting from database...');
+    await this.$disconnect();
+    this.logger.log('Disconnected from database');
+  }
 
-  transaksiSewa = {
-    findUnique: async (params: any) => ({
-      id: 'mock-id',
-      namaPenyewa: 'Test User',
-      noWhatsapp: '6281234567890',
-      unitId: 'unit-id',
-      tanggalMulai: new Date(),
-      tanggalSelesai: new Date(),
-      status: StatusTransaksi.AKTIF,
-      totalBiaya: 200000,
-      unitMotor: {
-        id: 'unit-id',
-        platNomor: 'AB1234XY',
-        status: StatusMotor.DISEWA,
-        hargaSewa: 100000,
-        jenis: {
-          id: 'jenis-id',
-          merk: 'Honda',
-          model: 'Vario',
-          cc: 125,
-        },
-      },
-    }),
-    findMany: async (params: any) => [],
-    findFirst: async (params: any) => ({
-      id: 'mock-id',
-      namaPenyewa: 'Test User',
-      noWhatsapp: '6281234567890',
-      unitId: 'unit-id',
-      tanggalMulai: new Date(),
-      tanggalSelesai: new Date(),
-      status: StatusTransaksi.AKTIF,
-      totalBiaya: 200000,
-    }),
-    count: async (params: any) => 0,
-    create: async (params: any) => ({}),
-    update: async (params: any) => ({}),
-    delete: async (params: any) => ({}),
-  };
+  // Override transaction untuk testing
+  $transaction = super.$transaction;
 
-  jenisMotor = {
-    findUnique: async (params: any) => ({
-      id: 'jenis-id',
-      merk: 'Honda',
-      model: 'Vario',
-      cc: 125,
-    }),
-    findMany: async (params: any) => [],
-    count: async (params: any) => 0,
-    create: async (params: any) => ({}),
-    update: async (params: any) => ({}),
-    delete: async (params: any) => ({}),
-  };
+  // Override model methods
+  get unitMotor() {
+    return super.unitMotor;
+  }
 
-  blogPost = {
-    findUnique: async (params: any) => ({
-      id: 'post-id',
-      judul: 'Test Blog',
-      slug: 'test-blog',
-      konten: 'Test Content',
-      status: StatusArtikel.TERBIT,
-    }),
-    findMany: async (params: any) => [],
-    count: async (params: any) => 0,
-    create: async (params: any) => ({}),
-    update: async (params: any) => ({}),
-    delete: async (params: any) => ({}),
-  };
+  get transaksiSewa() {
+    return super.transaksiSewa;
+  }
 
-  blogTag = {
-    findUnique: async (params: any) => ({}),
-    findMany: async (params: any) => [],
-    count: async (params: any) => 0,
-    create: async (params: any) => ({}),
-    update: async (params: any) => ({}),
-    delete: async (params: any) => ({}),
-  };
+  get jenisMotor() {
+    return super.jenisMotor;
+  }
 
-  blogPostTag = {
-    create: async (params: any) => ({}),
-    deleteMany: async (params: any) => ({}),
-  };
+  get blogPost() {
+    return super.blogPost;
+  }
 
-  admin = {
-    findUnique: async (params: { where: { username: string } }): Promise<AdminType> => ({
-      id: 'mock-id',
-      username: 'admin',
-      password: 'hashed-password',
-      nama: 'Admin',
-    }),
-    create: async (params: {
-      data: { password: string; username: string; nama: string };
-    }): Promise<AdminType> => ({
-      id: 'mock-id',
-      username: 'admin',
-      password: 'hashed-password',
-      nama: 'Admin',
-    }),
-    update: async (params: { where: { id: string }; data: any }): Promise<AdminType> => ({
-      id: 'mock-id',
-      username: 'admin',
-      password: 'hashed-password',
-      nama: 'Admin',
-    }),
-    delete: async (params: { where: { id: string } }): Promise<AdminType> => ({
-      id: 'mock-id',
-      username: 'admin',
-      password: 'hashed-password',
-      nama: 'Admin',
-    }),
-  };
+  get blogTag() {
+    return super.blogTag;
+  }
 
-  // Mock transaction
-  async $transaction(callback: any) {
-    return callback(this);
+  get blogPostTag() {
+    return super.blogPostTag;
+  }
+
+  get admin() {
+    return super.admin;
   }
 }

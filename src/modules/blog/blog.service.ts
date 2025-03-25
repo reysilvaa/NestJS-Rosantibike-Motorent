@@ -9,7 +9,7 @@ export class BlogService {
 
   async findAll(filter: FilterBlogPostDto) {
     const where = {
-      status: filter.status,
+      ...(filter.status && { status: filter.status }),
       OR: filter.search
         ? [
             {
@@ -121,7 +121,8 @@ export class BlogService {
             konten: createBlogPostDto.konten,
             slug: createBlogPostDto.slug,
             thumbnail: createBlogPostDto.featuredImage,
-            status: createBlogPostDto.status || StatusArtikel.DRAFT,
+            kategori: 'UMUM',
+            status: createBlogPostDto.status,
             tags: {
               create: createBlogPostDto.tags?.map(tagId => ({
                 tag: {
@@ -176,19 +177,21 @@ export class BlogService {
         const post = await tx.blogPost.update({
           where: { id },
           data: {
-            judul: updateBlogPostDto.judul,
-            konten: updateBlogPostDto.konten,
-            slug: updateBlogPostDto.slug,
-            thumbnail: updateBlogPostDto.featuredImage,
-            status: updateBlogPostDto.status,
-            tags: {
-              deleteMany: {},
-              create: updateBlogPostDto.tags?.map(tagId => ({
-                tag: {
-                  connect: { id: tagId },
-                },
-              })),
-            },
+            ...(updateBlogPostDto.judul && { judul: updateBlogPostDto.judul }),
+            ...(updateBlogPostDto.konten && { konten: updateBlogPostDto.konten }),
+            ...(updateBlogPostDto.slug && { slug: updateBlogPostDto.slug }),
+            ...(updateBlogPostDto.featuredImage && { thumbnail: updateBlogPostDto.featuredImage }),
+            ...(updateBlogPostDto.status && { status: updateBlogPostDto.status }),
+            ...(updateBlogPostDto.tags && {
+              tags: {
+                deleteMany: {},
+                create: updateBlogPostDto.tags.map(tagId => ({
+                  tag: {
+                    connect: { id: tagId },
+                  },
+                })),
+              },
+            }),
           },
           include: {
             tags: {

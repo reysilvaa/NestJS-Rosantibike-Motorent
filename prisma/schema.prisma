@@ -1,14 +1,109 @@
-// Potential fixed Prisma schema
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
+model JenisMotor {
+  id        String      @id @default(uuid())
+  merk      String      @db.VarChar(50)
+  model     String      @db.VarChar(50)
+  cc        Int
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  unitMotor UnitMotor[]
+
+  @@map("jenis_motor")
 }
 
-// Enums remain the same
+model UnitMotor {
+  id        String          @id @default(uuid())
+  jenisId   String
+  platNomor String          @unique @db.VarChar(20)
+  status    StatusMotor     @default(TERSEDIA)
+  hargaSewa Decimal         @db.Decimal(10, 2)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  sewa      TransaksiSewa[]
+  jenis     JenisMotor      @relation(fields: [jenisId], references: [id])
+
+  @@index([platNomor])
+  @@index([status])
+  @@map("unit_motor")
+}
+
+model TransaksiSewa {
+  id             String          @id @default(uuid())
+  namaPenyewa    String          @db.VarChar(100)
+  noWhatsapp     String          @db.VarChar(20)
+  unitId         String
+  tanggalMulai   DateTime
+  tanggalSelesai DateTime
+  status         StatusTransaksi @default(AKTIF)
+  totalBiaya     Decimal         @db.Decimal(10, 2)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  unitMotor      UnitMotor       @relation(fields: [unitId], references: [id])
+
+  @@index([noWhatsapp])
+  @@index([tanggalMulai, tanggalSelesai])
+  @@index([status])
+  @@map("transaksi_sewa")
+}
+
+model BlogPost {
+  id        String        @id @default(uuid())
+  judul     String        @db.VarChar(255)
+  slug      String        @unique @db.VarChar(255)
+  konten    String
+  thumbnail String?       @db.VarChar(255)
+  kategori  String        @db.VarChar(100)
+  status    StatusArtikel @default(DRAFT)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  tags      BlogPostTag[]
+
+  @@index([slug])
+  @@index([status])
+  @@index([kategori])
+  @@map("blog_posts")
+}
+
+model BlogTag {
+  id        String        @id @default(uuid())
+  nama      String        @unique @db.VarChar(100)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  posts     BlogPostTag[]
+
+  @@map("blog_tags")
+}
+
+model BlogPostTag {
+  postId    String
+  tagId     String
+  createdAt DateTime @default(now())
+  post      BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag       BlogTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+  @@map("blog_post_tags")
+}
+
+model Admin {
+  id        String   @id @default(uuid())
+  username  String   @unique @db.VarChar(50)
+  password  String   @db.VarChar(100)
+  nama      String   @db.VarChar(100)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("admin")
+}
+
 enum StatusMotor {
   TERSEDIA
   DISEWA
@@ -25,114 +120,4 @@ enum StatusTransaksi {
 enum StatusArtikel {
   DRAFT
   TERBIT
-}
-
-// Models with careful relationship management
-model JenisMotor {
-  id        String      @id @default(uuid())
-  merk      String      @db.VarChar(50)
-  model     String      @db.VarChar(50)
-  cc        Int
-  unitMotor UnitMotor[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("jenis_motor")
-}
-
-model UnitMotor {
-  id         String         @id @default(uuid())
-  jenisId    String
-  platNomor  String         @unique @db.VarChar(20)
-  status     StatusMotor    @default(TERSEDIA)
-  hargaSewa  Decimal        @db.Decimal(10, 2)
-  
-  jenis      JenisMotor     @relation(fields: [jenisId], references: [id], onDelete: Restrict)
-  sewa       TransaksiSewa[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([platNomor])
-  @@index([status])
-  @@map("unit_motor")
-}
-
-model TransaksiSewa {
-  id             String          @id @default(uuid())
-  namaPenyewa    String          @db.VarChar(100)
-  noWhatsapp     String          @db.VarChar(20)
-  unitId         String
-  tanggalMulai   DateTime
-  tanggalSelesai DateTime
-  status         StatusTransaksi @default(AKTIF)
-  totalBiaya     Decimal         @db.Decimal(10, 2)
-
-  unitMotor      UnitMotor       @relation(fields: [unitId], references: [id], onDelete: Restrict)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([noWhatsapp])
-  @@index([tanggalMulai, tanggalSelesai])
-  @@index([status])
-  @@map("transaksi_sewa")
-}
-
-model BlogPost {
-  id        String        @id @default(uuid())
-  judul     String        @db.VarChar(255)
-  slug      String        @unique @db.VarChar(255)
-  konten    String        @db.Text
-  thumbnail String?       @db.VarChar(255)
-  kategori  String        @db.VarChar(100)
-  status    StatusArtikel @default(DRAFT)
-
-  tags      BlogPostTag[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([slug])
-  @@index([status])
-  @@index([kategori])
-  @@map("blog_posts")
-}
-
-model BlogTag {
-  id    String @id @default(uuid())
-  nama  String @unique @db.VarChar(100)
-
-  posts BlogPostTag[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("blog_tags")
-}
-
-model BlogPostTag {
-  postId String
-  tagId  String
-
-  post BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  tag  BlogTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-
-  @@id([postId, tagId])
-  @@map("blog_post_tags")
-}
-
-model Admin {
-  id       String @id @default(uuid())
-  username String @unique @db.VarChar(50)
-  password String @db.VarChar(100)
-  nama     String @db.VarChar(100)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("admin")
 }

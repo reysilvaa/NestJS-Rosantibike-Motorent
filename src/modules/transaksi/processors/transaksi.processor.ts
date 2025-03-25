@@ -1,6 +1,6 @@
 import { Process, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
-import { Job } from 'bullmq';
+import { Job } from 'bull';
 import {
   PrismaService,
   StatusMotor,
@@ -8,16 +8,17 @@ import {
   TransaksiWithRelations,
 } from '../../../common';
 import * as fs from 'fs';
-import {
-  makeWASocket,
+import makeWASocket, {
   DisconnectReason,
   useMultiFileAuthState,
   makeInMemoryStore,
   delay,
-} from 'baileys';
+  ConnectionState,
+} from '@whiskeysockets/baileys';
 import pino from 'pino';
 import { NotificationGateway } from '../../../common/gateway/notification.gateway';
 import * as qrcodeTerminal from 'qrcode-terminal';
+import { Boom } from '@hapi/boom';
 
 @Processor('transaksi')
 export class TransaksiProcessor {
@@ -86,7 +87,7 @@ export class TransaksiProcessor {
       this.whatsappClient.ev.on('creds.update', saveCreds);
 
       // Event listener untuk koneksi
-      this.whatsappClient.ev.on('connection.update', async (update: any) => {
+      this.whatsappClient.ev.on('connection.update', async (update: Partial<ConnectionState>) => {
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
@@ -97,7 +98,7 @@ export class TransaksiProcessor {
 
         if (connection === 'close') {
           const shouldReconnect =
-            lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
 
           this.logger.log(
             `Koneksi WhatsApp terputus karena ${lastDisconnect?.error?.message || 'alasan tidak diketahui'}`,

@@ -1,7 +1,11 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Boom } from '@hapi/boom';
-import makeWASocket, { DisconnectReason, useMultiFileAuthState } from 'baileys';
+import makeWASocket, {
+  DisconnectReason,
+  useMultiFileAuthState,
+  ConnectionState,
+} from '@whiskeysockets/baileys';
 import * as fs from 'fs';
 import * as qrcodeTerminal from 'qrcode-terminal';
 
@@ -100,7 +104,7 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
         keepAliveIntervalMs: 30000,
       });
 
-      this.client.ev.on('connection.update', async (update: any) => {
+      this.client.ev.on('connection.update', async (update: Partial<ConnectionState>) => {
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {

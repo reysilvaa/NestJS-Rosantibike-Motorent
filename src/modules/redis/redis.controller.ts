@@ -20,8 +20,8 @@ export class RedisController {
     try {
       const result = await this.redisService.ping();
       return { status: 'success', message: result };
-    } catch (error) {
-      return { status: 'error', message: error.message };
+    } catch (_error) {
+      return { status: 'error', message: _error.message };
     }
   }
 
@@ -31,8 +31,8 @@ export class RedisController {
     try {
       const info = await this.redisService.getRedisInfo();
       return { status: 'success', info };
-    } catch (error) {
-      return { status: 'error', info: error.message };
+    } catch (_error) {
+      return { status: 'error', info: 'Gagal mendapatkan informasi Redis' };
     }
   }
 
@@ -45,7 +45,7 @@ export class RedisController {
     try {
       const keys = await this.redisService.keys(pattern);
       return { status: 'success', keys };
-    } catch (error) {
+    } catch (_error) {
       return { status: 'error', keys: [] };
     }
   }
@@ -64,7 +64,7 @@ export class RedisController {
       const value = await this.redisService.get(key);
       const ttl = await this.redisService.ttl(key);
       return { status: 'success', exists: true, value: { data: value, ttl } };
-    } catch (error) {
+    } catch (_error) {
       return { status: 'error', exists: false, value: null };
     }
   }
@@ -75,8 +75,8 @@ export class RedisController {
     try {
       await this.redisService.set(cacheItem.key, cacheItem.value, cacheItem.ttl);
       return { status: 'success', message: `Key ${cacheItem.key} set successfully` };
-    } catch (error) {
-      return { status: 'error', message: error.message };
+    } catch (_error) {
+      return { status: 'error', message: _error.message };
     }
   }
 
@@ -91,8 +91,8 @@ export class RedisController {
       }
       await this.redisService.del(key);
       return { status: 'success', message: `Key ${key} deleted successfully` };
-    } catch (error) {
-      return { status: 'error', message: error.message };
+    } catch (_error) {
+      return { status: 'error', message: 'Gagal menghapus key' };
     }
   }
 }

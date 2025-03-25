@@ -8,11 +8,9 @@ export class UnitMotorService {
 
   async findAll(filter: FilterUnitMotorDto = {}) {
     const where = {
-      jenisId: filter.jenisId,
-      status: filter.status,
-      platNomor: filter.search
-        ? { contains: filter.search, mode: 'insensitive' as const }
-        : undefined,
+      ...(filter.jenisId && { jenisId: filter.jenisId }),
+      ...(filter.status && { status: filter.status }),
+      ...(filter.search && { platNomor: { contains: filter.search, mode: 'insensitive' as const } }),
     };
 
     // Hapus filter yang undefined
@@ -99,9 +97,16 @@ export class UnitMotorService {
         }
       }
 
+      const updateData = {
+        ...(updateUnitMotorDto.platNomor && { platNomor: updateUnitMotorDto.platNomor }),
+        ...(updateUnitMotorDto.jenisId && { jenisId: updateUnitMotorDto.jenisId }),
+        ...(updateUnitMotorDto.status && { status: updateUnitMotorDto.status }),
+        ...(updateUnitMotorDto.hargaSewa && { hargaSewa: updateUnitMotorDto.hargaSewa }),
+      };
+
       return await this.prisma.unitMotor.update({
         where: { id },
-        data: updateUnitMotorDto,
+        data: updateData,
         include: {
           jenis: true,
         },

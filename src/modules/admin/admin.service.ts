@@ -6,6 +6,19 @@ import * as bcrypt from 'bcrypt';
 export class AdminService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async findAll() {
+    return this.prisma.admin.findMany({
+      select: {
+        id: true,
+        username: true,
+        nama: true,
+        createdAt: true,
+        updatedAt: true,
+        // Tidak menyertakan password untuk keamanan
+      },
+    });
+  }
+
   async findByUsername(username: string) {
     const admin = await this.prisma.admin.findUnique({
       where: { username },
