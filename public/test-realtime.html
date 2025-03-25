@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pengujian Realtime - Rental Motor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            color: #2c3e50;
+        }
+        #log {
+            height: 250px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            font-family: monospace;
+            background-color: #f9f9f9;
+        }
+        .event {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+        .connection { color: #2ecc71; }
+        .error { color: #e74c3c; }
+        .transaction { color: #3498db; }
+        .overdue { color: #e67e22; }
+        .motor-status { color: #9b59b6; }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .button-group {
+            margin: 15px 0;
+        }
+        #status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #e74c3c;
+            margin-right: 8px;
+        }
+        .connected {
+            background-color: #2ecc71;
+        }
+        #status-text {
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <h1>Pengujian Fitur Realtime Rental Motor</h1>
+    
+    <div class="card">
+        <h2>Status Koneksi</h2>
+        <div>
+            <span id="status-indicator"></span>
+            <span id="status-text">Tidak terhubung</span>
+        </div>
+        <div class="button-group">
+            <button id="connect">Hubungkan</button>
+            <button id="disconnect">Putuskan</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="card">
+            <h2>Log Aktivitas</h2>
+            <div id="log"></div>
+            <button id="clear-log">Bersihkan Log</button>
+        </div>
+        
+        <div class="card">
+            <h2>Pengujian Notifikasi</h2>
+            
+            <div class="button-group">
+                <h3>Transaksi</h3>
+                <button id="test-new-transaction">Notifikasi Transaksi Baru</button>
+                <button id="test-overdue">Notifikasi Overdue</button>
+            </div>
+            
+            <div class="button-group">
+                <h3>Status Motor</h3>
+                <button id="test-motor-available">Motor Tersedia</button>
+                <button id="test-motor-rented">Motor Disewa</button>
+                <button id="test-motor-booked">Motor Dipesan</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+    <script>
+        let socket;
+        const log = document.getElementById('log');
+        const statusIndicator = document.getElementById('status-indicator');
+        const statusText = document.getElementById('status-text');
+
+        function addLog(message, type = '') {
+            const el = document.createElement('div');
+            el.className = `event ${type}`;
+            el.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+            log.appendChild(el);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function updateConnectionStatus(connected) {
+            if (connected) {
+                statusIndicator.classList.add('connected');
+                statusText.textContent = 'Terhubung';
+            } else {
+                statusIndicator.classList.remove('connected');
+                statusText.textContent = 'Tidak terhubung';
+            }
+        }
+
+        document.getElementById('connect').addEventListener('click', () => {
+            if (socket && socket.connected) {
+                addLog('Sudah terhubung', 'connection');
+                return;
+            }
+
+            addLog('Menghubungkan...', 'connection');
+            socket = io('http://localhost:3000', {
+                transports: ['websocket', 'polling'],
+                withCredentials: true,
+                reconnectionAttempts: 5,
+                reconnectionDelay: 1000
+            });
+
+            socket.on('connect', () => {
+                addLog(`Terhubung dengan ID: ${socket.id}`, 'connection');
+                updateConnectionStatus(true);
+            });
+
+            socket.on('disconnect', (reason) => {
+                addLog(`Terputus: ${reason}`, 'connection');
+                updateConnectionStatus(false);
+            });
+
+            socket.on('connect_error', (error) => {
+                addLog(`Error koneksi: ${error.message}`, 'error');
+                updateConnectionStatus(false);
+            });
+
+            // Event-event aplikasi
+            socket.on('new-transaction', (data) => {
+                addLog(`Transaksi Baru: ${JSON.stringify(data)}`, 'transaction');
+            });
+
+            socket.on('overdue-transaction', (data) => {
+                addLog(`Transaksi Overdue: ${JSON.stringify(data)}`, 'overdue');
+            });
+
+            socket.on('motor-status-update', (data) => {
+                addLog(`Update Status Motor: ${JSON.stringify(data)}`, 'motor-status');
+            });
+        });
+
+        document.getElementById('disconnect').addEventListener('click', () => {
+            if (!socket || !socket.connected) {
+                addLog('Tidak terhubung', 'error');
+                return;
+            }
+            
+            socket.disconnect();
+            addLog('Sengaja diputuskan', 'connection');
+            updateConnectionStatus(false);
+        });
+
+        document.getElementById('clear-log').addEventListener('click', () => {
+            log.innerHTML = '';
+            addLog('Log dibersihkan', 'connection');
+        });
+
+        document.getElementById('test-new-transaction').addEventListener('click', () => {
+            if (!socket || !socket.connected) {
+                addLog('Tidak terhubung, tidak dapat mengirim test', 'error');
+                return;
+            }
+            
+            const testData = {
+                id: 'trans-' + Date.now(),
+                namaPenyewa: 'Budi Santoso',
+                noWhatsapp: '081234567890',
+                unitMotor: {
+                    id: 'motor-123',
+                    platNomor: 'B 1234 XYZ',
+                    jenis: {
+                        merk: 'Honda',
+                        model: 'Beat'
+                    }
+                },
+                tanggalMulai: new Date().toISOString(),
+                tanggalSelesai: new Date(Date.now() + 86400000).toISOString(),
+                totalBiaya: 75000
+            };
+            
+            // Mengirim event ke server
+            socket.emit('test-new-transaction', testData);
+            addLog('Mengirim event test transaksi baru', 'transaction');
+        });
+
+        document.getElementById('test-overdue').addEventListener('click', () => {
+            if (!socket || !socket.connected) {
+                addLog('Tidak terhubung, tidak dapat mengirim test', 'error');
+                return;
+            }
+            
+            const testData = {
+                id: 'overdue-' + Date.now(),
+                unitMotor: {
+                    id: 'motor-456',
+                    platNomor: 'B 5678 ABC',
+                    jenis: {
+                        merk: 'Yamaha', 
+                        model: 'NMAX'
+                    }
+                },
+                namaPenyewa: 'Dewi Susanti',
+                noWhatsapp: '085678901234',
+                tanggalSelesai: new Date(Date.now() - 3600000).toISOString(),
+                message: 'Unit motor B 5678 ABC telah melewati batas waktu pengembalian!'
+            };
+            
+            socket.emit('test-overdue', testData);
+            addLog('Mengirim event test overdue', 'overdue');
+        });
+
+        document.getElementById('test-motor-available').addEventListener('click', () => {
+            if (!socket || !socket.connected) {
+                addLog('Tidak terhubung, tidak dapat mengirim test', 'error');
+                return;
+            }
+            
+            const testData = {
+                id: 'motor-' + Date.now(),
+                status: 'TERSEDIA',
+                platNomor: 'B 9012 DEF',
+                message: 'Unit motor B 9012 DEF sekarang tersedia'
+            };
+            
+            socket.emit('test-motor-status', testData);
+            addLog('Mengirim event test status motor tersedia', 'motor-status');
+        });
+
+        document.getElementById('test-motor-rented').addEventListener('click', () => {
+            if (!socket || !socket.connected) {
+                addLog('Tidak terhubung, tidak dapat mengirim test', 'error');
+                return;
+            }
+            
+            const testData = {
+                id: 'motor-' + Date.now(),
+                status: 'DISEWA',
+                platNomor: 'B 3456 GHI',
+                message: 'Unit motor B 3456 GHI sekarang sedang disewa'
+            };
+            
+            socket.emit('test-motor-status', testData);
+            addLog('Mengirim event test status motor disewa', 'motor-status');
+        });
+
+        document.getElementById('test-motor-booked').addEventListener('click', () => {
+            if (!socket || !socket.connected) {
+                addLog('Tidak terhubung, tidak dapat mengirim test', 'error');
+                return;
+            }
+            
+            const testData = {
+                id: 'motor-' + Date.now(),
+                status: 'DIPESAN',
+                platNomor: 'B 7890 JKL',
+                message: 'Unit motor B 7890 JKL sekarang dipesan'
+            };
+            
+            socket.emit('test-motor-status', testData);
+            addLog('Mengirim event test status motor dipesan', 'motor-status');
+        });
+    </script>
+</body>
+</html> 

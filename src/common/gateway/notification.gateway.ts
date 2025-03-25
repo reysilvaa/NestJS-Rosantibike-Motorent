@@ -55,12 +55,34 @@ export class NotificationGateway
   }
 
   // Event untuk notifikasi transaksi overdue
-  sendOverdueNotification(_args: any) {
-    // Implementation
+  sendOverdueNotification(data: any) {
+    this.server.emit('overdue-transaction', data);
   }
 
   // Event untuk notifikasi status motor berubah
   sendMotorStatusNotification(data: any) {
     this.server.emit('motor-status-update', data);
+  }
+
+  // Handler untuk event test dari client
+  @SubscribeMessage('test-new-transaction')
+  handleTestNewTransaction(client: Socket, data: any) {
+    this.logger.log(`Client ${client.id} sent test new transaction with data: ${JSON.stringify(data)}`);
+    this.server.emit('new-transaction', data);
+    return { status: 'ok', message: 'Test notifikasi transaksi baru berhasil dikirim' };
+  }
+
+  @SubscribeMessage('test-overdue')
+  handleTestOverdue(client: Socket, data: any) {
+    this.logger.log(`Client ${client.id} sent test overdue with data: ${JSON.stringify(data)}`);
+    this.server.emit('overdue-transaction', data);
+    return { status: 'ok', message: 'Test notifikasi overdue berhasil dikirim' };
+  }
+
+  @SubscribeMessage('test-motor-status')
+  handleTestMotorStatus(client: Socket, data: any) {
+    this.logger.log(`Client ${client.id} sent test motor status with data: ${JSON.stringify(data)}`);
+    this.server.emit('motor-status-update', data);
+    return { status: 'ok', message: 'Test notifikasi status motor berhasil dikirim' };
   }
 }

@@ -32,4 +32,13 @@ export class UpdateJenisMotorDto {
   @IsOptional()
   @Min(50, { message: 'CC motor minimal 50' })
   cc?: number;
+
+  @ApiProperty({
+    description: 'URL gambar motor',
+    example: 'uploads/jenis-motor/honda-vario.jpg',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  gambar?: string;
 }

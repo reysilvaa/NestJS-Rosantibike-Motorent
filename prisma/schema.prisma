@@ -12,6 +12,7 @@ model JenisMotor {
   merk      String      @db.VarChar(50)
   model     String      @db.VarChar(50)
   cc        Int
+  gambar    String?     @db.VarChar(255)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
   unitMotor UnitMotor[]

@@ -1,49 +1,107 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../../common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { PrismaService } from '../../../common/prisma/prisma.service';
 import { CreateJenisMotorDto, UpdateJenisMotorDto } from '../dto';
 
 @Injectable()
 export class JenisMotorService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(JenisMotorService.name);
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  async create(data: CreateJenisMotorDto) {
+    try {
+      return await this.prisma.jenisMotor.create({
+        data: {
+          merk: data.merk,
+          model: data.model,
+          cc: data.cc,
+          gambar: data.gambar,
+        },
+      });
+    } catch (error) {
+      this.logger.error(`Gagal membuat jenis motor: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
 
   async findAll() {
-    return this.prisma.jenisMotor.findMany({});
+    try {
+      return await this.prisma.jenisMotor.findMany({
+        include: {
+          unitMotor: true,
+        },
+      });
+    } catch (error) {
+      this.logger.error(`Gagal mengambil daftar jenis motor: ${error.message}`, error.stack);
+      throw error;
+    }
   }
 
   async findOne(id: string) {
     try {
-      return await this.prisma.jenisMotor.findUnique({
+      const jenisMotor = await this.prisma.jenisMotor.findUnique({
         where: { id },
+        include: {
+          unitMotor: true,
+        },
       });
-    } catch {
-      throw new NotFoundException(`Jenis motor dengan ID ${id} tidak ditemukan`);
+
+      if (!jenisMotor) {
+        throw new NotFoundException(`Jenis motor dengan ID "${id}" tidak ditemukan`);
+      }
+
+      return jenisMotor;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      this.logger.error(`Gagal mengambil jenis motor: ${error.message}`, error.stack);
+      throw error;
     }
   }
 
-  async create(createJenisMotorDto: CreateJenisMotorDto) {
-    return this.prisma.jenisMotor.create({
-      data: createJenisMotorDto,
-    });
-  }
-
-  async update(id: string, updateJenisMotorDto: UpdateJenisMotorDto) {
+  async update(id: string, data: UpdateJenisMotorDto) {
     try {
+      // Verifikasi bahwa jenis motor ada
+      await this.findOne(id);
+
       return await this.prisma.jenisMotor.update({
         where: { id },
-        data: updateJenisMotorDto,
+        data,
       });
-    } catch {
-      throw new NotFoundException(`Jenis motor dengan ID ${id} tidak ditemukan`);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      this.logger.error(`Gagal mengupdate jenis motor: ${error.message}`, error.stack);
+      throw error;
     }
   }
 
   async remove(id: string) {
     try {
+      // Verifikasi bahwa jenis motor ada
+      await this.findOne(id);
+
+      // Dapatkan semua unit yang terkait dengan jenis motor ini
+      const unitMotors = await this.prisma.unitMotor.findMany({
+        where: { jenisId: id },
+      });
+
+      // Jika ada unit motor terkait, batalkan penghapusan
+      if (unitMotors.length > 0) {
+        throw new Error(`Tidak dapat menghapus jenis motor karena masih memiliki ${unitMotors.length} unit terkait`);
+      }
+
       return await this.prisma.jenisMotor.delete({
         where: { id },
       });
-    } catch (_error) {
-      throw new NotFoundException(`Jenis motor dengan ID ${id} tidak ditemukan`);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      this.logger.error(`Gagal menghapus jenis motor: ${error.message}`, error.stack);
+      throw error;
     }
   }
 }

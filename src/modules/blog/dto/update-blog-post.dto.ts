@@ -30,6 +30,10 @@ export class UpdateBlogPostDto {
   @IsOptional()
   featuredImage?: string;
 
+  @IsString()
+  @IsOptional()
+  thumbnail?: string;
+
   @IsEnum(StatusArtikel)
   @IsOptional()
   status?: StatusArtikel;

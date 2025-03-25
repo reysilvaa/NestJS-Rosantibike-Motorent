@@ -1,6 +1,7 @@
 import { Controller, Post, Body, Get, HttpStatus, HttpException } from '@nestjs/common';
 import { WhatsappService } from '../services/whatsapp.service';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import logger from 'baileys/lib/Utils/logger';
 
 interface SendMessageDto {
   to: string;
@@ -80,15 +81,15 @@ export class WhatsappController {
     if (reconnecting) {
       statusMessage = `Sedang mencoba menyambungkan kembali (Percobaan ${status.retryCount}/${this.whatsappService.maxRetries})`;
     } else if (connected) {
-      statusMessage = 'WhatsApp terhubung';
+      logger.info('WhatsApp terhubung');
     } else if (authenticating) {
-      statusMessage = 'Proses autentikasi sedang berlangsung, harap tunggu...';
+      logger.info('Proses autentikasi sedang berlangsung, harap tunggu...');
     } else if (status.status === 'connecting') {
-      statusMessage = 'Sedang mencoba terhubung ke WhatsApp...';
+      logger.info('Sedang mencoba terhubung ke WhatsApp...');
     } else if (status.status === 'error') {
-      statusMessage = 'Terjadi kesalahan koneksi WhatsApp, silakan reset koneksi';
+      logger.error('Terjadi kesalahan koneksi WhatsApp, silakan reset koneksi');
     } else {
-      statusMessage = 'WhatsApp tidak terhubung, silakan scan QR code';
+      logger.info('WhatsApp tidak terhubung, silakan scan QR code');
     }
 
     return { 
@@ -105,12 +106,12 @@ export class WhatsappController {
   @ApiResponse({ status: 200, description: 'QR code terakhir' })
   @ApiResponse({ status: 404, description: 'QR code tidak tersedia' })
   async getQrCode() {
-    const qrData = await this.whatsappService.getLastQrCode();
+    const qrCode = await this.whatsappService.getLastQrCode();
     
-    if (!qrData.hasQrCode) {
+    if (!qrCode) {
       throw new HttpException('QR code belum tersedia, silakan reset koneksi', HttpStatus.NOT_FOUND);
     }
     
-    return qrData;
+    return { qrCode };
   }
 }

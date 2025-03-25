@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsInt, Min } from 'class-validator';
+import { IsString, IsNotEmpty, IsInt, Min, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateJenisMotorDto {
@@ -26,4 +26,13 @@ export class CreateJenisMotorDto {
   @IsInt()
   @Min(50, { message: 'CC motor minimal 50' })
   cc: number;
+
+  @ApiProperty({
+    description: 'URL gambar motor',
+    example: 'uploads/jenis-motor/honda-vario.jpg',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  gambar?: string;
 }
