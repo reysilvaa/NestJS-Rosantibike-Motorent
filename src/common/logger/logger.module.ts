@@ -16,7 +16,7 @@ import * as winston from 'winston';
                 winston.format.timestamp(),
                 winston.format.ms(),
                 winston.format.colorize(),
-                winston.format.printf((info) => {
+                winston.format.printf(info => {
                   return `[${info.timestamp}] ${info.level}: ${info.message}`;
                 }),
               ),

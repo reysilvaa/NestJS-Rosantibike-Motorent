@@ -48,7 +48,7 @@ export class TransaksiService {
     };
 
     // Hapus filter yang undefined
-    Object.keys(where).forEach((key) => where[key] === undefined && delete where[key]);
+    Object.keys(where).forEach(key => where[key] === undefined && delete where[key]);
 
     const page = filter.page || 1;
     const limit = filter.limit || 10;
@@ -158,7 +158,7 @@ export class TransaksiService {
 
     try {
       // Mulai transaksi
-      const result = await this.prisma.$transaction(async (tx) => {
+      const result = await this.prisma.$transaction(async tx => {
         // Update status motor menjadi DIPESAN jika tanggal mulai di masa depan
         // atau DISEWA jika tanggal mulai hari ini
         const now = new Date();
@@ -395,7 +395,7 @@ export class TransaksiService {
 
     try {
       // Hapus transaksi dan update status motor
-      return await this.prisma.$transaction(async (tx) => {
+      return await this.prisma.$transaction(async tx => {
         // Hapus transaksi
         await tx.transaksiSewa.delete({
           where: { id },
@@ -446,7 +446,7 @@ export class TransaksiService {
 
     try {
       // Update transaksi dan status motor
-      return await this.prisma.$transaction(async (tx) => {
+      return await this.prisma.$transaction(async tx => {
         // Update transaksi
         const updatedTransaksi = await tx.transaksiSewa.update({
           where: { id },

@@ -22,7 +22,7 @@ export class FilterTransaksiDto {
   @IsOptional()
   @Transform(({ value }) => {
     if (typeof value === 'string' && value.includes(',')) {
-      return value.split(',').map((status) => status.trim() as StatusTransaksi);
+      return value.split(',').map(status => status.trim() as StatusTransaksi);
     }
     return value;
   })

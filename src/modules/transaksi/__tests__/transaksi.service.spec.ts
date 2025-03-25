@@ -54,7 +54,7 @@ describe('TransaksiService', () => {
         findUnique: jest.fn().mockResolvedValue(mockUnitMotor),
         update: jest.fn().mockResolvedValue(mockUnitMotor),
       },
-      $transaction: jest.fn().mockImplementation(async (cb) => {
+      $transaction: jest.fn().mockImplementation(async cb => {
         if (typeof cb === 'function') {
           return await cb(mockPrisma);
         }
@@ -105,7 +105,7 @@ describe('TransaksiService', () => {
       };
 
       // Simulasikan perilaku $transaction
-      mockPrisma.$transaction.mockImplementationOnce(async (callback) => {
+      mockPrisma.$transaction.mockImplementationOnce(async callback => {
         await callback(mockPrisma);
         return { ...mockTransaksiData, id: 'new-trans' };
       });
@@ -136,7 +136,7 @@ describe('TransaksiService', () => {
       };
 
       // Simulasikan perilaku $transaction
-      mockPrisma.$transaction.mockImplementationOnce(async (callback) => {
+      mockPrisma.$transaction.mockImplementationOnce(async callback => {
         await callback(mockPrisma);
         return { ...mockTransaksiData, id: 'new-trans' };
       });
@@ -167,7 +167,7 @@ describe('TransaksiService', () => {
       };
 
       // Simulasikan perilaku $transaction
-      mockPrisma.$transaction.mockImplementationOnce(async (callback) => {
+      mockPrisma.$transaction.mockImplementationOnce(async callback => {
         await callback(mockPrisma);
         return { ...mockTransaksiData, id: 'new-trans' };
       });
@@ -185,7 +185,7 @@ describe('TransaksiService', () => {
 
       // Get the delay parameter
       const reminderCall = mockQueue.add.mock.calls.find(
-        (call) => call[0] === 'kirim-pengingat-pengembalian',
+        call => call[0] === 'kirim-pengingat-pengembalian',
       );
       expect(reminderCall).toBeDefined();
       expect(reminderCall[2]).toHaveProperty('delay');
@@ -207,7 +207,7 @@ describe('TransaksiService', () => {
       };
 
       // Simulasikan perilaku $transaction
-      mockPrisma.$transaction.mockImplementationOnce(async (callback) => {
+      mockPrisma.$transaction.mockImplementationOnce(async callback => {
         await callback(mockPrisma);
         return { ...mockTransaksiData, id: 'new-trans' };
       });
@@ -224,7 +224,7 @@ describe('TransaksiService', () => {
       );
 
       // Get the delay parameter
-      const overdueCall = mockQueue.add.mock.calls.find((call) => call[0] === 'cek-overdue');
+      const overdueCall = mockQueue.add.mock.calls.find(call => call[0] === 'cek-overdue');
       expect(overdueCall).toBeDefined();
       expect(overdueCall[2]).toHaveProperty('delay');
     });

@@ -33,6 +33,6 @@ export class CreateTransaksiDto {
   @IsNumber()
   @Min(0, { message: 'Total biaya harus lebih dari 0' })
   @Transform(({ value }) => parseFloat(value))
-  @ValidateIf((o) => o.totalBiaya !== undefined)
+  @ValidateIf(o => o.totalBiaya !== undefined)
   totalBiaya?: number;
 }

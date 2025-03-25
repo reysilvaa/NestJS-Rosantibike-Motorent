@@ -16,7 +16,7 @@ export class UnitMotorService {
     };
 
     // Hapus filter yang undefined
-    Object.keys(where).forEach((key) => where[key] === undefined && delete where[key]);
+    Object.keys(where).forEach(key => where[key] === undefined && delete where[key]);
 
     return this.prisma.unitMotor.findMany({
       where,

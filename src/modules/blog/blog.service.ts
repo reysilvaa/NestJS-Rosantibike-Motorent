@@ -30,7 +30,7 @@ export class BlogService {
     };
 
     // Hapus filter yang undefined
-    Object.keys(where).forEach((key) => where[key] === undefined && delete where[key]);
+    Object.keys(where).forEach(key => where[key] === undefined && delete where[key]);
 
     const page = filter.page || 1;
     const limit = filter.limit || 10;
@@ -113,7 +113,7 @@ export class BlogService {
     }
 
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      return await this.prisma.$transaction(async tx => {
         // Buat artikel
         const post = await tx.blogPost.create({
           data: {
@@ -123,7 +123,7 @@ export class BlogService {
             thumbnail: createBlogPostDto.featuredImage,
             status: createBlogPostDto.status || StatusArtikel.DRAFT,
             tags: {
-              create: createBlogPostDto.tags?.map((tagId) => ({
+              create: createBlogPostDto.tags?.map(tagId => ({
                 tag: {
                   connect: { id: tagId },
                 },
@@ -171,7 +171,7 @@ export class BlogService {
     }
 
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      return await this.prisma.$transaction(async tx => {
         // Update artikel
         const post = await tx.blogPost.update({
           where: { id },
@@ -183,7 +183,7 @@ export class BlogService {
             status: updateBlogPostDto.status,
             tags: {
               deleteMany: {},
-              create: updateBlogPostDto.tags?.map((tagId) => ({
+              create: updateBlogPostDto.tags?.map(tagId => ({
                 tag: {
                   connect: { id: tagId },
                 },
@@ -211,7 +211,7 @@ export class BlogService {
 
   async remove(id: string) {
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      return await this.prisma.$transaction(async tx => {
         // Hapus relasi tag
         await tx.blogPostTag.deleteMany({
           where: { postId: id },

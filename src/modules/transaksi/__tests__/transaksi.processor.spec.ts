@@ -55,7 +55,7 @@ describe('TransaksiProcessor', () => {
       unitMotor: {
         update: jest.fn(),
       },
-      $transaction: jest.fn((callback) => {
+      $transaction: jest.fn(callback => {
         return callback(mockPrisma);
       }),
     };

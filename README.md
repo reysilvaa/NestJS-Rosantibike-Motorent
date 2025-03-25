@@ -1,258 +1,243 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# API Dokumentasi Rental Motor
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+## Swagger API Documentation
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Proyek ini sudah dilengkapi dengan Swagger UI untuk dokumentasi API yang interaktif.
+Anda dapat mengakses Swagger UI di: http://localhost:3000/api/docs
 
-# Backend Rental Motor
+![Swagger UI](https://swagger.io/swagger/media/assets/images/swagger-ui3.png)
 
-Backend API untuk aplikasi rental motor yang dibangun menggunakan NestJS.
+## Daftar API Endpoints
 
-## Fitur
+### 1. Auth
 
-- Autentikasi menggunakan JWT
-- Manajemen admin
-- Manajemen jenis motor
-- Manajemen unit motor
-- Manajemen transaksi sewa
-- Manajemen blog
-- Integrasi WhatsApp untuk notifikasi
-- Rate limiting
-- Logging
-- Dokumentasi API dengan Swagger
-- Validasi input
-- Kompresi response
-- CORS
-- Keamanan dengan Helmet
+| Method | Endpoint | Deskripsi |
+|--------|----------|-----------|
+| POST   | `/auth/login` | Login admin |
 
-## Teknologi yang Digunakan
+### 2. Admin
 
-- NestJS
-- TypeScript
-- PostgreSQL
-- Prisma ORM
-- JWT
-- Redis
-- BullMQ
-- Winston Logger
-- Swagger/OpenAPI
-- Baileys (WhatsApp)
+| Method | Endpoint | Deskripsi |
+|--------|----------|-----------|
+| POST   | `/admin` | Buat admin baru |
+| PUT    | `/admin/:id` | Update admin |
+| DELETE | `/admin/:id` | Hapus admin |
 
-## Persyaratan
+### 3. Jenis Motor
 
-- Node.js (v18 atau lebih baru)
-- PostgreSQL
-- Redis
-- npm atau yarn
+| Method | Endpoint | Deskripsi |
+|--------|----------|-----------|
+| GET    | `/jenis-motor` | Mendapatkan semua jenis motor |
+| GET    | `/jenis-motor/:id` | Mendapatkan detail jenis motor berdasarkan ID |
+| POST   | `/jenis-motor` | Membuat jenis motor baru |
+| PATCH  | `/jenis-motor/:id` | Memperbarui jenis motor |
+| DELETE | `/jenis-motor/:id` | Menghapus jenis motor |
 
-## Instalasi
+### 4. Unit Motor
 
-1. Clone repositori:
+| Method | Endpoint | Deskripsi |
+|--------|----------|-----------|
+| GET    | `/unit-motor` | Mendapatkan semua unit motor |
+| GET    | `/unit-motor/:id` | Mendapatkan detail unit motor berdasarkan ID |
+| POST   | `/unit-motor` | Membuat unit motor baru |
+| PATCH  | `/unit-motor/:id` | Memperbarui unit motor |
+| DELETE | `/unit-motor/:id` | Menghapus unit motor |
 
-```bash
-git clone https://github.com/username/rental-motor-backend.git
-cd rental-motor-backend
+### 5. Transaksi
+
+| Method | Endpoint | Deskripsi |
+|--------|----------|-----------|
+| GET    | `/transaksi` | Mendapatkan semua transaksi |
+| GET    | `/transaksi/history` | Mendapatkan history transaksi (selesai/overdue) |
+| GET    | `/transaksi/:id` | Mendapatkan detail transaksi berdasarkan ID |
+| POST   | `/transaksi` | Membuat transaksi baru |
+| PATCH  | `/transaksi/:id` | Memperbarui transaksi |
+| DELETE | `/transaksi/:id` | Menghapus transaksi |
+| POST   | `/transaksi/:id/selesai` | Menyelesaikan transaksi sewa |
+
+### 6. Blog
+
+| Method | Endpoint | Deskripsi |
+|--------|----------|-----------|
+| GET    | `/blog` | Mendapatkan semua artikel |
+| GET    | `/blog/:slug` | Mendapatkan artikel berdasarkan slug |
+| POST   | `/blog` | Membuat artikel baru |
+| PUT    | `/blog/:id` | Memperbarui artikel |
+| DELETE | `/blog/:id` | Menghapus artikel |
+
+### 7. WhatsApp
+
+| Method | Endpoint | Deskripsi |
+|--------|----------|-----------|
+| POST   | `/whatsapp/send` | Kirim pesan WhatsApp |
+| POST   | `/whatsapp/send-admin` | Kirim pesan ke admin WhatsApp |
+| POST   | `/whatsapp/reset-connection` | Reset koneksi WhatsApp |
+| GET    | `/whatsapp/status` | Cek status koneksi WhatsApp |
+
+### 8. Redis Debug
+
+| Method | Endpoint | Deskripsi |
+|--------|----------|-----------|
+| GET    | `/debug/redis` | Operasi debug untuk Redis |
+
+## Parameter API
+
+### Auth API
+
+#### Login
+```
+POST /auth/login
+
+Request:
+{
+  "username": "string",
+  "password": "string"
+}
+
+Response:
+{
+  "accessToken": "string"
+}
 ```
 
-2. Install dependensi:
+### Admin API
 
-```bash
-npm install
-# atau
-yarn install
+#### Buat Admin
+```
+POST /admin
+
+Request:
+{
+  "username": "string",
+  "password": "string", 
+  "nama": "string"
+}
 ```
 
-3. Salin file .env.example ke .env dan sesuaikan konfigurasi:
+#### Update Admin
+```
+PUT /admin/:id
 
-```bash
-cp .env.example .env
+Request:
+{
+  "username": "string", // opsional
+  "password": "string", // opsional
+  "nama": "string"      // opsional
+}
 ```
 
-4. Jalankan migrasi database:
+### Jenis Motor API
 
-```bash
-npm run prisma:generate
-npm run prisma:migrate
+#### Buat Jenis Motor
+```
+POST /jenis-motor
+
+Request:
+{
+  "nama": "string",
+  "deskripsi": "string",
+  "hargaSewa": number
+}
 ```
 
-5. Jalankan aplikasi:
+### Unit Motor API
 
-```bash
-# Development
-npm run start:dev
-
-# Production
-npm run build
-npm run start:prod
+#### Filter Unit Motor
+```
+GET /unit-motor?jenisId=uuid&search=string&status=string
 ```
 
-## Struktur Proyek
-
+#### Buat Unit Motor
 ```
-src/
-├── common/           # Modul umum (Prisma, Logger)
-├── modules/         # Modul fitur
-│   ├── admin/      # Manajemen admin
-│   ├── auth/       # Autentikasi
-│   ├── blog/       # Manajemen blog
-│   ├── jenis-motor/# Manajemen jenis motor
-│   ├── transaksi/  # Manajemen transaksi
-│   ├── unit-motor/ # Manajemen unit motor
-│   └── whatsapp/   # Integrasi WhatsApp
-└── main.ts         # Entry point aplikasi
-```
+POST /unit-motor
 
-## API Documentation
-
-Dokumentasi API tersedia di `/api/docs` setelah menjalankan aplikasi.
-
-## Testing
-
-```bash
-# Unit tests
-npm run test
-
-# e2e tests
-npm run test:e2e
-
-# Test coverage
-npm run test:cov
+Request:
+{
+  "jenisId": "uuid",
+  "platNomor": "string",
+  "noMesin": "string",
+  "tahun": number,
+  "warna": "string",
+  "status": "TERSEDIA" | "DISEWA" | "PERBAIKAN"
+}
 ```
 
-## Deployment
+### Transaksi API
 
-1. Build aplikasi:
-
-```bash
-npm run build
+#### Filter Transaksi
+```
+GET /transaksi?search=string&status=string&tanggalMulai=date&tanggalSelesai=date
 ```
 
-2. Jalankan migrasi database:
+#### Buat Transaksi
+```
+POST /transaksi
 
-```bash
-npm run prisma:migrate
+Request:
+{
+  "unitMotorId": "uuid",
+  "namaPenyewa": "string",
+  "nomorKTP": "string",
+  "nomorHP": "string",
+  "alamat": "string",
+  "tanggalMulai": "string" (format: "YYYY-MM-DD"),
+  "tanggalSelesai": "string" (format: "YYYY-MM-DD"),
+  "biayaSewa": number,
+  "deposit": number,
+  "catatan": "string" (opsional)
+}
 ```
 
-3. Jalankan aplikasi:
+### Blog API
 
-```bash
-npm run start:prod
+#### Filter Blog
+```
+GET /blog?search=string&status=string&tagId=uuid&page=number&limit=number
 ```
 
-## Contributing
+#### Buat Blog
+```
+POST /blog
 
-1. Fork repositori
-2. Buat branch fitur (`git checkout -b feature/amazing-feature`)
-3. Commit perubahan (`git commit -m 'Add some amazing feature'`)
-4. Push ke branch (`git push origin feature/amazing-feature`)
-5. Buat Pull Request
-
-## License
-
-[MIT License](LICENSE)
-
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
-
-```bash
-$ npm install
+Request:
+{
+  "judul": "string",
+  "slug": "string",
+  "konten": "string",
+  "tags": ["uuid"], // opsional
+  "metaTitle": "string", // opsional
+  "metaDescription": "string", // opsional
+  "featuredImage": "string", // opsional
+  "status": "DRAFT" | "PUBLISH"
+}
 ```
 
-## Compile and run the project
+### WhatsApp API
 
-```bash
-# development
-$ npm run start
+#### Kirim Pesan
+```
+POST /whatsapp/send
 
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+Request:
+{
+  "to": "string" (format: "628xxxxx"),
+  "message": "string"
+}
 ```
 
-## Run tests
+## Autentikasi
 
-```bash
-# unit tests
-$ npm run test
+Sebagian besar endpoint memerlukan autentikasi menggunakan JWT Bearer Token yang didapatkan dari endpoint login.
 
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+Header yang diperlukan:
+```
+Authorization: Bearer [token]
 ```
 
-## Deployment
+## Status Transaksi
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can
-take to ensure it runs as efficiently as possible. Check out the
-[deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out
-[Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau
-makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building
-features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video
-  [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few
-  clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using
-  [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official
-  [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and
-  [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official
-  [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the
-amazing backers. If you'd like to join them, please
-[read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- `MENUNGGU` - Transaksi telah dibuat tapi belum diproses
+- `BERJALAN` - Transaksi sedang berjalan (motor sedang disewa)
+- `SELESAI` - Transaksi telah selesai
+- `BATAL` - Transaksi dibatalkan
+- `OVERDUE` - Batas waktu transaksi telah berakhir tapi belum dikembalikan

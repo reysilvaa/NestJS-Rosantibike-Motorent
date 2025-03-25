@@ -14,6 +14,7 @@ import { BlogModule } from './modules/blog/blog.module';
 import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
 import { LoggerModule } from './common/logger/logger.module';
 import { GatewayModule } from './common/gateway/gateway.module';
+import { RedisModule } from './modules/redis/redis.module';
 
 @Module({
   imports: [
@@ -31,6 +32,9 @@ import { GatewayModule } from './common/gateway/gateway.module';
       },
     ]),
 
+    // Redis
+    RedisModule,
+
     // Queue
     BullModule.forRootAsync({
       imports: [ConfigModule],
@@ -38,7 +42,6 @@ import { GatewayModule } from './common/gateway/gateway.module';
         redis: {
           host: configService.get('REDIS_HOST'),
           port: configService.get('REDIS_PORT'),
-          password: configService.get('REDIS_PASSWORD'),
         },
         prefix: configService.get('QUEUE_PREFIX'),
       }),
