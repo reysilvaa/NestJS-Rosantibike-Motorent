@@ -89,14 +89,6 @@ Aplikasi backend untuk layanan rental motor yang menyediakan API lengkap untuk p
 - [bcrypt](https://github.com/kelektiv/node.bcrypt.js) - Password hashing
 - [Helmet](https://helmetjs.github.io/) - HTTP header security
 
-### UI Components & Styling
-- [Bootstrap](https://getbootstrap.com/) - Framework CSS untuk tampilan responsif
-- [Font Awesome](https://fontawesome.com/) - Library ikon untuk antarmuka pengguna
-- [Material Icons](https://fonts.google.com/icons) - Ikon dari Google Material Design
-- [SweetAlert2](https://sweetalert2.github.io/) - Library untuk alert dan dialog interaktif
-- [DataTables](https://datatables.net/) - Plugin untuk tabel interaktif
-- [Chart.js](https://www.chartjs.org/) - Library untuk visualisasi data dan grafik
-
 ### Dokumentasi & Tooling
 - [Swagger](https://swagger.io/) - API documentation
 - [Jest](https://jestjs.io/) - Testing framework
