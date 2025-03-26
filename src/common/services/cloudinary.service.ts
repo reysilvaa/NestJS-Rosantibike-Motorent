@@ -26,22 +26,51 @@ export class CloudinaryService {
    */
   async uploadFile(file: Express.Multer.File, folder: string): Promise<string> {
     try {
+      // Verifikasi file ada
+      if (!file || !file.buffer) {
+        this.logger.error('File atau buffer file tidak valid');
+        throw new Error('File tidak valid');
+      }
+
+      // Log informasi file
+      this.logger.log(
+        `Mencoba upload file: ${file.originalname}, mimetype: ${file.mimetype}, size: ${file.size} bytes ke folder: ${folder}`,
+      );
+
+      // Verifikasi config Cloudinary
+      if (
+        !this.configService.get('cloudinary.cloudName') ||
+        !this.configService.get('cloudinary.apiKey') ||
+        !this.configService.get('cloudinary.apiSecret')
+      ) {
+        this.logger.error('Konfigurasi Cloudinary tidak lengkap');
+        throw new Error('Konfigurasi Cloudinary tidak valid');
+      }
+
       // Konversi file buffer ke base64
       const fileBase64 = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
 
-      // Upload ke Cloudinary
+      // Upload ke Cloudinary dengan timeout yang lebih lama
       const result = await cloudinary.uploader.upload(fileBase64, {
         folder,
         resource_type: 'auto', // Otomatis deteksi tipe resource (image, video, dll)
+        timeout: 60000, // 60 detik timeout
       });
 
+      if (!result || !result.secure_url) {
+        this.logger.error('Respons Cloudinary tidak valid');
+        throw new Error('Gagal mengupload file ke Cloudinary: respons tidak valid');
+      }
+
       this.logger.log(`File berhasil diupload ke Cloudinary: ${result.public_id}`);
+      this.logger.log(`URL file: ${result.secure_url}`);
 
       // Kembalikan URL secure dari Cloudinary
       return result.secure_url;
     } catch (error) {
       this.logger.error(`Error uploading file to Cloudinary: ${error.message}`);
-      throw error;
+      this.logger.error(error.stack);
+      throw new Error(`Gagal mengupload file ke Cloudinary: ${error.message}`);
     }
   }
 
