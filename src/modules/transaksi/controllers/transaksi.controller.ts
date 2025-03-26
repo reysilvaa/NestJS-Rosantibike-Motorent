@@ -73,4 +73,31 @@ export class TransaksiController {
   selesai(@Param('id') id: string) {
     return this.transaksiService.selesaiSewa(id);
   }
+
+  @Get('laporan/denda')
+  @ApiOperation({ summary: 'Mendapatkan laporan denda' })
+  @ApiResponse({ status: 200, description: 'Laporan denda berhasil diambil' })
+  getLaporanDenda(
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    return this.transaksiService.getLaporanDenda(startDate, endDate);
+  }
+  
+  @Get('laporan/fasilitas')
+  @ApiOperation({ summary: 'Mendapatkan laporan penggunaan fasilitas' })
+  @ApiResponse({ status: 200, description: 'Laporan fasilitas berhasil diambil' })
+  getLaporanFasilitas(
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    return this.transaksiService.getLaporanFasilitas(startDate, endDate);
+  }
+
+  @Get('search')
+  @ApiOperation({ summary: 'Mencari transaksi berdasarkan nomor telepon' })
+  @ApiResponse({ status: 200, description: 'Transaksi berhasil ditemukan' })
+  searchByPhone(@Query('noHP') noHP: string) {
+    return this.transaksiService.findByPhone(noHP);
+  }
 }

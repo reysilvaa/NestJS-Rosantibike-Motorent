@@ -64,6 +64,16 @@ export class NotificationGateway
     this.server.emit('motor-status-update', data);
   }
 
+  // Event untuk notifikasi denda
+  sendDendaNotification(data: any) {
+    this.server.emit('denda-notification', data);
+  }
+
+  // Event untuk notifikasi fasilitas
+  sendFasilitasNotification(data: any) {
+    this.server.emit('fasilitas-notification', data);
+  }
+
   // Handler untuk event test dari client
   @SubscribeMessage('test-new-transaction')
   handleTestNewTransaction(client: Socket, data: any) {
@@ -88,5 +98,23 @@ export class NotificationGateway
     );
     this.server.emit('motor-status-update', data);
     return { status: 'ok', message: 'Test notifikasi status motor berhasil dikirim' };
+  }
+
+  @SubscribeMessage('test-denda')
+  handleTestDenda(client: Socket, data: any) {
+    this.logger.log(
+      `Client ${client.id} sent test denda with data: ${JSON.stringify(data)}`,
+    );
+    this.server.emit('denda-notification', data);
+    return { status: 'ok', message: 'Test notifikasi denda berhasil dikirim' };
+  }
+
+  @SubscribeMessage('test-fasilitas')
+  handleTestFasilitas(client: Socket, data: any) {
+    this.logger.log(
+      `Client ${client.id} sent test fasilitas with data: ${JSON.stringify(data)}`,
+    );
+    this.server.emit('fasilitas-notification', data);
+    return { status: 'ok', message: 'Test notifikasi fasilitas berhasil dikirim' };
   }
 }
