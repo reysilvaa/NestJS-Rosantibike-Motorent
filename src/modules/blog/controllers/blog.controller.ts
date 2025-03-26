@@ -49,6 +49,25 @@ export class BlogController {
     return this.blogService.findOne(id);
   }
 
+  @Get('/by-slug/:slug')
+  @ApiOperation({ summary: 'Mendapatkan detail blog berdasarkan slug' })
+  @ApiResponse({ status: 200, description: 'Detail blog berhasil diambil' })
+  @ApiResponse({ status: 404, description: 'Blog tidak ditemukan' })
+  async getBlogBySlug(@Param('slug') slug: string) {
+    try {
+      const blog = await this.blogService.findBySlug(slug);
+      return {
+        data: blog,
+        message: 'Blog post berhasil ditemukan'
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(`Gagal mengambil blog: ${error.message}`);
+    }
+  }
+
   @Post()
   @ApiOperation({ summary: 'Membuat blog baru (dengan atau tanpa gambar)' })
   @ApiConsumes('multipart/form-data')

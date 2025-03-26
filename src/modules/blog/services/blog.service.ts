@@ -98,8 +98,21 @@ export class BlogService {
     if (!post) {
       throw new NotFoundException(`Artikel dengan slug ${slug} tidak ditemukan`);
     }
-
-    return post;
+    
+    // Transformasi data untuk format yang sesuai dengan frontend
+    return {
+      id: post.id,
+      judul: post.judul,
+      slug: post.slug,
+      konten: post.konten,
+      featuredImage: post.thumbnail,
+      status: post.status === 'TERBIT' ? 'published' : 'draft',
+      kategori: post.kategori,
+      tags: post.tags.map(tag => tag.tag.nama),
+      meta_description: post.konten.substring(0, 150) + '...',
+      createdAt: post.createdAt.toISOString(),
+      updatedAt: post.updatedAt.toISOString(),
+    };
   }
 
   async create(createBlogPostDto: CreateBlogPostDto) {
