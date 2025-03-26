@@ -52,6 +52,10 @@ export const configureGlobalPipes = (app: INestApplication): void => {
       whitelist: true,
       transform: true,
       forbidNonWhitelisted: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+        enableCircularCheck: true,
+      },
     }),
   );
 };

@@ -119,8 +119,8 @@ export class BlogService {
           data: {
             judul: createBlogPostDto.judul,
             konten: createBlogPostDto.konten,
-            slug: createBlogPostDto.slug,
-            thumbnail: createBlogPostDto.featuredImage,
+            slug: createBlogPostDto.slug || '',
+            thumbnail: createBlogPostDto.featuredImage || '',
             kategori: 'UMUM',
             status: createBlogPostDto.status,
             tags: {

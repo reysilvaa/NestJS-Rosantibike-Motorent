@@ -46,6 +46,14 @@ export class BlogController {
   @ApiResponse({ status: 201, description: 'Blog berhasil dibuat' })
   @ApiResponse({ status: 400, description: 'Data tidak valid' })
   createBlog(@Body() createBlogDto: CreateBlogPostDto) {
+    // Jika slug tidak disediakan, isi dengan slug dari judul
+    if (!createBlogDto.slug && createBlogDto.judul) {
+      createBlogDto.slug = createBlogDto.judul
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+    }
+    
     return this.blogService.create(createBlogDto);
   }
 
