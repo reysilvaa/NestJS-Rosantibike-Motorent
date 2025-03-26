@@ -1,6 +1,11 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService, StatusMotor, StatusTransaksi } from '../../../common';
-import { CreateUnitMotorDto, UpdateUnitMotorDto, FilterUnitMotorDto, CheckAvailabilityDto } from '../dto';
+import {
+  CreateUnitMotorDto,
+  UpdateUnitMotorDto,
+  FilterUnitMotorDto,
+  CheckAvailabilityDto,
+} from '../dto';
 
 @Injectable()
 export class UnitMotorService {
@@ -186,28 +191,30 @@ export class UnitMotorService {
 
     // Buat array tanggal untuk periode yang diminta
     const dayList = this.generateDayList(start, end);
-    
+
     // Buat respons ketersediaan untuk setiap motor
     const availabilityData = unitMotors.map(unit => {
       const bookedDates: Date[] = [];
-      
+
       // Periksa setiap transaksi sewa untuk unit ini
       for (const sewa of unit.sewa) {
         const sewaStart = new Date(sewa.tanggalMulai);
         const sewaEnd = new Date(sewa.tanggalSelesai);
-        
+
         // Tambahkan tanggal yang dipesan ke dalam array
         const bookedRange = this.generateDayList(
           sewaStart < start ? start : sewaStart,
-          sewaEnd > end ? end : sewaEnd
+          sewaEnd > end ? end : sewaEnd,
         );
-        
+
         bookedDates.push(...bookedRange);
       }
 
       // Hapus duplikat
-      const uniqueBookedDates = [...new Set(bookedDates.map(date => date.toISOString().split('T')[0]))];
-      
+      const uniqueBookedDates = [
+        ...new Set(bookedDates.map(date => date.toISOString().split('T')[0])),
+      ];
+
       // Buat data ketersediaan untuk setiap hari
       const dailyAvailability = dayList.map(day => {
         const dayString = day.toISOString().split('T')[0];
@@ -244,12 +251,12 @@ export class UnitMotorService {
   private generateDayList(startDate: Date, endDate: Date): Date[] {
     const dayList: Date[] = [];
     const currentDate = new Date(startDate);
-    
+
     while (currentDate <= endDate) {
       dayList.push(new Date(currentDate));
       currentDate.setDate(currentDate.getDate() + 1);
     }
-    
+
     return dayList;
   }
 }

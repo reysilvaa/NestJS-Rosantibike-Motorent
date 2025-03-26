@@ -5,14 +5,8 @@ import { cloudinary } from './config';
 
 @Global()
 @Module({
-  imports: [
-    ConfigModule.forFeature(cloudinary),
-  ],
-  providers: [
-    CloudinaryService,
-  ],
-  exports: [
-    CloudinaryService,
-  ],
+  imports: [ConfigModule.forFeature(cloudinary)],
+  providers: [CloudinaryService],
+  exports: [CloudinaryService],
 })
-export class CommonModule {} 
+export class CommonModule {}

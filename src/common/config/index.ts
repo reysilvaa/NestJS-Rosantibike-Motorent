@@ -4,4 +4,4 @@ export * from './logger.config';
 export * from './redis.config';
 import cloudinary from './cloudinary.config';
 
-export { cloudinary }; 
+export { cloudinary };

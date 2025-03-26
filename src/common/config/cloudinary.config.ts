@@ -7,4 +7,4 @@ export default registerAs('cloudinary', () => ({
   folder: process.env.CLOUDINARY_FOLDER || 'rental-motor',
   jenisMotoFolder: process.env.CLOUDINARY_JENIS_MOTOR_FOLDER || 'rental-motor/jenis-motor',
   blogFolder: process.env.CLOUDINARY_BLOG_FOLDER || 'rental-motor/blog',
-})); 
+}));

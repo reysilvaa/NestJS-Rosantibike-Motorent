@@ -90,7 +90,9 @@ export class JenisMotorService {
 
       // Jika ada unit motor terkait, batalkan penghapusan
       if (unitMotors.length > 0) {
-        throw new Error(`Tidak dapat menghapus jenis motor karena masih memiliki ${unitMotors.length} unit terkait`);
+        throw new Error(
+          `Tidak dapat menghapus jenis motor karena masih memiliki ${unitMotors.length} unit terkait`,
+        );
       }
 
       return await this.prisma.jenisMotor.delete({

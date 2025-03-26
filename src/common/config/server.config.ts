@@ -35,17 +35,14 @@ export const startServer = async (
   if (!server) {
     throw new Error('Server failed to initialize');
   }
-  
+
   return { server, port };
 };
 
 /**
  * Konfigurasi penanganan shutdown aplikasi
  */
-export const configureShutdown = (
-  server: Server,
-  logger: Logger,
-): void => {
+export const configureShutdown = (server: Server, logger: Logger): void => {
   // Penanganan shutdown yang lebih baik
   process.on('SIGTERM', async () => {
     logger.log('SIGTERM diterima. Menutup server HTTP...');
@@ -60,4 +57,4 @@ export const configureShutdown = (
     logger.log('Server HTTP ditutup.');
     process.exit(0);
   });
-}; 
+};

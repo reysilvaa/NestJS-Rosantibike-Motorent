@@ -21,13 +21,13 @@ export class WhatsappController {
     if (!sendMessageDto) {
       throw new HttpException('Data yang diperlukan tidak lengkap', HttpStatus.BAD_REQUEST);
     }
-    
+
     const { to, message } = sendMessageDto;
-    
+
     if (!to || !message) {
       throw new HttpException('Nomor tujuan dan pesan diperlukan', HttpStatus.BAD_REQUEST);
     }
-    
+
     const result = await this.whatsappService.sendMessage(to, message);
 
     if (!result) {
@@ -45,7 +45,7 @@ export class WhatsappController {
     if (!body || !body.message) {
       throw new HttpException('Pesan diperlukan', HttpStatus.BAD_REQUEST);
     }
-    
+
     const { message } = body;
     const result = await this.whatsappService.sendToAdmin(message);
 
@@ -77,7 +77,7 @@ export class WhatsappController {
     const authenticating = status.status === 'authenticated';
 
     let statusMessage = '';
-    
+
     if (reconnecting) {
       statusMessage = `Sedang mencoba menyambungkan kembali (Percobaan ${status.retryCount}/${this.whatsappService.maxRetries})`;
     } else if (connected) {
@@ -92,12 +92,12 @@ export class WhatsappController {
       logger.info('WhatsApp tidak terhubung, silakan scan QR code');
     }
 
-    return { 
+    return {
       status,
       isReconnecting: reconnecting,
       isConnected: connected,
       isAuthenticating: authenticating,
-      message: statusMessage
+      message: statusMessage,
     };
   }
 
@@ -107,11 +107,14 @@ export class WhatsappController {
   @ApiResponse({ status: 404, description: 'QR code tidak tersedia' })
   async getQrCode() {
     const qrCode = await this.whatsappService.getLastQrCode();
-    
+
     if (!qrCode) {
-      throw new HttpException('QR code belum tersedia, silakan reset koneksi', HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        'QR code belum tersedia, silakan reset koneksi',
+        HttpStatus.NOT_FOUND,
+      );
     }
-    
+
     return { qrCode };
   }
 }

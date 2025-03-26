@@ -1,6 +1,11 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DisconnectReason, makeWASocket, useMultiFileAuthState, type ConnectionState } from '@whiskeysockets/baileys';
+import {
+  DisconnectReason,
+  makeWASocket,
+  useMultiFileAuthState,
+  type ConnectionState,
+} from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import type { JidWithDevice } from '@whiskeysockets/baileys';
 import * as qrcodeTerminal from 'qrcode-terminal';
@@ -24,7 +29,7 @@ const verboseLogger = {
   warn: (msg, ...args) => console.log(`[BAILEYS WARN] ${msg}`, ...args),
   error: (msg, ...args) => console.error(`[BAILEYS ERROR] ${msg}`, ...args),
   fatal: (msg, ...args) => console.error(`[BAILEYS FATAL] ${msg}`, ...args),
-  child: () => verboseLogger
+  child: () => verboseLogger,
 };
 
 // Silent logger untuk mematikan log dari Baileys
@@ -36,7 +41,7 @@ const silentLogger = {
   warn: () => {},
   error: () => {},
   fatal: () => {},
-  child: () => silentLogger
+  child: () => silentLogger,
 };
 
 @Injectable()
@@ -50,7 +55,13 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
   public maxRetries: number;
   private retryDelay: number;
   private reconnectAttemptInProgress = false;
-  private connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error' | 'reconnecting' | 'authenticated' = 'disconnected';
+  private connectionStatus:
+    | 'connecting'
+    | 'connected'
+    | 'disconnected'
+    | 'error'
+    | 'reconnecting'
+    | 'authenticated' = 'disconnected';
   private qrCodeSent = false;
   private lastQrTimestamp = 0;
   private qrMinInterval = 30000;
@@ -68,14 +79,16 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     }
 
     this.adminNumber = configService.get('ADMIN_WHATSAPP') || '';
-    
+
     this.sendDebugMessages = configService.get('WHATSAPP_SEND_DEBUG') === 'true';
-    
+
     this.retryDelay = parseInt(configService.get('WHATSAPP_RECONNECT_INTERVAL') || '60000', 10);
     this.maxRetries = parseInt(configService.get('WHATSAPP_MAX_RECONNECT_ATTEMPTS') || '10', 10);
-    
+
     this.logger.log(`WhatsApp debug messages: ${this.sendDebugMessages ? 'enabled' : 'disabled'}`);
-    this.logger.log(`WhatsApp reconnect interval: ${this.retryDelay}ms, max retries: ${this.maxRetries}`);
+    this.logger.log(
+      `WhatsApp reconnect interval: ${this.retryDelay}ms, max retries: ${this.maxRetries}`,
+    );
   }
 
   async onModuleInit() {
@@ -101,7 +114,7 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     this.isConnecting = false;
     this.reconnectAttemptInProgress = false;
     this.authenticationInProgress = false;
-    
+
     if (this.client) {
       try {
         this.logger.log('Closing previous WhatsApp connection');
@@ -110,9 +123,9 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
         this.logger.error(`Error closing connection: ${error.message}`);
       }
     }
-    
+
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     this.logger.log('Starting new WhatsApp connection...');
     return this.connect();
   }
@@ -125,7 +138,7 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       maxRetries: this.maxRetries,
       reconnectAttemptInProgress: this.reconnectAttemptInProgress,
       authenticationInProgress: this.authenticationInProgress,
-      hasQrCode: !!this.lastQrCode
+      hasQrCode: !!this.lastQrCode,
     };
   }
 
@@ -201,21 +214,25 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       this.client.ev.on('connection.update', async (update: Partial<ConnectionState>) => {
         const { connection, lastDisconnect, qr } = update;
 
-        this.logger.log(`Connection update: ${JSON.stringify({
-          connection,
-          statusCode: (lastDisconnect?.error as Boom)?.output?.statusCode,
-          errorMessage: (lastDisconnect?.error as Boom)?.output?.payload?.message || '',
-          hasQr: !!qr
-        })}`);
+        this.logger.log(
+          `Connection update: ${JSON.stringify({
+            connection,
+            statusCode: (lastDisconnect?.error as Boom)?.output?.statusCode,
+            errorMessage: (lastDisconnect?.error as Boom)?.output?.payload?.message || '',
+            hasQr: !!qr,
+          })}`,
+        );
 
         if (qr && !this.authenticationInProgress) {
           const currentTime = Date.now();
-          
+
           const isDuplicateQr = this.qrHistory.has(qr);
           const intervalPassed = currentTime - this.lastQrTimestamp > this.qrMinInterval;
-          
-          this.logger.log(`QR Update: isDuplicate=${isDuplicateQr}, qrSent=${this.qrCodeSent}, intervalPassed=${intervalPassed}, historySize=${this.qrHistory.size}`);
-          
+
+          this.logger.log(
+            `QR Update: isDuplicate=${isDuplicateQr}, qrSent=${this.qrCodeSent}, intervalPassed=${intervalPassed}, historySize=${this.qrHistory.size}`,
+          );
+
           if ((!this.qrCodeSent || intervalPassed) && !isDuplicateQr) {
             this.logger.log('New QR Code received, generating...');
             qrcodeTerminal.generate(qr, { small: true });
@@ -223,13 +240,15 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
             this.lastQrTimestamp = currentTime;
             this.lastQrCode = qr;
             this.qrHistory.add(qr);
-            
+
             if (this.qrHistory.size > 10) {
               const oldestQrs = Array.from(this.qrHistory).slice(0, 5);
               oldestQrs.forEach(oldQr => this.qrHistory.delete(oldQr));
             }
           } else {
-            this.logger.log(`Ignoring QR code - ${isDuplicateQr ? 'already shown before' : 'time interval not met'}`);
+            this.logger.log(
+              `Ignoring QR code - ${isDuplicateQr ? 'already shown before' : 'time interval not met'}`,
+            );
           }
         } else if (qr && this.authenticationInProgress) {
           this.logger.log('QR code scan detected, authentication in progress');
@@ -249,24 +268,26 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
 
           if (this.sendDebugMessages) {
             setTimeout(() => {
-              this.sendToAdmin('WhatsApp berhasil terhubung').catch(err => 
-                this.logger.error(`Failed to send connection notification: ${err.message}`)
+              this.sendToAdmin('WhatsApp berhasil terhubung').catch(err =>
+                this.logger.error(`Failed to send connection notification: ${err.message}`),
               );
             }, 5000);
           }
         } else if (connection === 'close') {
           this.isConnecting = false;
-          
+
           const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
           const errorMessage = (lastDisconnect?.error as Boom)?.output?.payload?.message || '';
-          
+
           if (statusCode === 515 && errorMessage.includes('Stream Errored')) {
-            this.logger.log('Stream error 515 terdeteksi setelah pairing. Ini perilaku normal WhatsApp, melakukan reconnect...');
-            
+            this.logger.log(
+              'Stream error 515 terdeteksi setelah pairing. Ini perilaku normal WhatsApp, melakukan reconnect...',
+            );
+
             this.authenticationInProgress = false;
             this.connectionStatus = 'reconnecting';
             this.reconnectAttemptInProgress = true;
-            
+
             setTimeout(async () => {
               this.reconnectAttemptInProgress = false;
               await this.connect();
@@ -275,7 +296,9 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
           }
 
           if (this.authenticationInProgress && statusCode !== 515) {
-            this.logger.log('Connection close detected, but authentication in progress. Waiting...');
+            this.logger.log(
+              'Connection close detected, but authentication in progress. Waiting...',
+            );
             return;
           }
 
@@ -308,8 +331,10 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
           if (shouldReconnect && this.retryCount < this.maxRetries) {
             this.retryCount++;
             this.connectionStatus = 'reconnecting';
-            this.logger.log(`Akan mencoba menghubungkan kembali dalam ${this.retryDelay / 1000} detik... (Percobaan ${this.retryCount}/${this.maxRetries})`);
-            
+            this.logger.log(
+              `Akan mencoba menghubungkan kembali dalam ${this.retryDelay / 1000} detik... (Percobaan ${this.retryCount}/${this.maxRetries})`,
+            );
+
             this.reconnectAttemptInProgress = true;
 
             setTimeout(async () => {
@@ -323,7 +348,7 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
             this.connectionStatus = 'disconnected';
             this.retryCount = 0;
             this.qrCodeSent = false;
-            
+
             setTimeout(async () => {
               await this.connect();
             }, this.retryDelay);
@@ -335,17 +360,18 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       });
 
       this.client.ev.on('creds.update', saveCreds);
-
     } catch (error) {
       this.isConnecting = false;
       this.logger.error(`Error connecting to WhatsApp: ${error.message}`);
-      
+
       if (this.retryCount < this.maxRetries) {
         this.retryCount++;
-        this.logger.log(`Akan mencoba menghubungkan kembali dalam ${this.retryDelay / 1000} detik... (Percobaan ${this.retryCount}/${this.maxRetries})`);
-        
+        this.logger.log(
+          `Akan mencoba menghubungkan kembali dalam ${this.retryDelay / 1000} detik... (Percobaan ${this.retryCount}/${this.maxRetries})`,
+        );
+
         this.reconnectAttemptInProgress = true;
-        
+
         setTimeout(async () => {
           this.reconnectAttemptInProgress = false;
           await this.connect();
@@ -387,15 +413,15 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
 
     try {
       let formattedNumber = to;
-      
+
       if (formattedNumber.startsWith('+')) {
         formattedNumber = formattedNumber.substring(1);
       }
-      
+
       if (!formattedNumber.includes('@')) {
         formattedNumber = `${formattedNumber}@s.whatsapp.net`;
       }
-      
+
       this.logger.log(`Sending message to ${to} (formatted: ${formattedNumber})`);
       const result = await Promise.race([
         this.client.sendMessage(formattedNumber, { text: message }),
@@ -433,22 +459,22 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       this.logger.log('Debug messages disabled, not sending to admin');
       return null;
     }
-    
+
     if (!this.adminNumber) {
       this.logger.error('Admin WhatsApp number not configured');
       return null;
     }
 
     let adminNumber = this.adminNumber;
-    
+
     if (adminNumber.startsWith('+')) {
       adminNumber = adminNumber.substring(1);
     }
-    
+
     if (!adminNumber.includes('@')) {
       adminNumber = `${adminNumber}@s.whatsapp.net`;
     }
-    
+
     this.logger.log(`Sending to admin: ${this.adminNumber} (formatted: ${adminNumber})`);
     return this.sendMessage(adminNumber, message);
   }

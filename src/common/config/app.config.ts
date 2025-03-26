@@ -96,4 +96,4 @@ export const configureSwagger = (app: INestApplication): void => {
     },
     customSiteTitle: 'Rental Motor API Documentation',
   });
-}; 
+};

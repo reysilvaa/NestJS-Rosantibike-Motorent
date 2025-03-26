@@ -9,7 +9,7 @@ import {
   Query,
   UploadedFile,
   UseInterceptors,
-  BadRequestException
+  BadRequestException,
 } from '@nestjs/common';
 import { BlogService } from '../services/blog.service';
 import { CreateBlogPostDto, UpdateBlogPostDto, FilterBlogPostDto } from '../dto';
@@ -23,7 +23,7 @@ import { memoryStorage } from 'multer';
 export class BlogController {
   constructor(
     private readonly blogService: BlogService,
-    private readonly cloudinaryService: CloudinaryService
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   @Get()
@@ -66,44 +66,43 @@ export class BlogController {
   @ApiResponse({ status: 200, description: 'Gambar berhasil diupload' })
   @ApiResponse({ status: 400, description: 'File tidak valid' })
   @ApiResponse({ status: 404, description: 'Blog tidak ditemukan' })
-  @UseInterceptors(FileInterceptor('file', {
-    storage: memoryStorage(), // Gunakan memoryStorage untuk menyimpan file di memory sementara
-    limits: {
-      fileSize: 5 * 1024 * 1024, // 5MB
-    },
-    fileFilter: (req, file, cb) => {
-      // Filter tipe file (hanya gambar)
-      if (!file.mimetype.match(/^image\/(jpg|jpeg|png|gif|webp)$/)) {
-        return cb(new BadRequestException('Hanya file gambar yang diperbolehkan!'), false);
-      }
-      cb(null, true);
-    },
-  }))
-  async uploadGambar(
-    @Param('id') id: string,
-    @UploadedFile() file: Express.Multer.File
-  ) {
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(), // Gunakan memoryStorage untuk menyimpan file di memory sementara
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB
+      },
+      fileFilter: (req, file, cb) => {
+        // Filter tipe file (hanya gambar)
+        if (!file.mimetype.match(/^image\/(jpg|jpeg|png|gif|webp)$/)) {
+          return cb(new BadRequestException('Hanya file gambar yang diperbolehkan!'), false);
+        }
+        cb(null, true);
+      },
+    }),
+  )
+  async uploadGambar(@Param('id') id: string, @UploadedFile() file: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException('File gambar diperlukan');
     }
 
     // Dapatkan blog yang akan diupdate
     const blog = await this.blogService.findOne(id);
-    
+
     // Jika blog sudah memiliki gambar, hapus gambar lama
     if (blog.thumbnail) {
       await this.cloudinaryService.deleteFile(blog.thumbnail);
     }
-    
+
     // Upload gambar ke Cloudinary
     const gambarUrl = await this.cloudinaryService.uploadBlogImage(file);
-    
+
     // Update blog dengan URL gambar baru
     const updated = await this.blogService.update(id, { thumbnail: gambarUrl });
-    
+
     return {
       message: 'Gambar berhasil diupload',
-      data: updated
+      data: updated,
     };
   }
 
@@ -122,12 +121,12 @@ export class BlogController {
   async removeBlog(@Param('id') id: string) {
     // Dapatkan blog yang akan dihapus
     const blog = await this.blogService.findOne(id);
-    
+
     // Jika blog memiliki gambar, hapus gambar dari Cloudinary
     if (blog.thumbnail) {
       await this.cloudinaryService.deleteFile(blog.thumbnail);
     }
-    
+
     // Hapus blog
     return this.blogService.remove(id);
   }

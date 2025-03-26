@@ -67,7 +67,9 @@ export class NotificationGateway
   // Handler untuk event test dari client
   @SubscribeMessage('test-new-transaction')
   handleTestNewTransaction(client: Socket, data: any) {
-    this.logger.log(`Client ${client.id} sent test new transaction with data: ${JSON.stringify(data)}`);
+    this.logger.log(
+      `Client ${client.id} sent test new transaction with data: ${JSON.stringify(data)}`,
+    );
     this.server.emit('new-transaction', data);
     return { status: 'ok', message: 'Test notifikasi transaksi baru berhasil dikirim' };
   }
@@ -81,7 +83,9 @@ export class NotificationGateway
 
   @SubscribeMessage('test-motor-status')
   handleTestMotorStatus(client: Socket, data: any) {
-    this.logger.log(`Client ${client.id} sent test motor status with data: ${JSON.stringify(data)}`);
+    this.logger.log(
+      `Client ${client.id} sent test motor status with data: ${JSON.stringify(data)}`,
+    );
     this.server.emit('motor-status-update', data);
     return { status: 'ok', message: 'Test notifikasi status motor berhasil dikirim' };
   }

@@ -20,11 +20,11 @@ async function bootstrap() {
     cors: true,
     bufferLogs: true,
   });
-  
+
   // Inisialisasi logger
   const logger = createLogger();
   app.useLogger(logger);
-  
+
   // Dapatkan config service
   const configService = app.get(ConfigService);
 
@@ -37,7 +37,7 @@ async function bootstrap() {
 
   // Jalankan server
   const { server, port } = await startServer(app, configService, new Logger('Bootstrap'));
-  
+
   // Konfigurasi shutdown handler
   configureShutdown(server, new Logger('Bootstrap'));
 
