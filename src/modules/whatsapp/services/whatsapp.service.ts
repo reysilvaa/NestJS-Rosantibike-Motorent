@@ -5,9 +5,9 @@ import {
   makeWASocket,
   useMultiFileAuthState,
   type ConnectionState,
-} from '@whiskeysockets/baileys';
+} from 'baileys';
 import { Boom } from '@hapi/boom';
-import type { JidWithDevice } from '@whiskeysockets/baileys';
+import type { JidWithDevice } from 'baileys';
 import * as qrcodeTerminal from 'qrcode-terminal';
 import * as fs from 'fs';
 import * as path from 'path';

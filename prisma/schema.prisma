@@ -43,15 +43,15 @@ model TransaksiSewa {
   unitId         String
   tanggalMulai   DateTime
   tanggalSelesai DateTime
-  jamMulai       String          @default("08:00") @db.VarChar(5)
-  jamSelesai     String          @default("08:00") @db.VarChar(5)
   status         StatusTransaksi @default(AKTIF)
   totalBiaya     Decimal         @db.Decimal(10, 2)
-  biayaDenda     Decimal         @default(0) @db.Decimal(10, 2)
-  jasHujan       Int             @default(0)
-  helm           Int             @default(0)
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
+  biayaDenda     Decimal         @default(0) @db.Decimal(10, 2)
+  helm           Int             @default(0)
+  jamMulai       String          @default("08:00") @db.VarChar(5)
+  jamSelesai     String          @default("08:00") @db.VarChar(5)
+  jasHujan       Int             @default(0)
   unitMotor      UnitMotor       @relation(fields: [unitId], references: [id])
 
   @@index([noWhatsapp])

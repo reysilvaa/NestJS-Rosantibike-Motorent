@@ -8,7 +8,7 @@ import {
   TransaksiWithRelations,
 } from '../../../common';
 import * as fs from 'fs';
-import { delay } from '@whiskeysockets/baileys';
+import { delay } from 'baileys';
 import { NotificationGateway } from '../../../common/gateway/notification.gateway';
 import { WhatsappService } from '../../whatsapp/services/whatsapp.service';
 

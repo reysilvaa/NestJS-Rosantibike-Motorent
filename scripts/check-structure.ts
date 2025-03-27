@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as chalk from 'chalk';
+import chalk from 'chalk';
 
 const SRC_PATH = path.join(process.cwd(), 'src');
 const MODULES_PATH = path.join(SRC_PATH, 'modules');
