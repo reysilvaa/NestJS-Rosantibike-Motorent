@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { CreateJenisMotorDto, UpdateJenisMotorDto } from '../dto';
+import { verifyJenisMotorExists, verifyCanDeleteJenisMotor } from '../helpers';
+import { handleError } from '../../../common/helpers';
 
 @Injectable()
 export class JenisMotorService {
@@ -19,8 +21,7 @@ export class JenisMotorService {
         },
       });
     } catch (error) {
-      this.logger.error(`Gagal membuat jenis motor: ${error.message}`, error.stack);
-      throw error;
+      return handleError(this.logger, error, 'Gagal membuat jenis motor');
     }
   }
 
@@ -32,78 +33,45 @@ export class JenisMotorService {
         },
       });
     } catch (error) {
-      this.logger.error(`Gagal mengambil daftar jenis motor: ${error.message}`, error.stack);
-      throw error;
+      return handleError(this.logger, error, 'Gagal mengambil daftar jenis motor');
     }
   }
 
   async findOne(id: string) {
     try {
-      const jenisMotor = await this.prisma.jenisMotor.findUnique({
-        where: { id },
-        include: {
-          unitMotor: true,
-        },
-      });
-
-      if (!jenisMotor) {
-        throw new NotFoundException(`Jenis motor dengan ID "${id}" tidak ditemukan`);
-      }
-
-      return jenisMotor;
+      return await verifyJenisMotorExists(id, this.prisma, this.logger);
     } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      this.logger.error(`Gagal mengambil jenis motor: ${error.message}`, error.stack);
-      throw error;
+      return handleError(this.logger, error, `Gagal mengambil jenis motor dengan ID ${id}`);
     }
   }
 
   async update(id: string, data: UpdateJenisMotorDto) {
     try {
       // Verifikasi bahwa jenis motor ada
-      await this.findOne(id);
+      await verifyJenisMotorExists(id, this.prisma, this.logger);
 
       return await this.prisma.jenisMotor.update({
         where: { id },
         data,
       });
     } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      this.logger.error(`Gagal mengupdate jenis motor: ${error.message}`, error.stack);
-      throw error;
+      return handleError(this.logger, error, `Gagal mengupdate jenis motor dengan ID ${id}`);
     }
   }
 
   async remove(id: string) {
     try {
       // Verifikasi bahwa jenis motor ada
-      await this.findOne(id);
-
-      // Dapatkan semua unit yang terkait dengan jenis motor ini
-      const unitMotors = await this.prisma.unitMotor.findMany({
-        where: { jenisId: id },
-      });
-
-      // Jika ada unit motor terkait, batalkan penghapusan
-      if (unitMotors.length > 0) {
-        throw new Error(
-          `Tidak dapat menghapus jenis motor karena masih memiliki ${unitMotors.length} unit terkait`,
-        );
-      }
+      await verifyJenisMotorExists(id, this.prisma, this.logger);
+      
+      // Verifikasi bahwa jenis motor dapat dihapus
+      await verifyCanDeleteJenisMotor(id, this.prisma, this.logger);
 
       return await this.prisma.jenisMotor.delete({
         where: { id },
       });
     } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      this.logger.error(`Gagal menghapus jenis motor: ${error.message}`, error.stack);
-      throw error;
+      return handleError(this.logger, error, `Gagal menghapus jenis motor dengan ID ${id}`);
     }
   }
 }

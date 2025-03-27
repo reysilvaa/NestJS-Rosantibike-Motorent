@@ -23,6 +23,14 @@ import { CloudinaryService } from '../../../common/services';
 import { memoryStorage } from 'multer';
 import { Logger } from '@nestjs/common';
 import { AnyFilesInterceptor } from '@nestjs/platform-express';
+import { 
+  createFileUploadInterceptor,
+  getFirstFile,
+  getFileInfo,
+  handleError,
+  logInfo,
+  logRequestDebugInfo
+} from '../../../common/helpers';
 
 @ApiTags('Blog')
 @Controller('blog')
@@ -61,10 +69,12 @@ export class BlogController {
         message: 'Blog post berhasil ditemukan'
       };
     } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(`Gagal mengambil blog: ${error.message}`);
+      return handleError(
+        this.logger,
+        error,
+        'Gagal mengambil blog',
+        'getBlogBySlug'
+      );
     }
   }
 
@@ -121,24 +131,7 @@ export class BlogController {
   })
   @ApiResponse({ status: 201, description: 'Blog berhasil dibuat' })
   @ApiResponse({ status: 400, description: 'Data tidak valid' })
-  @UseInterceptors(
-    AnyFilesInterceptor({
-      storage: memoryStorage(),
-      limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB
-      },
-      fileFilter: (req, file, cb) => {
-        if (!file) {
-          // Tidak ada file gambar, itu ok
-          return cb(null, true);
-        }
-        if (!file.mimetype.match(/^image\/(jpg|jpeg|png|gif|webp)$/)) {
-          return cb(new BadRequestException('Hanya file gambar yang diperbolehkan!'), false);
-        }
-        cb(null, true);
-      },
-    }),
-  )
+  @UseInterceptors(createFileUploadInterceptor())
   async createBlog(
     @Body() createBlogDto: CreateBlogPostDto,
     @UploadedFiles() files?: Express.Multer.File[],
@@ -154,24 +147,24 @@ export class BlogController {
 
       // Jika ada file gambar, upload ke Cloudinary
       if (files && files.length > 0) {
-        this.logger.log(`Memproses pembuatan blog dengan gambar`);
-        const file = files[0]; // Ambil file pertama
-        this.logger.log(
-          `File info: ${file.originalname}, size: ${file.size}, mimetype: ${file.mimetype}, fieldname: ${file.fieldname}`,
-        );
+        logInfo(this.logger, `Memproses pembuatan blog dengan gambar`);
+        const file = getFirstFile(files, false);
+        if (file) {
+          logInfo(this.logger, getFileInfo(file));
 
-        // Upload gambar ke Cloudinary
-        this.logger.log('Mengunggah gambar ke Cloudinary...');
-        const gambarUrl = await this.cloudinaryService.uploadBlogImage(file);
+          // Upload gambar ke Cloudinary
+          logInfo(this.logger, 'Mengunggah gambar ke Cloudinary...');
+          const gambarUrl = await this.cloudinaryService.uploadBlogImage(file);
 
-        if (!gambarUrl) {
-          throw new BadRequestException('Gagal mengupload gambar ke Cloudinary');
+          if (!gambarUrl) {
+            throw new BadRequestException('Gagal mengupload gambar ke Cloudinary');
+          }
+
+          logInfo(this.logger, `Gambar berhasil diupload ke: ${gambarUrl}`);
+
+          // Set thumbnail URL ke DTO
+          createBlogDto.featuredImage = gambarUrl;
         }
-
-        this.logger.log(`Gambar berhasil diupload ke: ${gambarUrl}`);
-
-        // Set thumbnail URL ke DTO
-        createBlogDto.featuredImage = gambarUrl;
       }
 
       // Buat blog dengan atau tanpa gambar
@@ -182,14 +175,12 @@ export class BlogController {
         data: createdBlog,
       };
     } catch (error) {
-      this.logger.error(`Error saat membuat blog: ${error.message}`);
-      this.logger.error(`Error stack: ${error.stack}`);
-
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-
-      throw new InternalServerErrorException(`Gagal membuat blog: ${error.message}`);
+      return handleError(
+        this.logger,
+        error,
+        'Gagal membuat blog',
+        'createBlog'
+      );
     }
   }
 
@@ -245,24 +236,7 @@ export class BlogController {
   })
   @ApiResponse({ status: 200, description: 'Blog berhasil diperbarui' })
   @ApiResponse({ status: 404, description: 'Blog tidak ditemukan' })
-  @UseInterceptors(
-    AnyFilesInterceptor({
-      storage: memoryStorage(),
-      limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB
-      },
-      fileFilter: (req, file, cb) => {
-        if (!file) {
-          // Tidak ada file gambar, itu ok
-          return cb(null, true);
-        }
-        if (!file.mimetype.match(/^image\/(jpg|jpeg|png|gif|webp)$/)) {
-          return cb(new BadRequestException('Hanya file gambar yang diperbolehkan!'), false);
-        }
-        cb(null, true);
-      },
-    }),
-  )
+  @UseInterceptors(createFileUploadInterceptor())
   async updateBlog(
     @Param('id') id: string,
     @Body() updateBlogDto: UpdateBlogPostDto,
@@ -278,30 +252,30 @@ export class BlogController {
 
       // Jika ada file gambar baru, upload ke Cloudinary
       if (files && files.length > 0) {
-        this.logger.log(`Memproses update blog dengan gambar baru`);
-        const file = files[0]; // Ambil file pertama
-        this.logger.log(
-          `File info: ${file.originalname}, size: ${file.size}, mimetype: ${file.mimetype}, fieldname: ${file.fieldname}`,
-        );
+        logInfo(this.logger, `Memproses update blog dengan gambar baru`);
+        const file = getFirstFile(files, false);
+        if (file) {
+          logInfo(this.logger, getFileInfo(file));
 
-        // Hapus gambar lama jika ada
-        if (blog.thumbnail) {
-          this.logger.log(`Menghapus gambar lama: ${blog.thumbnail}`);
-          await this.cloudinaryService.deleteFile(blog.thumbnail);
+          // Hapus gambar lama jika ada
+          if (blog.thumbnail) {
+            logInfo(this.logger, `Menghapus gambar lama: ${blog.thumbnail}`);
+            await this.cloudinaryService.deleteFile(blog.thumbnail);
+          }
+
+          // Upload gambar baru ke Cloudinary
+          logInfo(this.logger, 'Mengunggah gambar baru ke Cloudinary...');
+          const gambarUrl = await this.cloudinaryService.uploadBlogImage(file);
+
+          if (!gambarUrl) {
+            throw new BadRequestException('Gagal mengupload gambar ke Cloudinary');
+          }
+
+          logInfo(this.logger, `Gambar baru berhasil diupload ke: ${gambarUrl}`);
+
+          // Set thumbnail URL ke DTO
+          updateBlogDto.featuredImage = gambarUrl;
         }
-
-        // Upload gambar baru ke Cloudinary
-        this.logger.log('Mengunggah gambar baru ke Cloudinary...');
-        const gambarUrl = await this.cloudinaryService.uploadBlogImage(file);
-
-        if (!gambarUrl) {
-          throw new BadRequestException('Gagal mengupload gambar ke Cloudinary');
-        }
-
-        this.logger.log(`Gambar baru berhasil diupload ke: ${gambarUrl}`);
-
-        // Set thumbnail URL ke DTO
-        updateBlogDto.featuredImage = gambarUrl;
       }
 
       // Update blog
@@ -313,14 +287,12 @@ export class BlogController {
         data: updated,
       };
     } catch (error) {
-      this.logger.error(`Error saat memperbarui blog: ${error.message}`);
-      this.logger.error(`Error stack: ${error.stack}`);
-
-      if (error instanceof NotFoundException || error instanceof BadRequestException) {
-        throw error;
-      }
-
-      throw new InternalServerErrorException(`Gagal memperbarui blog: ${error.message}`);
+      return handleError(
+        this.logger,
+        error,
+        'Gagal memperbarui blog',
+        'updateBlog'
+      );
     }
   }
 
@@ -329,15 +301,32 @@ export class BlogController {
   @ApiResponse({ status: 200, description: 'Blog berhasil dihapus' })
   @ApiResponse({ status: 404, description: 'Blog tidak ditemukan' })
   async removeBlog(@Param('id') id: string) {
-    // Dapatkan blog yang akan dihapus
-    const blog = await this.blogService.findOne(id);
+    try {
+      // Dapatkan blog yang akan dihapus
+      const blog = await this.blogService.findOne(id);
 
-    // Jika blog memiliki gambar, hapus gambar dari Cloudinary
-    if (blog.thumbnail) {
-      await this.cloudinaryService.deleteFile(blog.thumbnail);
+      // Jika blog memiliki gambar, hapus gambar dari Cloudinary
+      if (blog.thumbnail) {
+        await this.cloudinaryService.deleteFile(blog.thumbnail);
+      }
+
+      // Hapus blog
+      return this.blogService.remove(id);
+    } catch (error) {
+      return handleError(
+        this.logger,
+        error,
+        'Gagal menghapus blog',
+        'removeBlog'
+      );
     }
+  }
 
-    // Hapus blog
-    return this.blogService.remove(id);
+  @Post('debug-upload')
+  @ApiOperation({ summary: 'Debug upload file untuk melihat field yang dikirim' })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({ status: 200, description: 'Debug info' })
+  async debugUpload(@Req() req: any) {
+    return logRequestDebugInfo(req, this.logger);
   }
 }

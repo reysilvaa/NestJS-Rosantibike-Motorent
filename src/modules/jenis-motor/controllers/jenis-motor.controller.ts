@@ -6,22 +6,25 @@ import {
   Patch,
   Param,
   Delete,
-  UploadedFile,
   UseInterceptors,
   BadRequestException,
   NotFoundException,
-  InternalServerErrorException,
   Req,
   UploadedFiles,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
 import { JenisMotorService } from '../services/jenis-motor.service';
 import { CreateJenisMotorDto, UpdateJenisMotorDto } from '../dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { CloudinaryService } from '../../../common/services';
-import { memoryStorage } from 'multer';
 import { Logger } from '@nestjs/common';
-import { AnyFilesInterceptor } from '@nestjs/platform-express';
+import { 
+  createFileUploadInterceptor,
+  getFirstFile,
+  getFileInfo,
+  handleError,
+  logInfo,
+  logRequestDebugInfo
+} from '../../../common/helpers';
 
 @ApiTags('Jenis Motor')
 @Controller('jenis-motor')
@@ -86,24 +89,7 @@ export class JenisMotorController {
   })
   @ApiResponse({ status: 201, description: 'Jenis motor berhasil dibuat' })
   @ApiResponse({ status: 400, description: 'Data tidak valid' })
-  @UseInterceptors(
-    AnyFilesInterceptor({
-      storage: memoryStorage(),
-      limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB
-      },
-      fileFilter: (req, file, cb) => {
-        if (!file) {
-          // Tidak ada file gambar, itu ok
-          return cb(null, true);
-        }
-        if (!file.mimetype.match(/^image\/(jpg|jpeg|png|gif|webp)$/)) {
-          return cb(new BadRequestException('Hanya file gambar yang diperbolehkan!'), false);
-        }
-        cb(null, true);
-      },
-    }),
-  )
+  @UseInterceptors(createFileUploadInterceptor())
   async create(
     @Body() createJenisMotorDto: CreateJenisMotorDto,
     @UploadedFiles() files?: Express.Multer.File[],
@@ -111,24 +97,24 @@ export class JenisMotorController {
     try {
       // Jika ada file gambar, upload ke Cloudinary
       if (files && files.length > 0) {
-        this.logger.log(`Memproses pembuatan jenis motor dengan gambar`);
-        const file = files[0]; // Ambil file pertama
-        this.logger.log(
-          `File info: ${file.originalname}, size: ${file.size}, mimetype: ${file.mimetype}, fieldname: ${file.fieldname}`,
-        );
+        logInfo(this.logger, `Memproses pembuatan jenis motor dengan gambar`);
+        const file = getFirstFile(files, false);
+        if (file) {
+          logInfo(this.logger, getFileInfo(file));
 
-        // Upload gambar ke Cloudinary
-        this.logger.log('Mengunggah gambar ke Cloudinary...');
-        const gambarUrl = await this.cloudinaryService.uploadJenisMotorImage(file);
+          // Upload gambar ke Cloudinary
+          logInfo(this.logger, 'Mengunggah gambar ke Cloudinary...');
+          const gambarUrl = await this.cloudinaryService.uploadJenisMotorImage(file);
 
-        if (!gambarUrl) {
-          throw new BadRequestException('Gagal mengupload gambar ke Cloudinary');
+          if (!gambarUrl) {
+            throw new BadRequestException('Gagal mengupload gambar ke Cloudinary');
+          }
+
+          logInfo(this.logger, `Gambar berhasil diupload ke: ${gambarUrl}`);
+
+          // Set gambar URL ke DTO
+          createJenisMotorDto.gambar = gambarUrl;
         }
-
-        this.logger.log(`Gambar berhasil diupload ke: ${gambarUrl}`);
-
-        // Set gambar URL ke DTO
-        createJenisMotorDto.gambar = gambarUrl;
       }
 
       // Buat jenis motor dengan atau tanpa gambar
@@ -140,14 +126,12 @@ export class JenisMotorController {
         data: created,
       };
     } catch (error) {
-      this.logger.error(`Error saat membuat jenis motor: ${error.message}`);
-      this.logger.error(`Error stack: ${error.stack}`);
-
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-
-      throw new InternalServerErrorException(`Gagal membuat jenis motor: ${error.message}`);
+      return handleError(
+        this.logger,
+        error,
+        'Gagal membuat jenis motor',
+        'create'
+      );
     }
   }
 
@@ -188,24 +172,7 @@ export class JenisMotorController {
   })
   @ApiResponse({ status: 200, description: 'Jenis motor berhasil diperbarui' })
   @ApiResponse({ status: 404, description: 'Jenis motor tidak ditemukan' })
-  @UseInterceptors(
-    AnyFilesInterceptor({
-      storage: memoryStorage(),
-      limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB
-      },
-      fileFilter: (req, file, cb) => {
-        if (!file) {
-          // Tidak ada file gambar, itu ok
-          return cb(null, true);
-        }
-        if (!file.mimetype.match(/^image\/(jpg|jpeg|png|gif|webp)$/)) {
-          return cb(new BadRequestException('Hanya file gambar yang diperbolehkan!'), false);
-        }
-        cb(null, true);
-      },
-    }),
-  )
+  @UseInterceptors(createFileUploadInterceptor())
   async update(
     @Param('id') id: string,
     @Body() updateJenisMotorDto: UpdateJenisMotorDto,
@@ -221,30 +188,30 @@ export class JenisMotorController {
 
       // Jika ada file gambar baru, upload ke Cloudinary
       if (files && files.length > 0) {
-        this.logger.log(`Memproses update jenis motor dengan gambar baru`);
-        const file = files[0]; // Ambil file pertama
-        this.logger.log(
-          `File info: ${file.originalname}, size: ${file.size}, mimetype: ${file.mimetype}, fieldname: ${file.fieldname}`,
-        );
+        logInfo(this.logger, `Memproses update jenis motor dengan gambar baru`);
+        const file = getFirstFile(files, false);
+        if (file) {
+          logInfo(this.logger, getFileInfo(file));
 
-        // Hapus gambar lama jika ada
-        if (jenisMotor.gambar) {
-          this.logger.log(`Menghapus gambar lama: ${jenisMotor.gambar}`);
-          await this.cloudinaryService.deleteFile(jenisMotor.gambar);
+          // Hapus gambar lama jika ada
+          if (jenisMotor.gambar) {
+            logInfo(this.logger, `Menghapus gambar lama: ${jenisMotor.gambar}`);
+            await this.cloudinaryService.deleteFile(jenisMotor.gambar);
+          }
+
+          // Upload gambar baru ke Cloudinary
+          logInfo(this.logger, 'Mengunggah gambar baru ke Cloudinary...');
+          const gambarUrl = await this.cloudinaryService.uploadJenisMotorImage(file);
+
+          if (!gambarUrl) {
+            throw new BadRequestException('Gagal mengupload gambar ke Cloudinary');
+          }
+
+          logInfo(this.logger, `Gambar baru berhasil diupload ke: ${gambarUrl}`);
+
+          // Set gambar URL ke DTO
+          updateJenisMotorDto.gambar = gambarUrl;
         }
-
-        // Upload gambar baru ke Cloudinary
-        this.logger.log('Mengunggah gambar baru ke Cloudinary...');
-        const gambarUrl = await this.cloudinaryService.uploadJenisMotorImage(file);
-
-        if (!gambarUrl) {
-          throw new BadRequestException('Gagal mengupload gambar ke Cloudinary');
-        }
-
-        this.logger.log(`Gambar baru berhasil diupload ke: ${gambarUrl}`);
-
-        // Set gambar URL ke DTO
-        updateJenisMotorDto.gambar = gambarUrl;
       }
 
       // Update jenis motor
@@ -257,14 +224,12 @@ export class JenisMotorController {
         data: updated,
       };
     } catch (error) {
-      this.logger.error(`Error saat memperbarui jenis motor: ${error.message}`);
-      this.logger.error(`Error stack: ${error.stack}`);
-
-      if (error instanceof NotFoundException || error instanceof BadRequestException) {
-        throw error;
-      }
-
-      throw new InternalServerErrorException(`Gagal memperbarui jenis motor: ${error.message}`);
+      return handleError(
+        this.logger,
+        error,
+        'Gagal memperbarui jenis motor',
+        'update'
+      );
     }
   }
 
@@ -283,10 +248,18 @@ export class JenisMotorController {
       }
     } catch (error) {
       // Log error tapi lanjutkan proses
-      console.error('Error saat menghapus gambar:', error);
+      this.logger.error('Error saat menghapus gambar:', error.message);
     }
 
     // Hapus data jenis motor
     return this.jenisMotorService.remove(id);
+  }
+
+  @Post('debug-upload')
+  @ApiOperation({ summary: 'Debug upload file untuk melihat field yang dikirim' })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({ status: 200, description: 'Debug info' })
+  async debugUpload(@Req() req: any) {
+    return logRequestDebugInfo(req, this.logger);
   }
 }

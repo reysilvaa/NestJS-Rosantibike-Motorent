@@ -1,12 +1,15 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, Logger } from '@nestjs/common';
 import { TransaksiService } from '../services/transaksi.service';
 import { CreateTransaksiDto, UpdateTransaksiDto, FilterTransaksiDto, CalculatePriceDto } from '../dto/index';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { StatusTransaksi } from '../../../common/enums/status.enum';
+import { successResponse, handleError, paginationResponse } from '../../../common/helpers';
 
 @ApiTags('Transaksi')
 @Controller('transaksi')
 export class TransaksiController {
+  private readonly logger = new Logger(TransaksiController.name);
+  
   constructor(private readonly transaksiService: TransaksiService) {}
 
   @Post()
@@ -15,8 +18,13 @@ export class TransaksiController {
     status: 201,
     description: 'Transaksi berhasil dibuat',
   })
-  create(@Body() createTransaksiDto: CreateTransaksiDto) {
-    return this.transaksiService.create(createTransaksiDto);
+  async create(@Body() createTransaksiDto: CreateTransaksiDto) {
+    try {
+      const result = await this.transaksiService.create(createTransaksiDto);
+      return successResponse(result, 'Transaksi berhasil dibuat', 201);
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal membuat transaksi');
+    }
   }
 
   @Get()
@@ -25,8 +33,19 @@ export class TransaksiController {
     status: 200,
     description: 'Daftar transaksi berhasil diambil',
   })
-  findAll(@Query() filter: FilterTransaksiDto) {
-    return this.transaksiService.findAll(filter);
+  async findAll(@Query() filter: FilterTransaksiDto) {
+    try {
+      const result = await this.transaksiService.findAll(filter);
+      return paginationResponse(
+        result.data,
+        result.meta.total,
+        result.meta.page,
+        result.meta.limit,
+        'Daftar transaksi berhasil diambil'
+      );
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal mengambil daftar transaksi');
+    }
   }
 
   @Get('history')
@@ -35,17 +54,33 @@ export class TransaksiController {
     status: 200,
     description: 'History transaksi berhasil diambil',
   })
-  getHistory(@Query() filter: FilterTransaksiDto) {
-    // Menambahkan parameter untuk hanya mengambil transaksi yang sudah selesai atau overdue
-    filter.status = [StatusTransaksi.SELESAI, StatusTransaksi.OVERDUE];
-    return this.transaksiService.findAll(filter);
+  async getHistory(@Query() filter: FilterTransaksiDto) {
+    try {
+      // Menambahkan parameter untuk hanya mengambil transaksi yang sudah selesai atau overdue
+      filter.status = [StatusTransaksi.SELESAI, StatusTransaksi.OVERDUE];
+      const result = await this.transaksiService.findAll(filter);
+      return paginationResponse(
+        result.data,
+        result.meta.total,
+        result.meta.page,
+        result.meta.limit,
+        'History transaksi berhasil diambil'
+      );
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal mengambil history transaksi');
+    }
   }
 
   @Get('search')
   @ApiOperation({ summary: 'Mencari transaksi berdasarkan nomor telepon' })
   @ApiResponse({ status: 200, description: 'Transaksi berhasil ditemukan' })
-  searchByPhone(@Query('noHP') noHP: string) {
-    return this.transaksiService.findByPhone(noHP);
+  async searchByPhone(@Query('noHP') noHP: string) {
+    try {
+      const result = await this.transaksiService.findByPhone(noHP);
+      return successResponse(result, `Transaksi dengan nomor telepon ${noHP} berhasil ditemukan`);
+    } catch (error) {
+      return handleError(this.logger, error, `Gagal mencari transaksi dengan nomor telepon ${noHP}`);
+    }
   }
 
   @Get(':id')
@@ -55,8 +90,13 @@ export class TransaksiController {
     description: 'Detail transaksi berhasil diambil',
   })
   @ApiResponse({ status: 404, description: 'Transaksi tidak ditemukan' })
-  findOne(@Param('id') id: string) {
-    return this.transaksiService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    try {
+      const result = await this.transaksiService.findOne(id);
+      return successResponse(result, `Detail transaksi dengan ID ${id} berhasil diambil`);
+    } catch (error) {
+      return handleError(this.logger, error, `Gagal mengambil detail transaksi dengan ID ${id}`);
+    }
   }
 
   @Patch(':id')
@@ -66,8 +106,13 @@ export class TransaksiController {
     description: 'Transaksi berhasil diperbarui',
   })
   @ApiResponse({ status: 404, description: 'Transaksi tidak ditemukan' })
-  update(@Param('id') id: string, @Body() updateTransaksiDto: UpdateTransaksiDto) {
-    return this.transaksiService.update(id, updateTransaksiDto);
+  async update(@Param('id') id: string, @Body() updateTransaksiDto: UpdateTransaksiDto) {
+    try {
+      const result = await this.transaksiService.update(id, updateTransaksiDto);
+      return successResponse(result, `Transaksi dengan ID ${id} berhasil diperbarui`);
+    } catch (error) {
+      return handleError(this.logger, error, `Gagal memperbarui transaksi dengan ID ${id}`);
+    }
   }
 
   @Delete(':id')
@@ -77,8 +122,13 @@ export class TransaksiController {
     description: 'Transaksi berhasil dihapus',
   })
   @ApiResponse({ status: 404, description: 'Transaksi tidak ditemukan' })
-  remove(@Param('id') id: string) {
-    return this.transaksiService.remove(id);
+  async remove(@Param('id') id: string) {
+    try {
+      const result = await this.transaksiService.remove(id);
+      return successResponse(result, `Transaksi dengan ID ${id} berhasil dihapus`);
+    } catch (error) {
+      return handleError(this.logger, error, `Gagal menghapus transaksi dengan ID ${id}`);
+    }
   }
 
   @Post(':id/selesai')
@@ -88,8 +138,13 @@ export class TransaksiController {
     description: 'Transaksi berhasil diselesaikan',
   })
   @ApiResponse({ status: 404, description: 'Transaksi tidak ditemukan' })
-  selesaiSewa(@Param('id') id: string) {
-    return this.transaksiService.selesaiSewa(id);
+  async selesaiSewa(@Param('id') id: string) {
+    try {
+      const result = await this.transaksiService.selesaiSewa(id);
+      return successResponse(result, `Transaksi dengan ID ${id} berhasil diselesaikan`);
+    } catch (error) {
+      return handleError(this.logger, error, `Gagal menyelesaikan transaksi dengan ID ${id}`);
+    }
   }
 
   @Get('laporan/denda')
@@ -98,11 +153,16 @@ export class TransaksiController {
     status: 200,
     description: 'Laporan denda berhasil diambil',
   })
-  getLaporanDenda(
+  async getLaporanDenda(
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
   ) {
-    return this.transaksiService.getLaporanDenda(startDate, endDate);
+    try {
+      const result = await this.transaksiService.getLaporanDenda(startDate, endDate);
+      return successResponse(result, 'Laporan denda berhasil diambil');
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal mengambil laporan denda');
+    }
   }
 
   @Get('laporan/fasilitas')
@@ -111,11 +171,16 @@ export class TransaksiController {
     status: 200,
     description: 'Laporan fasilitas berhasil diambil',
   })
-  getLaporanFasilitas(
+  async getLaporanFasilitas(
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
   ) {
-    return this.transaksiService.getLaporanFasilitas(startDate, endDate);
+    try {
+      const result = await this.transaksiService.getLaporanFasilitas(startDate, endDate);
+      return successResponse(result, 'Laporan fasilitas berhasil diambil');
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal mengambil laporan fasilitas');
+    }
   }
 
   @Post('calculate-price')
@@ -124,7 +189,12 @@ export class TransaksiController {
     status: 200,
     description: 'Perhitungan harga berhasil',
   })
-  calculatePrice(@Body() calculatePriceDto: CalculatePriceDto) {
-    return this.transaksiService.calculatePrice(calculatePriceDto);
+  async calculatePrice(@Body() calculatePriceDto: CalculatePriceDto) {
+    try {
+      const result = await this.transaksiService.calculatePrice(calculatePriceDto);
+      return successResponse(result, 'Perhitungan harga berhasil');
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal menghitung harga sewa');
+    }
   }
 }

@@ -1,131 +1,85 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { CreateBlogPostDto, UpdateBlogPostDto, FilterBlogPostDto } from '../dto';
 import { StatusArtikel } from '../../../common/enums/status.enum';
+import { 
+  verifyBlogPostExists, 
+  verifyBlogPostBySlugExists, 
+  verifySlugIsUnique,
+  transformBlogPostForFrontend,
+  createBlogWhereCondition
+} from '../helpers';
+import { handleError } from '../../../common/helpers';
 
 @Injectable()
 export class BlogService {
+  private readonly logger = new Logger(BlogService.name);
+  
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(filter: FilterBlogPostDto) {
-    const where = {
-      ...(filter.status && { status: filter.status }),
-      OR: filter.search
-        ? [
-            {
-              judul: { contains: filter.search, mode: 'insensitive' as const },
-            },
-            {
-              konten: { contains: filter.search, mode: 'insensitive' as const },
-            },
-          ]
-        : undefined,
-      tags: filter.tagId
-        ? {
-            some: {
-              tagId: filter.tagId,
-            },
-          }
-        : undefined,
-    };
+    try {
+      const where = createBlogWhereCondition(filter);
+      
+      const page = filter.page || 1;
+      const limit = filter.limit || 10;
+      const skip = (page - 1) * limit;
 
-    // Hapus filter yang undefined
-    Object.keys(where).forEach(key => where[key] === undefined && delete where[key]);
-
-    const page = filter.page || 1;
-    const limit = filter.limit || 10;
-    const skip = (page - 1) * limit;
-
-    const [total, data] = await Promise.all([
-      this.prisma.blogPost.count({ where }),
-      this.prisma.blogPost.findMany({
-        where,
-        include: {
-          tags: {
-            include: {
-              tag: true,
+      const [total, data] = await Promise.all([
+        this.prisma.blogPost.count({ where }),
+        this.prisma.blogPost.findMany({
+          where,
+          include: {
+            tags: {
+              include: {
+                tag: true,
+              },
             },
           },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit,
-      }),
-    ]);
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit,
+        }),
+      ]);
 
-    return {
-      data,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
+      return {
+        data,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal mengambil daftar artikel blog');
+    }
   }
 
   async findOne(id: string) {
-    const post = await this.prisma.blogPost.findUnique({
-      where: { id },
-      include: {
-        tags: {
-          include: {
-            tag: true,
-          },
-        },
-      },
-    });
-
-    if (!post) {
-      throw new NotFoundException(`Artikel dengan ID ${id} tidak ditemukan`);
+    try {
+      return await verifyBlogPostExists(id, this.prisma, this.logger);
+    } catch (error) {
+      return handleError(this.logger, error, `Gagal mengambil detail artikel dengan ID ${id}`);
     }
-
-    return post;
   }
 
   async findBySlug(slug: string) {
-    const post = await this.prisma.blogPost.findUnique({
-      where: { slug },
-      include: {
-        tags: {
-          include: {
-            tag: true,
-          },
-        },
-      },
-    });
-
-    if (!post) {
-      throw new NotFoundException(`Artikel dengan slug ${slug} tidak ditemukan`);
+    try {
+      const post = await verifyBlogPostBySlugExists(slug, this.prisma, this.logger);
+      return transformBlogPostForFrontend(post);
+    } catch (error) {
+      return handleError(this.logger, error, `Gagal mengambil artikel dengan slug ${slug}`);
     }
-    
-    // Transformasi data untuk format yang sesuai dengan frontend
-    return {
-      id: post.id,
-      judul: post.judul,
-      slug: post.slug,
-      konten: post.konten,
-      featuredImage: post.thumbnail,
-      status: post.status === 'TERBIT' ? 'published' : 'draft',
-      kategori: post.kategori,
-      tags: post.tags.map(tag => tag.tag.nama),
-      meta_description: post.konten.substring(0, 150) + '...',
-      createdAt: post.createdAt.toISOString(),
-      updatedAt: post.updatedAt.toISOString(),
-    };
   }
 
   async create(createBlogPostDto: CreateBlogPostDto) {
-    // Periksa apakah slug sudah digunakan
-    const existingPost = await this.prisma.blogPost.findUnique({
-      where: { slug: createBlogPostDto.slug },
-    });
-
-    if (existingPost) {
-      throw new BadRequestException(`Slug ${createBlogPostDto.slug} sudah digunakan`);
-    }
-
     try {
+      // Periksa apakah slug sudah digunakan
+      if (createBlogPostDto.slug) {
+        await verifySlugIsUnique(createBlogPostDto.slug, this.prisma);
+      }
+
       return await this.prisma.$transaction(async tx => {
         // Buat artikel
         const post = await tx.blogPost.create({
@@ -155,36 +109,21 @@ export class BlogService {
 
         return post;
       });
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        throw new BadRequestException(`Gagal membuat artikel: ${error.message}`);
-      }
-      throw new BadRequestException('Gagal membuat artikel');
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal membuat artikel blog');
     }
   }
 
   async update(id: string, updateBlogPostDto: UpdateBlogPostDto) {
-    // Periksa apakah artikel ada
-    const existingPost = await this.prisma.blogPost.findUnique({
-      where: { id },
-    });
-
-    if (!existingPost) {
-      throw new NotFoundException(`Artikel dengan ID ${id} tidak ditemukan`);
-    }
-
-    // Jika mengubah slug, periksa apakah sudah digunakan
-    if (updateBlogPostDto.slug && updateBlogPostDto.slug !== existingPost.slug) {
-      const slugExists = await this.prisma.blogPost.findUnique({
-        where: { slug: updateBlogPostDto.slug },
-      });
-
-      if (slugExists) {
-        throw new BadRequestException(`Slug ${updateBlogPostDto.slug} sudah digunakan`);
-      }
-    }
-
     try {
+      // Periksa apakah artikel ada
+      const existingPost = await verifyBlogPostExists(id, this.prisma, this.logger);
+
+      // Jika mengubah slug, periksa apakah sudah digunakan
+      if (updateBlogPostDto.slug && updateBlogPostDto.slug !== existingPost.slug) {
+        await verifySlugIsUnique(updateBlogPostDto.slug, this.prisma, id);
+      }
+
       return await this.prisma.$transaction(async tx => {
         // Update artikel
         const post = await tx.blogPost.update({
@@ -217,16 +156,16 @@ export class BlogService {
 
         return post;
       });
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        throw new BadRequestException(`Gagal memperbarui artikel: ${error.message}`);
-      }
-      throw new BadRequestException('Gagal memperbarui artikel');
+    } catch (error) {
+      return handleError(this.logger, error, `Gagal memperbarui artikel dengan ID ${id}`);
     }
   }
 
   async remove(id: string) {
     try {
+      // Verifikasi keberadaan artikel
+      await verifyBlogPostExists(id, this.prisma, this.logger);
+      
       return await this.prisma.$transaction(async tx => {
         // Hapus relasi tag
         await tx.blogPostTag.deleteMany({
@@ -238,11 +177,8 @@ export class BlogService {
           where: { id },
         });
       });
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        throw new BadRequestException(`Gagal menghapus artikel: ${error.message}`);
-      }
-      throw new BadRequestException('Gagal menghapus artikel');
+    } catch (error) {
+      return handleError(this.logger, error, `Gagal menghapus artikel dengan ID ${id}`);
     }
   }
 }

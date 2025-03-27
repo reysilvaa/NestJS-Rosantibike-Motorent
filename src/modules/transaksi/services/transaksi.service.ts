@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   InternalServerErrorException,
+  Logger
 } from '@nestjs/common';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { UnitMotorService } from '../../unit-motor/services/unit-motor.service';
@@ -10,8 +11,16 @@ import { CreateTransaksiDto, UpdateTransaksiDto, FilterTransaksiDto, CalculatePr
 import { StatusMotor, StatusTransaksi } from '../../../common/enums/status.enum';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bullmq';
-import { Logger } from '@nestjs/common';
 import { NotificationGateway } from '../../../common/gateway/notification.gateway';
+import { handleError } from '../../../common/helpers';
+import {
+  hitungDenda,
+  hitungTotalBiaya,
+  verifyTransaksiExists,
+  verifyUnitMotorExists,
+  verifyUnitMotorAvailability,
+  verifyCanCompleteTransaksi
+} from '../helpers';
 
 @Injectable()
 export class TransaksiService {
@@ -24,206 +33,123 @@ export class TransaksiService {
   ) {}
 
   async findAll(filter: FilterTransaksiDto) {
-    const where = {
-      ...(filter.unitId && { unitId: filter.unitId }),
-      ...(filter.startDate && { tanggalMulai: { gte: new Date(filter.startDate) } }),
-      ...(filter.endDate && { tanggalSelesai: { lte: new Date(filter.endDate) } }),
-      OR: filter.search
-        ? [
-            {
-              namaPenyewa: { contains: filter.search, mode: 'insensitive' as const },
-            },
-            {
-              noWhatsapp: { contains: filter.search, mode: 'insensitive' as const },
-            },
-          ]
-        : undefined,
-      ...(filter.status && !Array.isArray(filter.status) && { status: filter.status }),
-      ...(filter.status && Array.isArray(filter.status) && { status: { in: filter.status } }),
-    };
+    try {
+      const where = {
+        ...(filter.unitId && { unitId: filter.unitId }),
+        ...(filter.startDate && { tanggalMulai: { gte: new Date(filter.startDate) } }),
+        ...(filter.endDate && { tanggalSelesai: { lte: new Date(filter.endDate) } }),
+        OR: filter.search
+          ? [
+              {
+                namaPenyewa: { contains: filter.search, mode: 'insensitive' as const },
+              },
+              {
+                noWhatsapp: { contains: filter.search, mode: 'insensitive' as const },
+              },
+            ]
+          : undefined,
+        ...(filter.status && !Array.isArray(filter.status) && { status: filter.status }),
+        ...(filter.status && Array.isArray(filter.status) && { status: { in: filter.status } }),
+      };
 
-    // Hapus filter yang undefined
-    Object.keys(where).forEach(key => where[key] === undefined && delete where[key]);
+      // Hapus filter yang undefined
+      Object.keys(where).forEach(key => where[key] === undefined && delete where[key]);
 
-    const page = filter.page || 1;
-    const limit = filter.limit || 10;
-    const skip = (page - 1) * limit;
+      const page = filter.page || 1;
+      const limit = filter.limit || 10;
+      const skip = (page - 1) * limit;
 
-    const [total, data] = await Promise.all([
-      this.prisma.transaksiSewa.count({
-        where: {
-          ...(where.unitId && { unitId: where.unitId }),
-          ...(where.status && {
-            status: typeof where.status === 'object' ? where.status : { equals: where.status },
-          }),
-          ...(where.OR && { OR: where.OR }),
-          ...(where.tanggalMulai && { tanggalMulai: where.tanggalMulai }),
-          ...(where.tanggalSelesai && { tanggalSelesai: where.tanggalSelesai }),
-        },
-      }),
-      this.prisma.transaksiSewa.findMany({
-        where: {
-          ...(where.unitId && { unitId: where.unitId }),
-          ...(where.status && {
-            status: typeof where.status === 'object' ? where.status : { equals: where.status },
-          }),
-          ...(where.OR && { OR: where.OR }),
-          ...(where.tanggalMulai && { tanggalMulai: where.tanggalMulai }),
-          ...(where.tanggalSelesai && { tanggalSelesai: where.tanggalSelesai }),
-        },
-        include: {
-          unitMotor: {
-            include: {
-              jenis: true,
+      const [total, data] = await Promise.all([
+        this.prisma.transaksiSewa.count({
+          where: {
+            ...(where.unitId && { unitId: where.unitId }),
+            ...(where.status && {
+              status: typeof where.status === 'object' ? where.status : { equals: where.status },
+            }),
+            ...(where.OR && { OR: where.OR }),
+            ...(where.tanggalMulai && { tanggalMulai: where.tanggalMulai }),
+            ...(where.tanggalSelesai && { tanggalSelesai: where.tanggalSelesai }),
+          },
+        }),
+        this.prisma.transaksiSewa.findMany({
+          where: {
+            ...(where.unitId && { unitId: where.unitId }),
+            ...(where.status && {
+              status: typeof where.status === 'object' ? where.status : { equals: where.status },
+            }),
+            ...(where.OR && { OR: where.OR }),
+            ...(where.tanggalMulai && { tanggalMulai: where.tanggalMulai }),
+            ...(where.tanggalSelesai && { tanggalSelesai: where.tanggalSelesai }),
+          },
+          include: {
+            unitMotor: {
+              include: {
+                jenis: true,
+              },
             },
           },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit,
-      }),
-    ]);
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit,
+        }),
+      ]);
 
-    return {
-      data,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
+      return {
+        data,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal mengambil daftar transaksi');
+    }
   }
 
   async findOne(id: string) {
-    const transaksi = await this.prisma.transaksiSewa.findUnique({
-      where: { id },
-      include: {
-        unitMotor: {
-          include: {
-            jenis: true,
-          },
-        },
-      },
-    });
-
-    if (!transaksi) {
-      throw new NotFoundException(`Transaksi dengan ID ${id} tidak ditemukan`);
+    try {
+      return await verifyTransaksiExists(id, this.prisma, this.logger);
+    } catch (error) {
+      return handleError(this.logger, error, `Gagal mengambil detail transaksi dengan ID ${id}`);
     }
-
-    return transaksi;
   }
 
   async create(createTransaksiDto: CreateTransaksiDto) {
-    // Pastikan unit motor ada
-    const unitMotor = await this.prisma.unitMotor.findUnique({
-      where: { id: createTransaksiDto.unitId },
-    });
-
-    if (!unitMotor) {
-      throw new BadRequestException(
-        `Unit motor dengan ID ${createTransaksiDto.unitId} tidak ditemukan`,
-      );
-    }
-
-    // Periksa ketersediaan unit pada rentang waktu tertentu
-    const tanggalMulai = new Date(createTransaksiDto.tanggalMulai);
-    const tanggalSelesai = new Date(createTransaksiDto.tanggalSelesai);
-
-    if (tanggalMulai >= tanggalSelesai) {
-      throw new BadRequestException('Tanggal mulai harus sebelum tanggal selesai');
-    }
-
-    // Periksa apakah unit sudah dipesan pada rentang waktu tertentu
-    const existingBooking = await this.prisma.transaksiSewa.findFirst({
-      where: {
-        unitId: createTransaksiDto.unitId,
-        status: { in: [StatusTransaksi.AKTIF] },
-        OR: [
-          {
-            tanggalMulai: { lte: tanggalMulai },
-            tanggalSelesai: { gte: tanggalMulai },
-          },
-          {
-            tanggalMulai: { lte: tanggalSelesai },
-            tanggalSelesai: { gte: tanggalSelesai },
-          },
-          {
-            tanggalMulai: { gte: tanggalMulai },
-            tanggalSelesai: { lte: tanggalSelesai },
-          },
-        ],
-      },
-    });
-
-    if (existingBooking) {
-      throw new BadRequestException('Unit motor sudah dipesan pada rentang waktu tersebut');
-    }
-
-    // Periksa apakah transaksi sebelumnya telah selesai selama minimal 1 jam
-    const oneHourAgo = new Date();
-    oneHourAgo.setHours(oneHourAgo.getHours() - 1);
-
-    const recentTransaction = await this.prisma.transaksiSewa.findFirst({
-      where: {
-        unitId: createTransaksiDto.unitId,
-        status: StatusTransaksi.SELESAI,
-        updatedAt: { gte: oneHourAgo }
-      },
-      orderBy: { updatedAt: 'desc' },
-    });
-
-    if (recentTransaction) {
-      const waktuPengembalian = recentTransaction.updatedAt;
-      const waktuSetelahSatuJam = new Date(waktuPengembalian);
-      waktuSetelahSatuJam.setHours(waktuSetelahSatuJam.getHours() + 1);
-      
-      throw new BadRequestException(
-        `Unit motor baru saja dikembalikan. Silakan pesan setelah ${waktuSetelahSatuJam.toLocaleTimeString('id-ID')}`,
-      );
-    }
-
-    // Hitung total biaya jika tidak disediakan
-    let totalBiaya = createTransaksiDto.totalBiaya;
-    if (!totalBiaya) {
-      // Gabungkan tanggal dan jam untuk perhitungan yang lebih akurat
-      const tanggalJamMulai = new Date(tanggalMulai);
-      const tanggalJamSelesai = new Date(tanggalSelesai);
-      
-      // Set jam dari parameter
-      const [jamMulaiHour, jamMulaiMinute] = createTransaksiDto.jamMulai.split(':').map(Number);
-      const [jamSelesaiHour, jamSelesaiMinute] = createTransaksiDto.jamSelesai.split(':').map(Number);
-      
-      tanggalJamMulai.setHours(jamMulaiHour, jamMulaiMinute, 0, 0);
-      tanggalJamSelesai.setHours(jamSelesaiHour, jamSelesaiMinute, 0, 0);
-      
-      // Hitung total jam
-      const diffHours = Math.max(1, Math.ceil((tanggalJamSelesai.getTime() - tanggalJamMulai.getTime()) / (1000 * 60 * 60)));
-      
-      // Hitung jumlah hari penuh dan jam tambahan
-      let fullDays = Math.floor(diffHours / 24);
-      let extraHours = diffHours % 24;
-      
-      // Jika keterlambatan lebih dari 6 jam, dihitung sebagai 1 hari penuh
-      if (extraHours > 6) {
-        fullDays += 1;
-        extraHours = 0;
-      }
-      
-      // Hitung biaya
-      const hargaSewaPerHari = Number(unitMotor.hargaSewa);
-      const dendaPerJam = 15000; // Tarif denda per jam
-      
-      // Hitung total biaya: hari penuh + biaya keterlambatan
-      const baseDailyPrice = fullDays * hargaSewaPerHari;
-      const overduePrice = extraHours > 0 ? extraHours * dendaPerJam : 0;
-      
-      totalBiaya = baseDailyPrice + overduePrice;
-      
-      // Jas hujan dan helm gratis, tidak perlu ditambahkan ke total biaya
-    }
-
     try {
+      // Pastikan unit motor ada
+      const unitMotor = await verifyUnitMotorExists(createTransaksiDto.unitId, this.prisma, this.logger);
+
+      // Periksa ketersediaan unit pada rentang waktu tertentu
+      const tanggalMulai = new Date(createTransaksiDto.tanggalMulai);
+      const tanggalSelesai = new Date(createTransaksiDto.tanggalSelesai);
+
+      // Verifikasi ketersediaan
+      await verifyUnitMotorAvailability(
+        createTransaksiDto.unitId,
+        tanggalMulai,
+        tanggalSelesai,
+        null, // tidak ada transaksi ID karena ini pembuatan baru
+        this.prisma,
+        this.logger
+      );
+
+      // Hitung total biaya jika tidak disediakan
+      let totalBiaya = createTransaksiDto.totalBiaya;
+      if (!totalBiaya) {
+        totalBiaya = hitungTotalBiaya(
+          tanggalMulai,
+          tanggalSelesai,
+          createTransaksiDto.jamMulai || '08:00',
+          createTransaksiDto.jamSelesai || '08:00',
+          Number(unitMotor.hargaSewa),
+          this.logger
+        );
+      }
+
+      this.logger.log(`Total biaya sewa: ${totalBiaya}`, 'TransaksiService.create');
+
       // Mulai transaksi
       const result = await this.prisma.$transaction(async tx => {
         // Update status motor menjadi DIPESAN jika tanggal mulai di masa depan
@@ -239,7 +165,7 @@ export class TransaksiService {
           data: { status: newStatus },
         });
 
-        // Buat transaksi sewa
+        // Buat transaksi sewa dengan default values untuk fields yang tidak ada di DTO
         const transaksi = await tx.transaksiSewa.create({
           data: {
             namaPenyewa: createTransaksiDto.namaPenyewa,
@@ -249,11 +175,11 @@ export class TransaksiService {
             tanggalSelesai,
             jamMulai: createTransaksiDto.jamMulai || '08:00',
             jamSelesai: createTransaksiDto.jamSelesai || '08:00',
-            jasHujan: createTransaksiDto.jasHujan || 0,
-            helm: createTransaksiDto.helm || 0,
+            helm: 1, // default values
+            jasHujan: 0, // default values
+            status: StatusTransaksi.AKTIF,
             totalBiaya,
-            biayaDenda: 0,
-          } as any,
+          },
           include: {
             unitMotor: {
               include: {
@@ -263,238 +189,196 @@ export class TransaksiService {
           },
         });
 
+        // Tambahkan ke antrian untuk pemrosesan asinkron (seperti notifikasi, dll)
+        if (this.transaksiQueue) {
+          await this.transaksiQueue.add('transaksi-created', { id: transaksi.id });
+        }
+
+        // Kirim notifikasi melalui WebSocket
+        try {
+          // Menggunakan method yang tersedia
+          this.notificationGateway.sendMotorStatusNotification({
+            id: transaksi.unitId,
+            status: StatusMotor.DISEWA,
+            platNomor: transaksi.unitId, // Gunakan data yang tersedia
+            message: `Transaksi baru: ${transaksi.namaPenyewa}`,
+          });
+        } catch (wsError) {
+          this.logger.error(`Gagal mengirim notifikasi WebSocket: ${wsError.message}`);
+        }
+
         return transaksi;
       });
 
-      // Kirim notifikasi WhatsApp
-      await this.transaksiQueue.add('kirim-notifikasi-booking', {
-        transaksiId: result.id,
-      });
-
-      // Kirim notifikasi real-time ke admin
-      this.notificationGateway.sendNewTransactionNotification({
-        id: result.id,
-        namaPenyewa: result.namaPenyewa,
-        noWhatsapp: result.noWhatsapp,
-        unitMotor: result.unitMotor,
-        tanggalMulai: result.tanggalMulai,
-        tanggalSelesai: result.tanggalSelesai,
-        totalBiaya: result.totalBiaya,
-      });
-      
-      // Kirim notifikasi fasilitas jika ada penggunaan fasilitas
-      if ((result as any).jasHujan > 0 || (result as any).helm > 0) {
-        this.notificationGateway.sendFasilitasNotification({
-          id: result.id,
-          namaPenyewa: result.namaPenyewa,
-          jasHujan: (result as any).jasHujan,
-          helm: (result as any).helm,
-          message: `Transaksi baru menggunakan ${(result as any).jasHujan} jas hujan dan ${(result as any).helm} helm`,
-        });
-      }
-
-      // Jadwalkan pengingat sebelum pengembalian
-      const reminderTime = new Date(tanggalSelesai);
-      reminderTime.setHours(reminderTime.getHours() - 1);
-
-      await this.transaksiQueue.add(
-        'kirim-pengingat-pengembalian',
-        { transaksiId: result.id },
-        { delay: reminderTime.getTime() - Date.now() },
-      );
-
-      // Jadwalkan pengecekan overdue
-      const overdueTime = new Date(tanggalSelesai);
-      overdueTime.setHours(overdueTime.getHours() + 1);
-
-      await this.transaksiQueue.add(
-        'cek-overdue',
-        { transaksiId: result.id },
-        { delay: overdueTime.getTime() - Date.now() },
-      );
-
       return result;
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        this.logger.error('Gagal membuat transaksi sewa:', error.message);
-      }
-      throw new InternalServerErrorException('Gagal membuat transaksi sewa');
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal membuat transaksi');
     }
   }
 
   async update(id: string, updateTransaksiDto: UpdateTransaksiDto) {
-    // Periksa apakah transaksi ada
-    const transaksi = await this.prisma.transaksiSewa.findUnique({
-      where: { id },
-      include: {
-        unitMotor: true,
-      },
-    });
-
-    if (!transaksi) {
-      throw new NotFoundException(`Transaksi dengan ID ${id} tidak ditemukan`);
-    }
-
     try {
-      // Jika mengubah unit, periksa unit baru
-      if (updateTransaksiDto.unitId && updateTransaksiDto.unitId !== transaksi.unitId) {
-        const newUnitMotor = await this.prisma.unitMotor.findUnique({
-          where: { id: updateTransaksiDto.unitId },
-        });
+      // Periksa apakah transaksi ada
+      const existingTransaksi = await verifyTransaksiExists(id, this.prisma, this.logger);
 
-        if (!newUnitMotor) {
-          throw new BadRequestException(
-            `Unit motor dengan ID ${updateTransaksiDto.unitId} tidak ditemukan`,
-          );
-        }
+      // Tidak mengizinkan mengubah unit motor jika transaksi sudah aktif
+      if (
+        updateTransaksiDto.unitId &&
+        updateTransaksiDto.unitId !== existingTransaksi.unitId &&
+        existingTransaksi.status === StatusTransaksi.AKTIF
+      ) {
+        throw new BadRequestException('Tidak dapat mengubah unit motor pada transaksi yang aktif');
       }
 
-      // Jika mengubah tanggal, periksa konflik booking
-      let tanggalMulai = transaksi.tanggalMulai;
-      let tanggalSelesai = transaksi.tanggalSelesai;
-
-      if (updateTransaksiDto.tanggalMulai) {
-        tanggalMulai = new Date(updateTransaksiDto.tanggalMulai);
-      }
-
-      if (updateTransaksiDto.tanggalSelesai) {
-        tanggalSelesai = new Date(updateTransaksiDto.tanggalSelesai);
-      }
-
-      if (tanggalMulai >= tanggalSelesai) {
-        throw new BadRequestException('Tanggal mulai harus sebelum tanggal selesai');
-      }
-
-      // Periksa konflik booking jika mengubah unit atau tanggal
+      // Periksa ketersediaan jika mengubah unitId, tanggalMulai, atau tanggalSelesai
       if (
         updateTransaksiDto.unitId ||
         updateTransaksiDto.tanggalMulai ||
         updateTransaksiDto.tanggalSelesai
       ) {
-        const existingBooking = await this.prisma.transaksiSewa.findFirst({
-          where: {
-            id: { not: id },
-            unitId: updateTransaksiDto.unitId || transaksi.unitId,
-            status: { in: [StatusTransaksi.AKTIF] },
-            OR: [
-              {
-                tanggalMulai: { lte: tanggalMulai },
-                tanggalSelesai: { gte: tanggalMulai },
-              },
-              {
-                tanggalMulai: { lte: tanggalSelesai },
-                tanggalSelesai: { gte: tanggalSelesai },
-              },
-              {
-                tanggalMulai: { gte: tanggalMulai },
-                tanggalSelesai: { lte: tanggalSelesai },
-              },
-            ],
-          },
-        });
+        const unitId = updateTransaksiDto.unitId || existingTransaksi.unitId;
+        const tanggalMulai = updateTransaksiDto.tanggalMulai
+          ? new Date(updateTransaksiDto.tanggalMulai)
+          : existingTransaksi.tanggalMulai;
+        const tanggalSelesai = updateTransaksiDto.tanggalSelesai
+          ? new Date(updateTransaksiDto.tanggalSelesai)
+          : existingTransaksi.tanggalSelesai;
 
-        if (existingBooking) {
-          throw new BadRequestException('Unit motor sudah dipesan pada rentang waktu tersebut');
-        }
+        // Verifikasi ketersediaan
+        await verifyUnitMotorAvailability(
+          unitId,
+          tanggalMulai,
+          tanggalSelesai,
+          id, // exclude current transaction
+          this.prisma,
+          this.logger
+        );
       }
 
-      // Hitung total biaya jika tanggal berubah
+      // Hitung total biaya jika parameter yang memengaruhi biaya diubah
+      let totalBiaya = updateTransaksiDto.totalBiaya;
       if (
-        updateTransaksiDto.tanggalMulai || 
-        updateTransaksiDto.tanggalSelesai || 
-        updateTransaksiDto.jamMulai ||
-        updateTransaksiDto.jamSelesai ||
-        updateTransaksiDto.jasHujan !== undefined || 
-        updateTransaksiDto.helm !== undefined
+        !totalBiaya &&
+        (updateTransaksiDto.tanggalMulai ||
+          updateTransaksiDto.tanggalSelesai ||
+          updateTransaksiDto.jamMulai ||
+          updateTransaksiDto.jamSelesai ||
+          updateTransaksiDto.unitId)
       ) {
-        // Gabungkan tanggal dan jam untuk perhitungan yang lebih akurat
-        const tanggalJamMulai = new Date(tanggalMulai);
-        const tanggalJamSelesai = new Date(tanggalSelesai);
-        
-        // Set jam dari parameter atau gunakan nilai yang sudah ada
-        const jamMulai = updateTransaksiDto.jamMulai || (transaksi as any).jamMulai || '08:00';
-        const jamSelesai = updateTransaksiDto.jamSelesai || (transaksi as any).jamSelesai || '08:00';
-        
-        const [jamMulaiHour, jamMulaiMinute] = jamMulai.split(':').map(Number);
-        const [jamSelesaiHour, jamSelesaiMinute] = jamSelesai.split(':').map(Number);
-        
-        tanggalJamMulai.setHours(jamMulaiHour, jamMulaiMinute, 0, 0);
-        tanggalJamSelesai.setHours(jamSelesaiHour, jamSelesaiMinute, 0, 0);
-        
-        // Hitung total jam
-        const diffHours = Math.max(1, Math.ceil((tanggalJamSelesai.getTime() - tanggalJamMulai.getTime()) / (1000 * 60 * 60)));
-        
-        // Hitung jumlah hari penuh dan jam tambahan
-        let fullDays = Math.floor(diffHours / 24);
-        let extraHours = diffHours % 24;
-        
-        // Jika keterlambatan lebih dari 6 jam, dihitung sebagai 1 hari penuh
-        if (extraHours > 6) {
-          fullDays += 1;
-          extraHours = 0;
-        }
-        
-        // Hitung biaya
-        const hargaSewaPerHari = Number(transaksi.unitMotor.hargaSewa);
-        const dendaPerJam = 15000; // Tarif denda per jam
-        
-        // Hitung total biaya: hari penuh + biaya keterlambatan
-        const baseDailyPrice = fullDays * hargaSewaPerHari;
-        const overduePrice = extraHours > 0 ? extraHours * dendaPerJam : 0;
-        
-        updateTransaksiDto.totalBiaya = baseDailyPrice + overduePrice;
-        
-        // Jas hujan dan helm gratis, tidak perlu ditambahkan ke total biaya
+        const unitId = updateTransaksiDto.unitId || existingTransaksi.unitId;
+        const unitMotor = await verifyUnitMotorExists(unitId, this.prisma, this.logger);
+
+        const tanggalMulai = updateTransaksiDto.tanggalMulai
+          ? new Date(updateTransaksiDto.tanggalMulai)
+          : existingTransaksi.tanggalMulai;
+        const tanggalSelesai = updateTransaksiDto.tanggalSelesai
+          ? new Date(updateTransaksiDto.tanggalSelesai)
+          : existingTransaksi.tanggalSelesai;
+        const jamMulai = updateTransaksiDto.jamMulai || existingTransaksi.jamMulai;
+        const jamSelesai = updateTransaksiDto.jamSelesai || existingTransaksi.jamSelesai;
+
+        totalBiaya = hitungTotalBiaya(
+          tanggalMulai,
+          tanggalSelesai,
+          jamMulai,
+          jamSelesai,
+          Number(unitMotor.hargaSewa),
+          this.logger
+        );
       }
 
-      // Update transaksi
-      const updatedData: any = {
+      // Persiapkan data yang akan diperbarui
+      const updateData: any = {
         ...(updateTransaksiDto.namaPenyewa && { namaPenyewa: updateTransaksiDto.namaPenyewa }),
         ...(updateTransaksiDto.noWhatsapp && { noWhatsapp: updateTransaksiDto.noWhatsapp }),
         ...(updateTransaksiDto.unitId && { unitId: updateTransaksiDto.unitId }),
-        ...(updateTransaksiDto.tanggalMulai && { tanggalMulai: tanggalMulai }),
-        ...(updateTransaksiDto.tanggalSelesai && { tanggalSelesai: tanggalSelesai }),
+        ...(updateTransaksiDto.tanggalMulai && {
+          tanggalMulai: new Date(updateTransaksiDto.tanggalMulai),
+        }),
+        ...(updateTransaksiDto.tanggalSelesai && {
+          tanggalSelesai: new Date(updateTransaksiDto.tanggalSelesai),
+        }),
         ...(updateTransaksiDto.jamMulai && { jamMulai: updateTransaksiDto.jamMulai }),
         ...(updateTransaksiDto.jamSelesai && { jamSelesai: updateTransaksiDto.jamSelesai }),
-        ...(updateTransaksiDto.jasHujan !== undefined && { jasHujan: updateTransaksiDto.jasHujan }),
-        ...(updateTransaksiDto.helm !== undefined && { helm: updateTransaksiDto.helm }),
-        ...(updateTransaksiDto.totalBiaya && { totalBiaya: updateTransaksiDto.totalBiaya }),
         ...(updateTransaksiDto.status && { status: updateTransaksiDto.status }),
+        ...(totalBiaya && { totalBiaya }),
       };
 
-      return this.prisma.transaksiSewa.update({
-        where: { id },
-        data: updatedData,
-        include: {
-          unitMotor: {
-            include: {
-              jenis: true,
-            },
-          },
-        },
-      });
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        this.logger.error(`Gagal memperbarui transaksi: ${error.message}`);
+      // Jika tidak ada data yang diperbarui, kembalikan transaksi yang ada
+      if (Object.keys(updateData).length === 0) {
+        return existingTransaksi;
       }
-      throw new InternalServerErrorException('Gagal memperbarui transaksi');
+
+      let result;
+      
+      // Update transaksi dan status unit motor jika diperlukan dalam transaksi database
+      if (updateTransaksiDto.status === StatusTransaksi.SELESAI) {
+        // Jika status diubah menjadi SELESAI, panggil method selesaiSewa
+        result = await this.selesaiSewa(id);
+      } else {
+        result = await this.prisma.$transaction(async tx => {
+          // Jika unitId berubah, update status motor lama dan baru
+          if (updateTransaksiDto.unitId && updateTransaksiDto.unitId !== existingTransaksi.unitId) {
+            // Update status motor lama menjadi tersedia
+            await tx.unitMotor.update({
+              where: { id: existingTransaksi.unitId },
+              data: { status: StatusMotor.TERSEDIA },
+            });
+
+            // Update status motor baru
+            const tanggalMulai = updateTransaksiDto.tanggalMulai
+              ? new Date(updateTransaksiDto.tanggalMulai)
+              : existingTransaksi.tanggalMulai;
+            const now = new Date();
+            const isToday = tanggalMulai.toDateString() === now.toDateString();
+            const newStatus = isToday ? StatusMotor.DISEWA : StatusMotor.DIPESAN;
+
+            await tx.unitMotor.update({
+              where: { id: updateTransaksiDto.unitId },
+              data: { status: newStatus },
+            });
+          } else if (
+            updateTransaksiDto.tanggalMulai &&
+            existingTransaksi.status === StatusTransaksi.AKTIF
+          ) {
+            // Jika tanggal mulai berubah, mungkin perlu update status motor
+            const tanggalMulai = new Date(updateTransaksiDto.tanggalMulai);
+            const now = new Date();
+            const isToday = tanggalMulai.toDateString() === now.toDateString();
+            const newStatus = isToday ? StatusMotor.DISEWA : StatusMotor.DIPESAN;
+
+            await tx.unitMotor.update({
+              where: { id: existingTransaksi.unitId },
+              data: { status: newStatus },
+            });
+          }
+
+          // Update transaksi
+          return tx.transaksiSewa.update({
+            where: { id },
+            data: updateData,
+            include: {
+              unitMotor: {
+                include: {
+                  jenis: true,
+                },
+              },
+            },
+          });
+        });
+      }
+
+      return result;
+    } catch (error) {
+      return handleError(this.logger, error, `Gagal memperbarui transaksi dengan ID ${id}`);
     }
   }
 
   async remove(id: string) {
-    // Periksa apakah transaksi ada
-    const transaksi = await this.prisma.transaksiSewa.findUnique({
-      where: { id },
-      include: {
-        unitMotor: true,
-      },
-    });
-
-    if (!transaksi) {
-      throw new NotFoundException(`Transaksi dengan ID ${id} tidak ditemukan`);
-    }
-
     try {
+      // Periksa apakah transaksi ada
+      const transaksi = await verifyTransaksiExists(id, this.prisma, this.logger);
+
       // Hapus transaksi dan update status motor
       return await this.prisma.$transaction(async tx => {
         // Hapus transaksi
@@ -520,33 +404,20 @@ export class TransaksiService {
 
         return { message: 'Transaksi berhasil dihapus' };
       });
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        this.logger.error('Gagal menghapus transaksi sewa:', error.message);
-      }
-      throw new InternalServerErrorException('Gagal menghapus transaksi sewa');
+    } catch (error) {
+      return handleError(this.logger, error, `Gagal menghapus transaksi dengan ID ${id}`);
     }
   }
 
   async selesaiSewa(id: string) {
-    const transaksi = await this.prisma.transaksiSewa.findUnique({
-      where: { id },
-      include: {
-        unitMotor: true,
-      },
-    });
-
-    if (!transaksi) {
-      throw new NotFoundException(`Transaksi dengan ID ${id} tidak ditemukan`);
-    }
-
-    if (transaksi.status === StatusTransaksi.SELESAI) {
-      throw new BadRequestException('Transaksi sewa ini sudah selesai');
-    }
-
     try {
+      const transaksi = await verifyTransaksiExists(id, this.prisma, this.logger);
+      
+      // Verifikasi transaksi dapat diselesaikan
+      verifyCanCompleteTransaksi(transaksi, this.logger);
+
       // Hitung denda jika ada
-      const biayaDenda = await this.hitungDenda(transaksi);
+      const biayaDenda = hitungDenda(transaksi, this.logger);
 
       // Mulai transaksi
       const result = await this.prisma.$transaction(async tx => {
@@ -599,146 +470,111 @@ export class TransaksiService {
 
       return result;
     } catch (error) {
-      this.logger.error(`Error saat menyelesaikan sewa: ${error.message}`, error.stack);
-      throw new InternalServerErrorException('Gagal menyelesaikan sewa');
+      return handleError(this.logger, error, `Gagal menyelesaikan sewa dengan ID ${id}`);
     }
-  }
-
-  /**
-   * Hitung denda keterlambatan pengembalian
-   * Denda: Rp 15.000 per jam untuk keterlambatan 1-6 jam
-   * Keterlambatan > 6 jam dihitung sebagai tambahan 1 hari
-   */
-  private async hitungDenda(transaksi: any): Promise<number> {
-    const now = new Date();
-    const tanggalSelesai = new Date(transaksi.tanggalSelesai);
-    
-    // Tambahkan jam selesai ke tanggal selesai
-    const [jamSelesai, menitSelesai] = transaksi.jamSelesai.split(':').map(Number);
-    tanggalSelesai.setHours(jamSelesai, menitSelesai, 0, 0);
-
-    // Jika waktu saat ini belum melewati waktu selesai, tidak ada denda
-    if (now <= tanggalSelesai) {
-      return 0;
-    }
-
-    // Hitung selisih jam, dibulatkan ke atas
-    const diffMs = now.getTime() - tanggalSelesai.getTime();
-    const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
-    
-    // Hitung jumlah hari penuh dan jam tambahan
-    let fullDays = Math.floor(diffHours / 24);
-    let extraHours = diffHours % 24;
-    
-    // Jika keterlambatan lebih dari 6 jam, dihitung sebagai 1 hari penuh
-    if (extraHours > 6) {
-      fullDays += 1;
-      extraHours = 0;
-    }
-    
-    // Hitung denda
-    const hargaSewaPerHari = Number(transaksi.unitMotor.hargaSewa);
-    const dendaPerJam = 15000; // Tarif denda per jam
-    
-    // Denda: (hari penuh * harga sewa per hari) + (jam ekstra * denda per jam)
-    const totalDenda = (fullDays * hargaSewaPerHari) + (extraHours * dendaPerJam);
-
-    return totalDenda;
   }
 
   /**
    * Mendapatkan laporan denda
    */
   async getLaporanDenda(startDate: string, endDate: string) {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    
-    // Set end date to end of day
-    end.setHours(23, 59, 59, 999);
-    
-    // Gunakan where kondisi yang dinamis untuk menghindari error linter
-    const whereClause: any = {
-      status: StatusTransaksi.SELESAI,
-      biayaDenda: { gt: 0 },
-      updatedAt: {
-        gte: start,
-        lte: end,
-      },
-    };
-    
-    const transaksiDengan = await this.prisma.transaksiSewa.findMany({
-      where: whereClause,
-      include: {
-        unitMotor: {
-          include: {
-            jenis: true,
+    try {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      // Set end date to end of day
+      end.setHours(23, 59, 59, 999);
+      
+      // Gunakan where kondisi yang dinamis untuk menghindari error linter
+      const whereClause: any = {
+        status: StatusTransaksi.SELESAI,
+        biayaDenda: { gt: 0 },
+        updatedAt: {
+          gte: start,
+          lte: end,
+        },
+      };
+      
+      const transaksiDengan = await this.prisma.transaksiSewa.findMany({
+        where: whereClause,
+        include: {
+          unitMotor: {
+            include: {
+              jenis: true,
+            },
           },
         },
-      },
-      orderBy: { updatedAt: 'desc' },
-    });
-    
-    const totalDenda = transaksiDengan.reduce(
-      (total, transaksi) => total + Number((transaksi as any).biayaDenda),
-      0,
-    );
-    
-    return {
-      data: transaksiDengan,
-      totalDenda,
-      periode: {
-        mulai: start,
-        selesai: end,
-      },
-    };
+        orderBy: { updatedAt: 'desc' },
+      });
+      
+      const totalDenda = transaksiDengan.reduce(
+        (total, transaksi) => total + Number((transaksi as any).biayaDenda),
+        0,
+      );
+      
+      return {
+        data: transaksiDengan,
+        totalDenda,
+        periode: {
+          mulai: start,
+          selesai: end,
+        },
+      };
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal mendapatkan laporan denda');
+    }
   }
   
   /**
    * Mendapatkan laporan penggunaan fasilitas
    */
   async getLaporanFasilitas(startDate: string, endDate: string) {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    
-    // Set end date to end of day
-    end.setHours(23, 59, 59, 999);
-    
-    // Gunakan where kondisi yang dinamis untuk menghindari error linter
-    const whereClause: any = {
-      updatedAt: {
-        gte: start,
-        lte: end,
-      },
-      OR: [
-        { jasHujan: { gt: 0 } },
-        { helm: { gt: 0 } },
-      ],
-    };
-    
-    const transaksi = await this.prisma.transaksiSewa.findMany({
-      where: whereClause,
-      orderBy: { updatedAt: 'desc' },
-    });
-    
-    const totalJasHujan = transaksi.reduce(
-      (total, transaksi) => total + (transaksi as any).jasHujan,
-      0,
-    );
-    
-    const totalHelm = transaksi.reduce(
-      (total, transaksi) => total + (transaksi as any).helm,
-      0,
-    );
-    
-    return {
-      data: transaksi,
-      totalJasHujan,
-      totalHelm,
-      periode: {
-        mulai: start,
-        selesai: end,
-      },
-    };
+    try {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      // Set end date to end of day
+      end.setHours(23, 59, 59, 999);
+      
+      // Gunakan where kondisi yang dinamis untuk menghindari error linter
+      const whereClause: any = {
+        updatedAt: {
+          gte: start,
+          lte: end,
+        },
+        OR: [
+          { jasHujan: { gt: 0 } },
+          { helm: { gt: 0 } },
+        ],
+      };
+      
+      const transaksi = await this.prisma.transaksiSewa.findMany({
+        where: whereClause,
+        orderBy: { updatedAt: 'desc' },
+      });
+      
+      const totalJasHujan = transaksi.reduce(
+        (total, transaksi) => total + (transaksi as any).jasHujan,
+        0,
+      );
+      
+      const totalHelm = transaksi.reduce(
+        (total, transaksi) => total + (transaksi as any).helm,
+        0,
+      );
+      
+      return {
+        data: transaksi,
+        totalJasHujan,
+        totalHelm,
+        periode: {
+          mulai: start,
+          selesai: end,
+        },
+      };
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal mendapatkan laporan fasilitas');
+    }
   }
 
   async findByPhone(noHP: string) {
@@ -768,102 +604,112 @@ export class TransaksiService {
       this.logger.log(`Ditemukan ${transaksi.length} transaksi dengan nomor HP ${noHP}`);
       return transaksi;
     } catch (error) {
-      this.logger.error(`Error saat mencari transaksi dengan nomor HP ${noHP}:`, error.stack);
-      throw new InternalServerErrorException(`Gagal mencari transaksi: ${error.message}`);
+      return handleError(this.logger, error, `Gagal mencari transaksi dengan nomor HP ${noHP}`);
     }
   }
 
   // Fungsi kalkulasi harga untuk API endpoint
   async calculatePrice(calculatePriceDto: CalculatePriceDto) {
-    // Validasi tanggal
-    const tanggalMulai = new Date(calculatePriceDto.tanggalMulai);
-    const tanggalSelesai = new Date(calculatePriceDto.tanggalSelesai);
-
-    if (tanggalMulai >= tanggalSelesai) {
-      throw new BadRequestException('Tanggal mulai harus sebelum tanggal selesai');
-    }
-
-    // Pastikan unit motor ada
-    const unitMotor = await this.prisma.unitMotor.findUnique({
-      where: { id: calculatePriceDto.unitId },
-      include: {
-        jenis: true,
+    try {
+      // Validasi input
+      if (!calculatePriceDto.unitId) {
+        throw new BadRequestException('ID unit motor harus disediakan');
       }
-    });
 
-    if (!unitMotor) {
-      throw new BadRequestException(
-        `Unit motor dengan ID ${calculatePriceDto.unitId} tidak ditemukan`,
+      if (!calculatePriceDto.tanggalMulai || !calculatePriceDto.tanggalSelesai) {
+        throw new BadRequestException('Tanggal mulai dan selesai harus disediakan');
+      }
+
+      // Ambil informasi unit motor
+      const unitMotor = await verifyUnitMotorExists(calculatePriceDto.unitId, this.prisma, this.logger);
+
+      // Konversi tanggal ke objek Date
+      const tanggalMulai = new Date(calculatePriceDto.tanggalMulai);
+      const tanggalSelesai = new Date(calculatePriceDto.tanggalSelesai);
+
+      if (isNaN(tanggalMulai.getTime()) || isNaN(tanggalSelesai.getTime())) {
+        throw new BadRequestException('Format tanggal tidak valid');
+      }
+
+      if (tanggalMulai >= tanggalSelesai) {
+        throw new BadRequestException('Tanggal mulai harus sebelum tanggal selesai');
+      }
+
+      // Gunakan helper function untuk menghitung biaya
+      const jamMulai = calculatePriceDto.jamMulai || '08:00';
+      const jamSelesai = calculatePriceDto.jamSelesai || '08:00';
+      const hargaSewaPerHari = Number(unitMotor.hargaSewa);
+      
+      // Gabungkan tanggal dan jam untuk perhitungan yang lebih akurat
+      const tanggalJamMulai = new Date(tanggalMulai);
+      const tanggalJamSelesai = new Date(tanggalSelesai);
+      
+      // Set jam dari parameter
+      const [jamMulaiHour, jamMulaiMinute] = jamMulai.split(':').map(Number);
+      const [jamSelesaiHour, jamSelesaiMinute] = jamSelesai.split(':').map(Number);
+      
+      tanggalJamMulai.setHours(jamMulaiHour, jamMulaiMinute, 0, 0);
+      tanggalJamSelesai.setHours(jamSelesaiHour, jamSelesaiMinute, 0, 0);
+      
+      // Hitung total jam
+      const diffHours = Math.max(1, Math.ceil((tanggalJamSelesai.getTime() - tanggalJamMulai.getTime()) / (1000 * 60 * 60)));
+      
+      // Hitung jumlah hari penuh dan jam tambahan
+      let fullDays = Math.floor(diffHours / 24);
+      let extraHours = diffHours % 24;
+      
+      // Jika keterlambatan lebih dari 6 jam, dihitung sebagai 1 hari penuh
+      if (extraHours > 6) {
+        fullDays += 1;
+        extraHours = 0;
+      }
+      
+      // Hitung biaya menggunakan helper function
+      const totalBiaya = hitungTotalBiaya(
+        tanggalMulai,
+        tanggalSelesai,
+        jamMulai,
+        jamSelesai,
+        hargaSewaPerHari,
+        this.logger
       );
-    }
 
-    // Gabungkan tanggal dan jam untuk perhitungan yang lebih akurat
-    const tanggalJamMulai = new Date(tanggalMulai);
-    const tanggalJamSelesai = new Date(tanggalSelesai);
-    
-    // Set jam dari parameter
-    const [jamMulaiHour, jamMulaiMinute] = calculatePriceDto.jamMulai.split(':').map(Number);
-    const [jamSelesaiHour, jamSelesaiMinute] = calculatePriceDto.jamSelesai.split(':').map(Number);
-    
-    tanggalJamMulai.setHours(jamMulaiHour, jamMulaiMinute, 0, 0);
-    tanggalJamSelesai.setHours(jamSelesaiHour, jamSelesaiMinute, 0, 0);
-    
-    // Hitung total jam
-    const diffHours = Math.max(1, Math.ceil((tanggalJamSelesai.getTime() - tanggalJamMulai.getTime()) / (1000 * 60 * 60)));
-    
-    // Hitung jumlah hari penuh dan jam tambahan
-    let fullDays = Math.floor(diffHours / 24);
-    let extraHours = diffHours % 24;
-    
-    // Jika keterlambatan lebih dari 6 jam, dihitung sebagai 1 hari penuh
-    if (extraHours > 6) {
-      fullDays += 1;
-      extraHours = 0;
+      // Hitung komponen biaya untuk detail
+      const dendaPerJam = process.env.DENDA_PER_JAM; // Tarif denda per jam
+      const baseDailyPrice = fullDays * hargaSewaPerHari;
+      const overduePrice = extraHours > 0 ? extraHours * Number(dendaPerJam) : 0;
+
+      const jenisMotorData = await this.prisma.jenisMotor.findUnique({
+        where: { id: unitMotor.jenisId },
+      });
+
+      return {
+        unitMotor: {
+          id: unitMotor.id,
+          platNomor: unitMotor.platNomor,
+          jenisMotor: {
+            merk: jenisMotorData?.merk || '',
+            model: jenisMotorData?.model || '',
+            cc: jenisMotorData?.cc || 0,
+          },
+          hargaSewa: unitMotor.hargaSewa,
+        },
+        detailPerhitungan: {
+          tanggalMulai: tanggalMulai.toISOString(),
+          tanggalSelesai: tanggalSelesai.toISOString(),
+          jamMulai,
+          jamSelesai,
+          totalJam: diffHours,
+          jumlahHari: fullDays,
+          jamTambahan: extraHours,
+          biayaPerHari: hargaSewaPerHari,
+          biayaHarian: baseDailyPrice,
+          biayaKeterlambatan: overduePrice,
+        },
+        totalBiaya,
+      };
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal menghitung harga sewa');
     }
-    
-    // Hitung biaya
-    const hargaSewaPerHari = Number(unitMotor.hargaSewa);
-    const dendaPerJam = 15000; // Tarif denda per jam
-    
-    // Hitung total biaya: hari penuh + biaya keterlambatan
-    const baseDailyPrice = fullDays * hargaSewaPerHari;
-    const overduePrice = extraHours > 0 ? extraHours * dendaPerJam : 0;
-    
-    // Jas hujan dan helm gratis, tidak menambahkan biaya
-    let totalBiaya = baseDailyPrice + overduePrice;
-    
-    // Biaya fasilitas (gratis)
-    const biayaJasHujan = 0; // Gratis
-    const biayaHelm = 0; // Gratis
-    
-    // Kembalikan hasil perhitungan
-    return {
-      unitMotor,
-      tanggalMulai: tanggalJamMulai,
-      tanggalSelesai: tanggalJamSelesai,
-      jamMulai: calculatePriceDto.jamMulai,
-      jamSelesai: calculatePriceDto.jamSelesai,
-      durasi: {
-        totalHours: diffHours,
-        fullDays,
-        extraHours,
-        isOverdue: extraHours > 0,
-        isExtraHoursCalculatedAsFullDay: extraHours > 6
-      },
-      biaya: {
-        dasar: baseDailyPrice,
-        keterlambatan: overduePrice,
-        jasHujan: 0, // Gratis
-        helm: 0, // Gratis
-      },
-      totalBiaya,
-      rincian: {
-        hargaPerHari: hargaSewaPerHari,
-        dendaPerJam,
-        biayaJasHujan,
-        biayaHelm,
-        kebijakanKeterlambatan: "Keterlambatan 1-6 jam dikenakan biaya Rp 15.000/jam. Keterlambatan > 6 jam dihitung sebagai tambahan 1 hari."
-      }
-    };
   }
 }
