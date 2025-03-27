@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { UnitMotorService } from '../../unit-motor/services/unit-motor.service';
-import { CreateTransaksiDto, UpdateTransaksiDto, FilterTransaksiDto } from '../dto/index';
+import { CreateTransaksiDto, UpdateTransaksiDto, FilterTransaksiDto, CalculatePriceDto } from '../dto/index';
 import { StatusMotor, StatusTransaksi } from '../../../common/enums/status.enum';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bullmq';
@@ -186,22 +186,41 @@ export class TransaksiService {
     // Hitung total biaya jika tidak disediakan
     let totalBiaya = createTransaksiDto.totalBiaya;
     if (!totalBiaya) {
-      const days = Math.ceil(
-        (tanggalSelesai.getTime() - tanggalMulai.getTime()) / (1000 * 3600 * 24),
-      );
-      totalBiaya = days * Number(unitMotor.hargaSewa);
+      // Gabungkan tanggal dan jam untuk perhitungan yang lebih akurat
+      const tanggalJamMulai = new Date(tanggalMulai);
+      const tanggalJamSelesai = new Date(tanggalSelesai);
       
-      // Tambahkan biaya jas hujan dan helm jika dipilih
-      const biayaJasHujan = 5000; // Rp 5.000 per jas hujan
-      const biayaHelm = 5000; // Rp 5.000 per helm
+      // Set jam dari parameter
+      const [jamMulaiHour, jamMulaiMinute] = createTransaksiDto.jamMulai.split(':').map(Number);
+      const [jamSelesaiHour, jamSelesaiMinute] = createTransaksiDto.jamSelesai.split(':').map(Number);
       
-      if (createTransaksiDto.jasHujan) {
-        totalBiaya += biayaJasHujan * createTransaksiDto.jasHujan;
+      tanggalJamMulai.setHours(jamMulaiHour, jamMulaiMinute, 0, 0);
+      tanggalJamSelesai.setHours(jamSelesaiHour, jamSelesaiMinute, 0, 0);
+      
+      // Hitung total jam
+      const diffHours = Math.max(1, Math.ceil((tanggalJamSelesai.getTime() - tanggalJamMulai.getTime()) / (1000 * 60 * 60)));
+      
+      // Hitung jumlah hari penuh dan jam tambahan
+      let fullDays = Math.floor(diffHours / 24);
+      let extraHours = diffHours % 24;
+      
+      // Jika keterlambatan lebih dari 6 jam, dihitung sebagai 1 hari penuh
+      if (extraHours > 6) {
+        fullDays += 1;
+        extraHours = 0;
       }
       
-      if (createTransaksiDto.helm) {
-        totalBiaya += biayaHelm * createTransaksiDto.helm;
-      }
+      // Hitung biaya
+      const hargaSewaPerHari = Number(unitMotor.hargaSewa);
+      const dendaPerJam = 15000; // Tarif denda per jam
+      
+      // Hitung total biaya: hari penuh + biaya keterlambatan
+      const baseDailyPrice = fullDays * hargaSewaPerHari;
+      const overduePrice = extraHours > 0 ? extraHours * dendaPerJam : 0;
+      
+      totalBiaya = baseDailyPrice + overduePrice;
+      
+      // Jas hujan dan helm gratis, tidak perlu ditambahkan ke total biaya
     }
 
     try {
@@ -383,34 +402,49 @@ export class TransaksiService {
       if (
         updateTransaksiDto.tanggalMulai || 
         updateTransaksiDto.tanggalSelesai || 
+        updateTransaksiDto.jamMulai ||
+        updateTransaksiDto.jamSelesai ||
         updateTransaksiDto.jasHujan !== undefined || 
         updateTransaksiDto.helm !== undefined
       ) {
-        const days = Math.ceil(
-          (tanggalSelesai.getTime() - tanggalMulai.getTime()) / (1000 * 3600 * 24),
-        );
+        // Gabungkan tanggal dan jam untuk perhitungan yang lebih akurat
+        const tanggalJamMulai = new Date(tanggalMulai);
+        const tanggalJamSelesai = new Date(tanggalSelesai);
+        
+        // Set jam dari parameter atau gunakan nilai yang sudah ada
+        const jamMulai = updateTransaksiDto.jamMulai || (transaksi as any).jamMulai || '08:00';
+        const jamSelesai = updateTransaksiDto.jamSelesai || (transaksi as any).jamSelesai || '08:00';
+        
+        const [jamMulaiHour, jamMulaiMinute] = jamMulai.split(':').map(Number);
+        const [jamSelesaiHour, jamSelesaiMinute] = jamSelesai.split(':').map(Number);
+        
+        tanggalJamMulai.setHours(jamMulaiHour, jamMulaiMinute, 0, 0);
+        tanggalJamSelesai.setHours(jamSelesaiHour, jamSelesaiMinute, 0, 0);
+        
+        // Hitung total jam
+        const diffHours = Math.max(1, Math.ceil((tanggalJamSelesai.getTime() - tanggalJamMulai.getTime()) / (1000 * 60 * 60)));
+        
+        // Hitung jumlah hari penuh dan jam tambahan
+        let fullDays = Math.floor(diffHours / 24);
+        let extraHours = diffHours % 24;
+        
+        // Jika keterlambatan lebih dari 6 jam, dihitung sebagai 1 hari penuh
+        if (extraHours > 6) {
+          fullDays += 1;
+          extraHours = 0;
+        }
+        
+        // Hitung biaya
         const hargaSewaPerHari = Number(transaksi.unitMotor.hargaSewa);
-        updateTransaksiDto.totalBiaya = days * hargaSewaPerHari;
+        const dendaPerJam = 15000; // Tarif denda per jam
         
-        // Tambahkan biaya fasilitas
-        const biayaJasHujan = 5000; // Rp 5.000 per jas hujan
-        const biayaHelm = 5000; // Rp 5.000 per helm
+        // Hitung total biaya: hari penuh + biaya keterlambatan
+        const baseDailyPrice = fullDays * hargaSewaPerHari;
+        const overduePrice = extraHours > 0 ? extraHours * dendaPerJam : 0;
         
-        const jasHujanCount = updateTransaksiDto.jasHujan !== undefined 
-          ? updateTransaksiDto.jasHujan 
-          : (transaksi as any).jasHujan || 0;
-          
-        const helmCount = updateTransaksiDto.helm !== undefined 
-          ? updateTransaksiDto.helm 
-          : (transaksi as any).helm || 0;
+        updateTransaksiDto.totalBiaya = baseDailyPrice + overduePrice;
         
-        if (jasHujanCount) {
-          updateTransaksiDto.totalBiaya += biayaJasHujan * jasHujanCount;
-        }
-        
-        if (helmCount) {
-          updateTransaksiDto.totalBiaya += biayaHelm * helmCount;
-        }
+        // Jas hujan dan helm gratis, tidak perlu ditambahkan ke total biaya
       }
 
       // Update transaksi
@@ -572,7 +606,8 @@ export class TransaksiService {
 
   /**
    * Hitung denda keterlambatan pengembalian
-   * Denda: Rp 15.000 per jam
+   * Denda: Rp 15.000 per jam untuk keterlambatan 1-6 jam
+   * Keterlambatan > 6 jam dihitung sebagai tambahan 1 hari
    */
   private async hitungDenda(transaksi: any): Promise<number> {
     const now = new Date();
@@ -591,9 +626,22 @@ export class TransaksiService {
     const diffMs = now.getTime() - tanggalSelesai.getTime();
     const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
     
-    // Denda: Rp 15.000 per jam
-    const dendaPerJam = 15000;
-    const totalDenda = diffHours * dendaPerJam;
+    // Hitung jumlah hari penuh dan jam tambahan
+    let fullDays = Math.floor(diffHours / 24);
+    let extraHours = diffHours % 24;
+    
+    // Jika keterlambatan lebih dari 6 jam, dihitung sebagai 1 hari penuh
+    if (extraHours > 6) {
+      fullDays += 1;
+      extraHours = 0;
+    }
+    
+    // Hitung denda
+    const hargaSewaPerHari = Number(transaksi.unitMotor.hargaSewa);
+    const dendaPerJam = 15000; // Tarif denda per jam
+    
+    // Denda: (hari penuh * harga sewa per hari) + (jam ekstra * denda per jam)
+    const totalDenda = (fullDays * hargaSewaPerHari) + (extraHours * dendaPerJam);
 
     return totalDenda;
   }
@@ -694,29 +742,128 @@ export class TransaksiService {
   }
 
   async findByPhone(noHP: string) {
-    if (!noHP) {
-      throw new BadRequestException('Nomor telepon harus diisi');
-    }
+    try {
+      if (!noHP) {
+        throw new BadRequestException('Nomor telepon harus diisi');
+      }
 
-    const transaksi = await this.prisma.transaksiSewa.findMany({
-      where: {
-        noWhatsapp: {
-          contains: noHP,
-          mode: 'insensitive' as const,
+      this.logger.log(`Mencari transaksi dengan nomor HP: ${noHP}`);
+
+      const transaksi = await this.prisma.transaksiSewa.findMany({
+        where: {
+          noWhatsapp: noHP,
         },
-      },
-      include: {
-        unitMotor: {
-          include: {
-            jenis: true,
+        include: {
+          unitMotor: {
+            include: {
+              jenis: true,
+            },
           },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+      this.logger.log(`Ditemukan ${transaksi.length} transaksi dengan nomor HP ${noHP}`);
+      return transaksi;
+    } catch (error) {
+      this.logger.error(`Error saat mencari transaksi dengan nomor HP ${noHP}:`, error.stack);
+      throw new InternalServerErrorException(`Gagal mencari transaksi: ${error.message}`);
+    }
+  }
+
+  // Fungsi kalkulasi harga untuk API endpoint
+  async calculatePrice(calculatePriceDto: CalculatePriceDto) {
+    // Validasi tanggal
+    const tanggalMulai = new Date(calculatePriceDto.tanggalMulai);
+    const tanggalSelesai = new Date(calculatePriceDto.tanggalSelesai);
+
+    if (tanggalMulai >= tanggalSelesai) {
+      throw new BadRequestException('Tanggal mulai harus sebelum tanggal selesai');
+    }
+
+    // Pastikan unit motor ada
+    const unitMotor = await this.prisma.unitMotor.findUnique({
+      where: { id: calculatePriceDto.unitId },
+      include: {
+        jenis: true,
+      }
     });
 
-    return transaksi;
+    if (!unitMotor) {
+      throw new BadRequestException(
+        `Unit motor dengan ID ${calculatePriceDto.unitId} tidak ditemukan`,
+      );
+    }
+
+    // Gabungkan tanggal dan jam untuk perhitungan yang lebih akurat
+    const tanggalJamMulai = new Date(tanggalMulai);
+    const tanggalJamSelesai = new Date(tanggalSelesai);
+    
+    // Set jam dari parameter
+    const [jamMulaiHour, jamMulaiMinute] = calculatePriceDto.jamMulai.split(':').map(Number);
+    const [jamSelesaiHour, jamSelesaiMinute] = calculatePriceDto.jamSelesai.split(':').map(Number);
+    
+    tanggalJamMulai.setHours(jamMulaiHour, jamMulaiMinute, 0, 0);
+    tanggalJamSelesai.setHours(jamSelesaiHour, jamSelesaiMinute, 0, 0);
+    
+    // Hitung total jam
+    const diffHours = Math.max(1, Math.ceil((tanggalJamSelesai.getTime() - tanggalJamMulai.getTime()) / (1000 * 60 * 60)));
+    
+    // Hitung jumlah hari penuh dan jam tambahan
+    let fullDays = Math.floor(diffHours / 24);
+    let extraHours = diffHours % 24;
+    
+    // Jika keterlambatan lebih dari 6 jam, dihitung sebagai 1 hari penuh
+    if (extraHours > 6) {
+      fullDays += 1;
+      extraHours = 0;
+    }
+    
+    // Hitung biaya
+    const hargaSewaPerHari = Number(unitMotor.hargaSewa);
+    const dendaPerJam = 15000; // Tarif denda per jam
+    
+    // Hitung total biaya: hari penuh + biaya keterlambatan
+    const baseDailyPrice = fullDays * hargaSewaPerHari;
+    const overduePrice = extraHours > 0 ? extraHours * dendaPerJam : 0;
+    
+    // Jas hujan dan helm gratis, tidak menambahkan biaya
+    let totalBiaya = baseDailyPrice + overduePrice;
+    
+    // Biaya fasilitas (gratis)
+    const biayaJasHujan = 0; // Gratis
+    const biayaHelm = 0; // Gratis
+    
+    // Kembalikan hasil perhitungan
+    return {
+      unitMotor,
+      tanggalMulai: tanggalJamMulai,
+      tanggalSelesai: tanggalJamSelesai,
+      jamMulai: calculatePriceDto.jamMulai,
+      jamSelesai: calculatePriceDto.jamSelesai,
+      durasi: {
+        totalHours: diffHours,
+        fullDays,
+        extraHours,
+        isOverdue: extraHours > 0,
+        isExtraHoursCalculatedAsFullDay: extraHours > 6
+      },
+      biaya: {
+        dasar: baseDailyPrice,
+        keterlambatan: overduePrice,
+        jasHujan: 0, // Gratis
+        helm: 0, // Gratis
+      },
+      totalBiaya,
+      rincian: {
+        hargaPerHari: hargaSewaPerHari,
+        dendaPerJam,
+        biayaJasHujan,
+        biayaHelm,
+        kebijakanKeterlambatan: "Keterlambatan 1-6 jam dikenakan biaya Rp 15.000/jam. Keterlambatan > 6 jam dihitung sebagai tambahan 1 hari."
+      }
+    };
   }
 }

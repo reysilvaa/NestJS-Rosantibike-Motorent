@@ -15,9 +15,12 @@ import { Server, Socket } from 'socket.io';
     methods: ['GET', 'POST'],
     credentials: true,
   },
-  transports: ['websocket', 'polling'],
+  transports: ['polling', 'websocket'],
   path: '/socket.io/',
   allowEIO3: true,
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  connectTimeout: 10000,
 })
 export class NotificationGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
@@ -25,12 +28,27 @@ export class NotificationGateway
   @WebSocketServer() server: Server;
   private logger: Logger = new Logger('NotificationGateway');
 
-  afterInit(_server: Server) {
+  afterInit(server: Server) {
     this.logger.log('Notification gateway initialized');
+    
+    // Handle server-level events
+    server.on('error', (err) => {
+      this.logger.error(`Socket.io server error: ${err.message}`, err.stack);
+    });
+    
+    // Log transport changes
+    server.engine.on('connection_error', (err) => {
+      this.logger.error(`Socket.io connection_error: ${err.message}`, err.stack);
+    });
   }
 
   handleConnection(client: Socket) {
     this.logger.log(`Client connected: ${client.id}`);
+    
+    // Monitor for client errors
+    client.on('error', (error) => {
+      this.logger.error(`Client ${client.id} error: ${error.message}`);
+    });
   }
 
   handleDisconnect(client: Socket) {
