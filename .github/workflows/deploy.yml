@@ -49,49 +49,45 @@ jobs:
           # Transfer ke VPS
           scp -P $SSH_PORT deploy.tar.gz $SSH_USER@$SSH_HOST:/tmp/
           
-          # Deploy
-          ssh -p $SSH_PORT $SSH_USER@$SSH_HOST <<'ENDSSH'
-            # Buat direktori jika belum ada
-            mkdir -p /var/www/rosantibikemotorent/backend
-            
-            # Backup env jika sudah ada
-            if [ -f /var/www/rosantibikemotorent/backend/.env ]; then
-              cp /var/www/rosantibikemotorent/backend/.env /var/www/rosantibikemotorent/backend/.env.backup
-            fi
-            
-            # Ekstrak file
-            tar -xzf /tmp/deploy.tar.gz -C /var/www/rosantibikemotorent/backend
-            
-            # Restore env jika sudah ada
-            if [ -f /var/www/rosantibikemotorent/backend/.env.backup ]; then
-              cp /var/www/rosantibikemotorent/backend/.env.backup /var/www/rosantibikemotorent/backend/.env
-            else
-              cp /var/www/rosantibikemotorent/backend/.env.example /var/www/rosantibikemotorent/backend/.env
-              # Edit file .env sesuai kebutuhan
-              sed -i 's/localhost:5432/localhost:5432/g' /var/www/rosantibikemotorent/backend/.env
-            fi
-            
-            # Jalankan migrasi database
-            cd /var/www/rosantibikemotorent/backend
-            npx prisma migrate deploy
-            
-            # Pastikan struktur folder ada
-            mkdir -p /var/www/rosantibikemotorent/backend/logs
-            mkdir -p /var/www/rosantibikemotorent/backend/storage
-            
-            # Restart aplikasi dengan PM2
-            if pm2 list | grep -q "rental-backend"; then
-              pm2 reload ecosystem.config.js --env production
-            else
-              pm2 start ecosystem.config.js --env production
-            fi
-            
-            # Setup PM2 untuk autostart jika belum
-            pm2 save
-            
-            # Hapus file sementara
-            rm /tmp/deploy.tar.gz
-            
-            # Catat deployment
-            echo "Deployed at $(date)" >> /var/www/rosantibikemotorent/deploy.log
-          ENDSSH 
+          # Buat script deployment
+          cat > deploy.sh << 'EOFSCRIPT'
+          #!/bin/bash
+          mkdir -p /var/www/rosantibikemotorent/backend
+          
+          if [ -f /var/www/rosantibikemotorent/backend/.env ]; then
+            cp /var/www/rosantibikemotorent/backend/.env /var/www/rosantibikemotorent/backend/.env.backup
+          fi
+          
+          tar -xzf /tmp/deploy.tar.gz -C /var/www/rosantibikemotorent/backend
+          
+          if [ -f /var/www/rosantibikemotorent/backend/.env.backup ]; then
+            cp /var/www/rosantibikemotorent/backend/.env.backup /var/www/rosantibikemotorent/backend/.env
+          else
+            cp /var/www/rosantibikemotorent/backend/.env.example /var/www/rosantibikemotorent/backend/.env
+            sed -i 's/localhost:5432/localhost:5432/g' /var/www/rosantibikemotorent/backend/.env
+          fi
+          
+          cd /var/www/rosantibikemotorent/backend
+          npx prisma migrate deploy
+          
+          mkdir -p /var/www/rosantibikemotorent/backend/logs
+          mkdir -p /var/www/rosantibikemotorent/backend/storage
+          
+          if pm2 list | grep -q "rental-backend"; then
+            pm2 reload ecosystem.config.js --env production
+          else
+            pm2 start ecosystem.config.js --env production
+          fi
+          
+          pm2 save
+          
+          rm /tmp/deploy.tar.gz
+          
+          echo "Deployed at $(date)" >> /var/www/rosantibikemotorent/deploy.log
+          EOFSCRIPT
+          
+          # Transfer script ke VPS
+          scp -P $SSH_PORT deploy.sh $SSH_USER@$SSH_HOST:/tmp/
+          
+          # Jalankan script di VPS
+          ssh -p $SSH_PORT $SSH_USER@$SSH_HOST "chmod +x /tmp/deploy.sh && /tmp/deploy.sh && rm /tmp/deploy.sh" 
