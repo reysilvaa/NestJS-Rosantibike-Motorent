@@ -17,6 +17,7 @@ services:
       - redis
     volumes:
       - ./storage:/app/storage
+      - node_modules_cache:/app/node_modules
     restart: unless-stopped
 
   db:
@@ -41,4 +42,5 @@ services:
 
 volumes:
   postgres_data:
-  redis_data: 
+  redis_data:
+  node_modules_cache: 

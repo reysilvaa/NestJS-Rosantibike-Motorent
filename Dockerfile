@@ -3,14 +3,16 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy only package files first to leverage Docker cache
+COPY package*.json .npmrc ./
 
-# Install dependencies
-RUN npm ci --legacy-peer-deps
+# Install dependencies with optimization flags
+RUN npm ci --legacy-peer-deps --prefer-offline --no-audit
 
 # Copy source code
-COPY . .
+COPY prisma ./prisma/
+COPY tsconfig*.json ./
+COPY src ./src/
 
 # Generate Prisma client
 RUN npx prisma generate
@@ -24,17 +26,15 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package*.json .npmrc ./
 
 # Install production dependencies only
-RUN npm ci --only=production --legacy-peer-deps
+RUN npm ci --only=production --legacy-peer-deps --prefer-offline --no-audit
 
-# Copy built application from builder stage
+# Copy necessary files from builder stage
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
-
-# Generate Prisma client in production
-RUN npx prisma generate
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Expose port
 EXPOSE 3000

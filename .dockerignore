@@ -10,11 +10,11 @@ build
 
 # Version control
 .git
+.github
 .gitignore
 
 # Environment variables
-.env
-.env.*
+.env*
 !.env.example
 
 # IDE
@@ -29,12 +29,28 @@ logs
 
 # Test coverage
 coverage
+.nyc_output
 
 # Docker
-Dockerfile
-docker-compose.yml
+Dockerfile*
+docker-compose*
 .dockerignore
 
 # Misc
 .DS_Store
-Thumbs.db 
+Thumbs.db
+
+# Cache
+.npm
+.eslintcache
+
+# Editor directories and files
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Large folders not needed for build
+docs
+test
+scripts 
