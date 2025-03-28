@@ -1,0 +1,97 @@
+name: Deploy ke VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout kode
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build aplikasi
+        run: npm run build
+      
+      - name: Generate Prisma client
+        run: npx prisma generate
+      
+      - name: Setup SSH key
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      
+      - name: Tambahkan host ke known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p ${{ secrets.SSH_PORT || 22 }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+      
+      - name: Deploy ke VPS
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT || 22 }}
+        run: |
+          # Kompres untuk deployment
+          tar -czf deploy.tar.gz dist/ node_modules/ package.json ecosystem.config.js prisma/ .env.example
+
+          # Transfer ke VPS
+          scp -P $SSH_PORT deploy.tar.gz $SSH_USER@$SSH_HOST:/tmp/
+          
+          # Deploy
+          ssh -p $SSH_PORT $SSH_USER@$SSH_HOST <<'ENDSSH'
+            # Buat direktori jika belum ada
+            mkdir -p /var/www/rosantibikemotorent/backend
+            
+            # Backup env jika sudah ada
+            if [ -f /var/www/rosantibikemotorent/backend/.env ]; then
+              cp /var/www/rosantibikemotorent/backend/.env /var/www/rosantibikemotorent/backend/.env.backup
+            fi
+            
+            # Ekstrak file
+            tar -xzf /tmp/deploy.tar.gz -C /var/www/rosantibikemotorent/backend
+            
+            # Restore env jika sudah ada
+            if [ -f /var/www/rosantibikemotorent/backend/.env.backup ]; then
+              cp /var/www/rosantibikemotorent/backend/.env.backup /var/www/rosantibikemotorent/backend/.env
+            else
+              cp /var/www/rosantibikemotorent/backend/.env.example /var/www/rosantibikemotorent/backend/.env
+              # Edit file .env sesuai kebutuhan
+              sed -i 's/localhost:5432/localhost:5432/g' /var/www/rosantibikemotorent/backend/.env
+            fi
+            
+            # Jalankan migrasi database
+            cd /var/www/rosantibikemotorent/backend
+            npx prisma migrate deploy
+            
+            # Pastikan struktur folder ada
+            mkdir -p /var/www/rosantibikemotorent/backend/logs
+            mkdir -p /var/www/rosantibikemotorent/backend/storage
+            
+            # Restart aplikasi dengan PM2
+            if pm2 list | grep -q "rental-backend"; then
+              pm2 reload ecosystem.config.js --env production
+            else
+              pm2 start ecosystem.config.js --env production
+            fi
+            
+            # Setup PM2 untuk autostart jika belum
+            pm2 save
+            
+            # Hapus file sementara
+            rm /tmp/deploy.tar.gz
+            
+            # Catat deployment
+            echo "Deployed at $(date)" >> /var/www/rosantibikemotorent/deploy.log
+          ENDSSH 
