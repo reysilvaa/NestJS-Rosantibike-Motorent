@@ -13,6 +13,7 @@ import {
   configureShutdown,
   createLogger,
 } from './common/config';
+import { setupCluster } from './cluster';
 
 async function bootstrap() {
   // Inisialisasi aplikasi
@@ -48,7 +49,12 @@ async function bootstrap() {
   Logger.log(`Realtime test page: http://localhost:${port}/test-realtime.html`);
 }
 
-bootstrap().catch(error => {
-  Logger.error(`Failed to start application: ${error.message}`, error.stack);
-  process.exit(1);
-});
+// Gunakan cluster jika NODE_ENV adalah production dan tidak dalam mode PM2 (PM2 sudah menangani clustering)
+if (process.env.NODE_ENV === 'production' && !process.env.PM2_HOME) {
+  setupCluster(bootstrap);
+} else {
+  bootstrap().catch(error => {
+    Logger.error(`Failed to start application: ${error.message}`, error.stack);
+    process.exit(1);
+  });
+}
