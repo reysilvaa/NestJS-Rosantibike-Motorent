@@ -24,6 +24,7 @@ Aplikasi backend untuk layanan rental motor yang menyediakan API lengkap untuk p
 - [Panduan Pengembang](#panduan-pengembang)
 - [Kontribusi](#kontribusi)
 - [Lisensi](#lisensi)
+- [Deployment dengan PM2](#deployment-dengan-pm2)
 
 ## Fitur Utama
 
@@ -867,3 +868,120 @@ Silakan membaca [CONTRIBUTING.md](CONTRIBUTING.md) untuk detail tentang proses k
 ## Lisensi
 
 MIT
+
+## Deployment dengan PM2
+
+Aplikasi ini telah dikonfigurasi untuk deployment menggunakan PM2, dioptimalkan untuk VPS dengan RAM 1GB dan penyimpanan 20GB.
+
+### File Konfigurasi PM2
+
+File `ecosystem.config.js` sudah disediakan dengan pengaturan untuk cluster dan worker yang dioptimalkan:
+
+```javascript
+module.exports = {
+  apps: [
+    {
+      // Konfigurasi dasar
+      name: "rental-backend",
+      script: "dist/main.js",
+      
+      // Konfigurasi Cluster dan Worker
+      exec_mode: "cluster", // Mode cluster untuk load balancing
+      instances: process.env.PM2_INSTANCES || 1, // Default 1 worker untuk VPS RAM 1GB
+      // instances: "max", // Uncomment ini untuk menggunakan semua CPU core
+      
+      // Batas dan optimasi memori
+      max_memory_restart: process.env.PM2_MAX_MEMORY || "750M",
+      node_args: process.env.PM2_NODE_ARGS || "--max-old-space-size=700",
+      
+      // Environment variables
+      env: {
+        NODE_ENV: "development"
+      },
+      env_production: {
+        NODE_ENV: "production",
+        PORT: 3000
+      },
+      
+      // Fitur pengawasan
+      watch: false,
+      source_map_support: false,
+      
+      // Pengaturan log
+      error_file: "logs/error.log",
+      out_file: "logs/output.log",
+      log_date_format: "YYYY-MM-DD HH:mm:ss",
+      merge_logs: true,
+      
+      // Pengaturan restart
+      min_uptime: "60s",
+      max_restarts: 10,
+      restart_delay: 5000,
+      autorestart: true,
+      listen_timeout: 30000,
+      kill_timeout: 5000
+    }
+  ]
+};
+```
+
+### Cluster dan Worker
+
+PM2 menggunakan mode cluster untuk meningkatkan performa dan ketersediaan aplikasi. Konfigurasi ini:
+
+1. Menggunakan mode `cluster` yang memungkinkan load balancing otomatis antar worker
+2. Secara default menggunakan 1 worker (instance) untuk VPS RAM 1GB
+3. Dapat diskalakan untuk menggunakan semua CPU core (instances: "max") jika server memiliki lebih banyak RAM
+
+### Pengaturan Cluster
+
+Anda dapat mengontrol jumlah worker via:
+
+1. **Variabel lingkungan**: Ubah nilai `PM2_INSTANCES` di file `.env`
+2. **Command line**: Gunakan perintah `npm run pm2:scale rental-backend <jumlah>` atau `npm run pm2:scale:max` untuk menggunakan semua CPU core
+
+### Langkah-langkah Deployment
+
+1. Pastikan Anda telah menginstal PM2 secara global:
+   ```bash
+   npm install -g pm2
+   ```
+
+2. Build aplikasi:
+   ```bash
+   npm run build
+   ```
+
+3. Jalankan aplikasi dengan PM2:
+   ```bash
+   npm run pm2:start
+   ```
+
+4. Setelah memverifikasi bahwa aplikasi berjalan dengan benar, pastikan PM2 dimulai pada system boot:
+   ```bash
+   npm run pm2:setup
+   ```
+
+5. Pantau aplikasi secara real-time:
+   ```bash
+   npm run pm2:monit
+   ```
+
+6. Skala aplikasi ke jumlah worker tertentu:
+   ```bash
+   npm run pm2:scale <jumlah>
+   ```
+
+7. Skala aplikasi ke semua CPU core yang tersedia:
+   ```bash
+   npm run pm2:scale:max
+   ```
+
+### Optimasi Deployment
+
+Untuk performa optimal pada VPS dengan RAM 1GB:
+
+1. Gunakan 1 worker saja untuk menghindari kehabisan memori
+2. Pantau penggunaan RAM dengan `npm run pm2:monit`
+3. Pertimbangkan untuk meningkatkan jumlah worker hanya jika VPS memiliki lebih banyak RAM dan CPU core
+4. Gunakan `npm run pm2:reload` untuk zero-downtime deployment saat update

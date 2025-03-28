@@ -1,23 +1,31 @@
 module.exports = {
   apps: [
     {
-      name: 'rental-api',
-      script: 'dist/main.js',
-      instances: 2,
-      exec_mode: 'cluster',
-      autorestart: true,
-      watch: false,
-      max_memory_restart: '300M',
-      node_args: '--max-old-space-size=300',
+      name: "rental-backend",
+      script: "dist/main.js",
+      exec_mode: "cluster",
+      instances: process.env.PM2_INSTANCES || 1,
+      max_memory_restart: process.env.PM2_MAX_MEMORY || "750M",
+      node_args: process.env.PM2_NODE_ARGS || "--max-old-space-size=700",
       env: {
-        NODE_ENV: 'production',
+        NODE_ENV: "development"
       },
-      log_date_format: 'YYYY-MM-DD HH:mm:ss',
-      error_file: './logs/error.log',
-      out_file: './logs/out.log',
+      env_production: {
+        NODE_ENV: "production",
+        PORT: 3000
+      },
+      watch: false,
+      source_map_support: false,
+      error_file: "logs/error.log",
+      out_file: "logs/output.log",
+      log_date_format: "YYYY-MM-DD HH:mm:ss",
       merge_logs: true,
-      max_logs: 5,
-      log_size: '10M',
-    },
-  ],
+      min_uptime: "60s",
+      max_restarts: 10,
+      restart_delay: 5000,
+      autorestart: true,
+      listen_timeout: 30000,
+      kill_timeout: 5000
+    }
+  ]
 }; 
