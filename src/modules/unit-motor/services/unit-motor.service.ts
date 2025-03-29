@@ -7,12 +7,16 @@ import type {
   CheckAvailabilityDto,
 } from '../dto';
 import { handleError } from '../../../common/helpers';
+import { UnitMotorQueue } from '../queues/unit-motor.queue';
 
 @Injectable()
 export class UnitMotorService {
   private readonly logger = new Logger(UnitMotorService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private unitMotorQueue: UnitMotorQueue,
+  ) {}
 
   async findAll(filter: FilterUnitMotorDto = {}) {
     try {
@@ -80,12 +84,20 @@ export class UnitMotorService {
         throw new BadRequestException(`Plat nomor ${createUnitMotorDto.platNomor} sudah digunakan`);
       }
 
-      return this.prisma.unitMotor.create({
+      const newUnit = await this.prisma.unitMotor.create({
         data: createUnitMotorDto,
         include: {
           jenis: true,
         },
       });
+
+      // Jadwalkan pemeliharaan rutin unit motor baru
+      await this.unitMotorQueue.addMaintenanceReminderJob(newUnit.id);
+
+      // Jadwalkan sinkronisasi data setelah penambahan unit baru
+      await this.unitMotorQueue.addSyncDataJob();
+
+      return newUnit;
     } catch (error) {
       handleError(this.logger, error, 'Gagal membuat unit motor baru');
     }
@@ -126,13 +138,20 @@ export class UnitMotorService {
         ...(updateUnitMotorDto.hargaSewa && { hargaSewa: updateUnitMotorDto.hargaSewa }),
       };
 
-      return await this.prisma.unitMotor.update({
+      const updatedUnit = await this.prisma.unitMotor.update({
         where: { id },
         data: updateData,
         include: {
           jenis: true,
         },
       });
+
+      // Jika status berubah, tambahkan job untuk memperbarui status
+      if (updateUnitMotorDto.status) {
+        await this.unitMotorQueue.addUpdateStatusJob(id, updateUnitMotorDto.status);
+      }
+
+      return updatedUnit;
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
@@ -162,9 +181,14 @@ export class UnitMotorService {
         throw new BadRequestException('Unit motor sedang disewa, tidak dapat dihapus');
       }
 
-      return await this.prisma.unitMotor.delete({
+      const deletedUnit = await this.prisma.unitMotor.delete({
         where: { id },
       });
+
+      // Sinkronisasi data setelah penghapusan unit
+      await this.unitMotorQueue.addSyncDataJob();
+
+      return deletedUnit;
     } catch (error) {
       if (error instanceof BadRequestException || error instanceof NotFoundException) {
         throw error;
@@ -176,6 +200,57 @@ export class UnitMotorService {
       }
 
       handleError(this.logger, error, `Gagal menghapus unit motor dengan ID ${id}`);
+    }
+  }
+
+  async processUnitImages(unitMotorId: string, images: string[]) {
+    try {
+      // Memastikan unit motor ada
+      const unitMotor = await this.prisma.unitMotor.findUnique({
+        where: { id: unitMotorId },
+      });
+
+      if (!unitMotor) {
+        throw new NotFoundException(`Unit motor dengan ID ${unitMotorId} tidak ditemukan`);
+      }
+
+      // Memasukkan tugas pemrosesan gambar ke dalam antrian
+      await this.unitMotorQueue.addProcessImageJob(unitMotorId, images);
+
+      return {
+        message: 'Pemrosesan gambar sudah dijadwalkan',
+        unitMotorId,
+        imagesCount: images.length,
+      };
+    } catch (error) {
+      handleError(this.logger, error, `Gagal memproses gambar unit motor ${unitMotorId}`);
+    }
+  }
+
+  async scheduleMaintenanceReminder(unitMotorId: string) {
+    try {
+      // Memastikan unit motor ada
+      const unitMotor = await this.prisma.unitMotor.findUnique({
+        where: { id: unitMotorId },
+      });
+
+      if (!unitMotor) {
+        throw new NotFoundException(`Unit motor dengan ID ${unitMotorId} tidak ditemukan`);
+      }
+
+      // Memasukkan tugas pengingat pemeliharaan ke dalam antrian
+      await this.unitMotorQueue.addMaintenanceReminderJob(unitMotorId);
+
+      return {
+        message: 'Pengingat pemeliharaan sudah dijadwalkan',
+        unitMotorId,
+      };
+    } catch (error) {
+      handleError(
+        this.logger,
+        error,
+        `Gagal menjadwalkan pengingat pemeliharaan untuk unit motor ${unitMotorId}`,
+      );
     }
   }
 

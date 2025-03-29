@@ -6,6 +6,7 @@ import { UnitMotorModule } from '../unit-motor/unit-motor.module';
 import { BullModule } from '@nestjs/bull';
 import { TransaksiProcessor } from './processors/transaksi.processor';
 import { WhatsappModule } from '../whatsapp/whatsapp.module';
+import { TransaksiQueue } from './queues/transaksi.queue';
 
 @Module({
   imports: [
@@ -18,7 +19,7 @@ import { WhatsappModule } from '../whatsapp/whatsapp.module';
     WhatsappModule,
   ],
   controllers: [TransaksiController],
-  providers: [TransaksiService, TransaksiProcessor],
-  exports: [TransaksiService],
+  providers: [TransaksiService, TransaksiProcessor, TransaksiQueue],
+  exports: [TransaksiService, TransaksiQueue],
 })
 export class TransaksiModule {}

@@ -492,4 +492,13 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     this.logger.log(`Sending to admin: ${this.adminNumber} (formatted: ${adminNumber})`);
     return this.sendMessage(adminNumber, message);
   }
+
+  /**
+   * Inisialisasi koneksi WhatsApp
+   * Method ini digunakan oleh processor untuk menginisialisasi ulang koneksi WhatsApp
+   */
+  async initialize() {
+    this.logger.log('Initializing WhatsApp connection from queue processor');
+    return this.connect();
+  }
 }

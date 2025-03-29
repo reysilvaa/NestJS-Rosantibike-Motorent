@@ -1,60 +1,43 @@
 import type { INestApplication, Logger } from '@nestjs/common';
-import type { ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 import type { Server } from 'node:http';
 
 /**
- * Konfigurasi untuk menjalankan server dengan penanganan port yang lebih baik
+ * Fungsi untuk menjalankan server HTTP
  */
 export const startServer = async (
   app: INestApplication,
   configService: ConfigService,
   logger: Logger,
 ): Promise<{ server: Server; port: number }> => {
-  let port = configService.get('PORT') || 3000;
-  let server: Server | null = null;
-
-  // Mencoba port alternatif jika port utama sudah digunakan
-  const tryListen = async (retries = 3): Promise<boolean> => {
-    try {
-      server = await app.listen(port);
-      logger.log(`Aplikasi berhasil dijalankan pada port: ${port}`);
-      return true;
-    } catch (error) {
-      if (error.code === 'EADDRINUSE' && retries > 0) {
-        logger.log(`Port ${port} sudah digunakan, mencoba port ${port + 1}...`);
-        port += 1;
-        return tryListen(retries - 1);
-      }
-      throw error;
-    }
-  };
-
-  await tryListen();
-
-  // Mengembalikan server dan port yang berhasil digunakan
-  if (!server) {
-    throw new Error('Server failed to initialize');
-  }
-
+  const port = configService.get<number>('PORT', 3000);
+  const server = await app.listen(port, '0.0.0.0');
+  
+  logger.log(`Server running on port ${port}`);
+  
   return { server, port };
 };
 
 /**
- * Konfigurasi penanganan shutdown aplikasi
+ * Fungsi untuk mengkonfigurasi graceful shutdown
  */
 export const configureShutdown = (server: Server, logger: Logger): void => {
-  // Penanganan shutdown yang lebih baik
-  process.on('SIGTERM', async () => {
-    logger.log('SIGTERM diterima. Menutup server HTTP...');
-    await server.close();
-    logger.log('Server HTTP ditutup.');
-    process.exit(0);
-  });
+  const signals = ['SIGTERM', 'SIGINT'];
 
-  process.on('SIGINT', async () => {
-    logger.log('SIGINT diterima. Menutup server HTTP...');
-    await server.close();
-    logger.log('Server HTTP ditutup.');
-    process.exit(0);
-  });
+  for (const signal of signals) {
+    process.on(signal, () => {
+      logger.log(`Received ${signal} signal, shutting down gracefully`);
+
+      server.close(() => {
+        logger.log('HTTP server closed');
+        process.exit(0);
+      });
+
+      // Force shutdown after 10 seconds
+      setTimeout(() => {
+        logger.error('Forced shutdown after timeout');
+        process.exit(1);
+      }, 10_000);
+    });
+  }
 };

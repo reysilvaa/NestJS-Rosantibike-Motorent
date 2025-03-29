@@ -17,43 +17,52 @@ export class BlogService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(filter: FilterBlogPostDto) {
-    try {
-      const where = createBlogWhereCondition(filter);
+  async findAll(query: any) {
+    const { page = 1, limit = 10, search = '', category = '' } = query;
 
-      const page = filter.page || 1;
-      const limit = filter.limit || 10;
-      const skip = (page - 1) * limit;
-
-      const [total, data] = await Promise.all([
-        this.prisma.blogPost.count({ where }),
-        this.prisma.blogPost.findMany({
-          where,
-          include: {
-            tags: {
-              include: {
-                tag: true,
-              },
-            },
-          },
-          orderBy: { createdAt: 'desc' },
-          skip,
-          take: limit,
-        }),
-      ]);
-
-      return {
-        data,
-        meta: {
-          total,
-          page,
-          limit,
-          totalPages: Math.ceil(total / limit),
-        },
-      };
-    } catch (error) {
-      return handleError(this.logger, error, 'Gagal mengambil daftar artikel blog');
+    // Build where condition
+    const where = {};
+    if (search) {
+      where['OR'] = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { content: { contains: search, mode: 'insensitive' } },
+      ];
     }
+
+    if (category) {
+      where['category'] = category;
+    }
+
+    const skip = (page - 1) * limit;
+    
+    const [total, data] = await Promise.all([
+      this.prisma.blogPost.count({ where }),
+      this.prisma.blogPost.findMany({
+        where,
+        include: {
+          tags: {
+            include: {
+              tag: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: "desc"
+        },
+        skip: parseInt(skip.toString()),
+        take: parseInt(limit.toString())
+      })
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   async findOne(id: string) {
