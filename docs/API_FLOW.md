@@ -11,10 +11,11 @@ Dokumen ini menjelaskan alur penggunaan API untuk berbagai kasus penggunaan dala
 ### Login Admin
 
 1. **Request**:
+
    ```http
    POST /auth/login
    Content-Type: application/json
-   
+
    {
      "username": "admin",
      "password": "password123"
@@ -22,6 +23,7 @@ Dokumen ini menjelaskan alur penggunaan API untuk berbagai kasus penggunaan dala
    ```
 
 2. **Response Success**:
+
    ```json
    {
      "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -43,6 +45,7 @@ Dokumen ini menjelaskan alur penggunaan API untuk berbagai kasus penggunaan dala
 ### Mendapatkan Daftar Jenis Motor
 
 1. **Request**:
+
    ```http
    GET /jenis-motor
    Authorization: Bearer {access_token}
@@ -76,11 +79,12 @@ Dokumen ini menjelaskan alur penggunaan API untuk berbagai kasus penggunaan dala
 ### Membuat Jenis Motor Baru
 
 1. **Request**:
+
    ```http
    POST /jenis-motor
    Authorization: Bearer {access_token}
    Content-Type: application/json
-   
+
    {
      "merk": "Suzuki",
      "model": "Address",
@@ -105,6 +109,7 @@ Dokumen ini menjelaskan alur penggunaan API untuk berbagai kasus penggunaan dala
 ### Mendapatkan Daftar Unit Motor
 
 1. **Request**:
+
    ```http
    GET /unit-motor?status=TERSEDIA
    Authorization: Bearer {access_token}
@@ -138,11 +143,12 @@ Dokumen ini menjelaskan alur penggunaan API untuk berbagai kasus penggunaan dala
 ### Membuat Unit Motor Baru
 
 1. **Request**:
+
    ```http
    POST /unit-motor
    Authorization: Bearer {access_token}
    Content-Type: application/json
-   
+
    {
      "jenisId": "jenis-id-1",
      "platNomor": "AB 5678 XY",
@@ -169,11 +175,12 @@ Dokumen ini menjelaskan alur penggunaan API untuk berbagai kasus penggunaan dala
 ### Membuat Transaksi Baru
 
 1. **Request**:
+
    ```http
    POST /transaksi
    Authorization: Bearer {access_token}
    Content-Type: application/json
-   
+
    {
      "unitId": "unit-id-1",
      "namaPenyewa": "John Doe",
@@ -209,6 +216,7 @@ Dokumen ini menjelaskan alur penggunaan API untuk berbagai kasus penggunaan dala
 ### Menyelesaikan Transaksi
 
 1. **Request**:
+
    ```http
    POST /transaksi/tx-id-1/selesai
    Authorization: Bearer {access_token}
@@ -241,11 +249,12 @@ Dokumen ini menjelaskan alur penggunaan API untuk berbagai kasus penggunaan dala
 ### Mengirim Notifikasi
 
 1. **Request**:
+
    ```http
    POST /whatsapp/send
    Authorization: Bearer {access_token}
    Content-Type: application/json
-   
+
    {
      "to": "6281234567890",
      "message": "Terima kasih telah menyewa motor dari kami. Detail sewa: Honda Vario, 26-28 Maret 2025, Total: Rp300.000"
@@ -265,11 +274,12 @@ Dokumen ini menjelaskan alur penggunaan API untuk berbagai kasus penggunaan dala
 ### Membuat Artikel Blog
 
 1. **Request**:
+
    ```http
    POST /blog
    Authorization: Bearer {access_token}
    Content-Type: application/json
-   
+
    {
      "judul": "Tips Perawatan Motor",
      "slug": "tips-perawatan-motor",
@@ -308,6 +318,7 @@ Dokumen ini menjelaskan alur penggunaan API untuk berbagai kasus penggunaan dala
 ### Cache Monitoring
 
 1. **Request**:
+
    ```http
    GET /debug/redis/keys
    Authorization: Bearer {access_token}
@@ -317,10 +328,7 @@ Dokumen ini menjelaskan alur penggunaan API untuk berbagai kasus penggunaan dala
    ```json
    {
      "status": "success",
-     "keys": [
-       "unit-motor:tersedia",
-       "transaksi:aktif"
-     ]
+     "keys": ["unit-motor:tersedia", "transaksi:aktif"]
    }
    ```
 
@@ -350,4 +358,4 @@ Semua response error menggunakan format yang konsisten:
     }
   ]
 }
-``` 
+```

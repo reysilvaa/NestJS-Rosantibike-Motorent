@@ -9,17 +9,20 @@ Dokumen ini memberikan penjelasan tentang arsitektur aplikasi rental motor.
 Arsitektur aplikasi terdiri dari beberapa komponen utama:
 
 1. **API Layer** - NestJS Controllers
+
    - Mengimplementasikan endpoint REST API
    - Menangani validasi input menggunakan DTO
    - Mendelegasikan pemrosesan ke Service Layer
 
 2. **Service Layer**
+
    - Mengimplementasikan logika bisnis
    - Menggunakan Repository Pattern untuk akses data
    - Menangani transaksi database
    - Mengirim notifikasi ke sistem eksternal
 
 3. **Repository Layer** (via Prisma)
+
    - Menyediakan akses ke database
    - Menangani transformasi data
    - Mengimplementasikan caching
@@ -120,4 +123,4 @@ Aplikasi menggunakan JWT (JSON Web Token) untuk autentikasi:
 - [NestJS Documentation](https://docs.nestjs.com/)
 - [Prisma Documentation](https://www.prisma.io/docs/)
 - [Redis Documentation](https://redis.io/documentation)
-- [Bull Queue Documentation](https://github.com/OptimalBits/bull/blob/master/REFERENCE.md) 
+- [Bull Queue Documentation](https://github.com/OptimalBits/bull/blob/master/REFERENCE.md)

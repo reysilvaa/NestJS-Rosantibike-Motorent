@@ -18,7 +18,7 @@ This document provides a comprehensive guide to all API endpoints available in t
 Base URL: `/auth`
 
 | Method | Endpoint | Description | Authentication |
-|--------|----------|-------------|----------------|
+| ------ | -------- | ----------- | -------------- |
 | POST   | `/login` | Login admin | No             |
 
 ### POST `/auth/login`
@@ -26,6 +26,7 @@ Base URL: `/auth`
 Login to get authentication token.
 
 **Request Body:**
+
 ```json
 {
   "username": "string",
@@ -34,6 +35,7 @@ Login to get authentication token.
 ```
 
 **Response (200):**
+
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -46,6 +48,7 @@ Login to get authentication token.
 ```
 
 **Response (401):**
+
 ```json
 {
   "statusCode": 401,
@@ -58,18 +61,19 @@ Login to get authentication token.
 
 Base URL: `/admin`
 
-| Method | Endpoint | Description | Authentication |
-|--------|----------|-------------|----------------|
-| GET    | `/debug` | Get all admin accounts | No |
-| POST   | `/`      | Create new admin | Yes |
-| PUT    | `/:id`   | Update admin | Yes |
-| DELETE | `/:id`   | Delete admin | Yes |
+| Method | Endpoint | Description            | Authentication |
+| ------ | -------- | ---------------------- | -------------- |
+| GET    | `/debug` | Get all admin accounts | No             |
+| POST   | `/`      | Create new admin       | Yes            |
+| PUT    | `/:id`   | Update admin           | Yes            |
+| DELETE | `/:id`   | Delete admin           | Yes            |
 
 ### GET `/admin/debug`
 
 Get list of all admin accounts.
 
 **Response (200):**
+
 ```json
 {
   "data": [
@@ -89,11 +93,13 @@ Get list of all admin accounts.
 Create a new admin account.
 
 **Headers:**
+
 ```
 Authorization: Bearer {token}
 ```
 
 **Request Body:**
+
 ```json
 {
   "username": "string",
@@ -103,6 +109,7 @@ Authorization: Bearer {token}
 ```
 
 **Response (201):**
+
 ```json
 {
   "message": "Admin berhasil dibuat",
@@ -121,14 +128,17 @@ Authorization: Bearer {token}
 Update an admin account.
 
 **Headers:**
+
 ```
 Authorization: Bearer {token}
 ```
 
 **Parameters:**
+
 - `id`: Admin ID
 
 **Request Body:**
+
 ```json
 {
   "password": "string", // optional
@@ -137,6 +147,7 @@ Authorization: Bearer {token}
 ```
 
 **Response (200):**
+
 ```json
 {
   "message": "Admin berhasil diupdate",
@@ -154,14 +165,17 @@ Authorization: Bearer {token}
 Delete an admin account.
 
 **Headers:**
+
 ```
 Authorization: Bearer {token}
 ```
 
 **Parameters:**
+
 - `id`: Admin ID
 
 **Response (200):**
+
 ```json
 {
   "message": "Admin berhasil dihapus"
@@ -172,23 +186,25 @@ Authorization: Bearer {token}
 
 Base URL: `/jenis-motor`
 
-| Method | Endpoint | Description | Authentication |
-|--------|----------|-------------|----------------|
-| GET    | `/`      | Get all motor types | No |
-| GET    | `/:id`   | Get motor type by ID | No |
-| POST   | `/`      | Create new motor type | No |
-| PATCH  | `/:id`   | Update motor type | No |
-| DELETE | `/:id`   | Delete motor type | No |
-| POST   | `/debug-upload` | Debug upload files | No |
+| Method | Endpoint        | Description           | Authentication |
+| ------ | --------------- | --------------------- | -------------- |
+| GET    | `/`             | Get all motor types   | No             |
+| GET    | `/:id`          | Get motor type by ID  | No             |
+| POST   | `/`             | Create new motor type | No             |
+| PATCH  | `/:id`          | Update motor type     | No             |
+| DELETE | `/:id`          | Delete motor type     | No             |
+| POST   | `/debug-upload` | Debug upload files    | No             |
 
 ### GET `/jenis-motor`
 
 Get all motor types.
 
 **Query Parameters:**
+
 - `search`: Search by merk or model (optional)
 
 **Response (200):**
+
 ```json
 {
   "data": [
@@ -212,9 +228,11 @@ Get all motor types.
 Get motor type by ID.
 
 **Parameters:**
+
 - `id`: Motor type ID
 
 **Response (200):**
+
 ```json
 {
   "data": {
@@ -236,6 +254,7 @@ Get motor type by ID.
 Create new motor type.
 
 **Request Body (multipart/form-data):**
+
 - `merk`: string (required)
 - `model`: string (required)
 - `cc`: number (required)
@@ -244,6 +263,7 @@ Create new motor type.
 - `tahun`: number (optional)
 
 **Response (201):**
+
 ```json
 {
   "message": "Jenis motor berhasil dibuat",
@@ -265,9 +285,11 @@ Create new motor type.
 Update motor type.
 
 **Parameters:**
+
 - `id`: Motor type ID
 
 **Request Body (multipart/form-data):**
+
 - `merk`: string (optional)
 - `model`: string (optional)
 - `cc`: number (optional)
@@ -276,6 +298,7 @@ Update motor type.
 - `tahun`: number (optional)
 
 **Response (200):**
+
 ```json
 {
   "message": "Jenis motor berhasil diperbarui",
@@ -297,9 +320,11 @@ Update motor type.
 Delete motor type.
 
 **Parameters:**
+
 - `id`: Motor type ID
 
 **Response (200):**
+
 ```json
 {
   "message": "Jenis motor berhasil dihapus"
@@ -310,23 +335,25 @@ Delete motor type.
 
 Base URL: `/unit-motor`
 
-| Method | Endpoint | Description | Authentication |
-|--------|----------|-------------|----------------|
-| GET    | `/`      | Get all motor units | No |
-| GET    | `/availability` | Check motor availability | No |
-| GET    | `/:id`   | Get motor unit by ID | No |
-| POST   | `/`      | Create new motor unit | No |
-| PATCH  | `/:id`   | Update motor unit | No |
-| DELETE | `/:id`   | Delete motor unit | No |
+| Method | Endpoint        | Description              | Authentication |
+| ------ | --------------- | ------------------------ | -------------- |
+| GET    | `/`             | Get all motor units      | No             |
+| GET    | `/availability` | Check motor availability | No             |
+| GET    | `/:id`          | Get motor unit by ID     | No             |
+| POST   | `/`             | Create new motor unit    | No             |
+| PATCH  | `/:id`          | Update motor unit        | No             |
+| DELETE | `/:id`          | Delete motor unit        | No             |
 
 ### GET `/unit-motor`
 
 Get all motor units.
 
 **Query Parameters:**
+
 - Filter parameters based on FilterUnitMotorDto
 
 **Response (200):**
+
 ```json
 {
   "data": [
@@ -353,11 +380,13 @@ Get all motor units.
 Check motor availability for specific date range.
 
 **Query Parameters:**
+
 - `tanggalMulai`: Start date
 - `tanggalSelesai`: End date
 - `jenisMotorId`: Motor type ID (optional)
 
 **Response (200):**
+
 ```json
 {
   "data": [
@@ -382,9 +411,11 @@ Check motor availability for specific date range.
 Get motor unit by ID.
 
 **Parameters:**
+
 - `id`: Motor unit ID
 
 **Response (200):**
+
 ```json
 {
   "data": {
@@ -409,6 +440,7 @@ Get motor unit by ID.
 Create new motor unit.
 
 **Request Body:**
+
 ```json
 {
   "noPlat": "string",
@@ -419,6 +451,7 @@ Create new motor unit.
 ```
 
 **Response (201):**
+
 ```json
 {
   "message": "Unit motor berhasil dibuat",
@@ -439,9 +472,11 @@ Create new motor unit.
 Update motor unit.
 
 **Parameters:**
+
 - `id`: Motor unit ID
 
 **Request Body:**
+
 ```json
 {
   "noPlat": "string",
@@ -452,6 +487,7 @@ Update motor unit.
 ```
 
 **Response (200):**
+
 ```json
 {
   "message": "Unit motor berhasil diperbarui",
@@ -471,9 +507,11 @@ Update motor unit.
 Delete motor unit.
 
 **Parameters:**
+
 - `id`: Motor unit ID
 
 **Response (200):**
+
 ```json
 {
   "message": "Unit motor berhasil dihapus"
@@ -484,24 +522,26 @@ Delete motor unit.
 
 Base URL: `/transaksi`
 
-| Method | Endpoint | Description | Authentication |
-|--------|----------|-------------|----------------|
-| GET    | `/`      | Get all transactions | No |
-| GET    | `/history` | Get transaction history | No |
-| GET    | `/:id`   | Get transaction by ID | No |
-| POST   | `/`      | Create new transaction | No |
-| PATCH  | `/:id`   | Update transaction | No |
-| DELETE | `/:id`   | Delete transaction | No |
-| POST   | `/:id/selesai` | Complete transaction | No |
+| Method | Endpoint       | Description             | Authentication |
+| ------ | -------------- | ----------------------- | -------------- |
+| GET    | `/`            | Get all transactions    | No             |
+| GET    | `/history`     | Get transaction history | No             |
+| GET    | `/:id`         | Get transaction by ID   | No             |
+| POST   | `/`            | Create new transaction  | No             |
+| PATCH  | `/:id`         | Update transaction      | No             |
+| DELETE | `/:id`         | Delete transaction      | No             |
+| POST   | `/:id/selesai` | Complete transaction    | No             |
 
 ### GET `/transaksi`
 
 Get all transactions.
 
 **Query Parameters:**
+
 - Filter parameters based on FilterTransaksiDto
 
 **Response (200):**
+
 ```json
 {
   "data": [
@@ -535,9 +575,11 @@ Get all transactions.
 Get transaction history (completed or overdue transactions).
 
 **Query Parameters:**
+
 - Filter parameters based on FilterTransaksiDto
 
 **Response (200):**
+
 ```json
 {
   "data": [
@@ -571,9 +613,11 @@ Get transaction history (completed or overdue transactions).
 Get transaction by ID.
 
 **Parameters:**
+
 - `id`: Transaction ID
 
 **Response (200):**
+
 ```json
 {
   "data": {
@@ -605,6 +649,7 @@ Get transaction by ID.
 Create new transaction.
 
 **Request Body:**
+
 ```json
 {
   "namaCustomer": "string",
@@ -618,6 +663,7 @@ Create new transaction.
 ```
 
 **Response (201):**
+
 ```json
 {
   "message": "Transaksi berhasil dibuat",
@@ -642,9 +688,11 @@ Create new transaction.
 Update transaction.
 
 **Parameters:**
+
 - `id`: Transaction ID
 
 **Request Body:**
+
 ```json
 {
   "namaCustomer": "string", // optional
@@ -658,6 +706,7 @@ Update transaction.
 ```
 
 **Response (200):**
+
 ```json
 {
   "message": "Transaksi berhasil diperbarui",
@@ -680,9 +729,11 @@ Update transaction.
 Delete transaction.
 
 **Parameters:**
+
 - `id`: Transaction ID
 
 **Response (200):**
+
 ```json
 {
   "message": "Transaksi berhasil dihapus"
@@ -694,9 +745,11 @@ Delete transaction.
 Complete a transaction.
 
 **Parameters:**
+
 - `id`: Transaction ID
 
 **Response (200):**
+
 ```json
 {
   "message": "Transaksi berhasil diselesaikan",
@@ -712,20 +765,21 @@ Complete a transaction.
 
 Base URL: `/blog`
 
-| Method | Endpoint | Description | Authentication |
-|--------|----------|-------------|----------------|
-| GET    | `/`      | Get all blogs | No |
-| GET    | `/:id`   | Get blog by ID | No |
-| POST   | `/`      | Create new blog | No |
-| PATCH  | `/:id`   | Update blog | No |
-| DELETE | `/:id`   | Delete blog | No |
-| POST   | `/debug-upload` | Debug upload files | No |
+| Method | Endpoint        | Description        | Authentication |
+| ------ | --------------- | ------------------ | -------------- |
+| GET    | `/`             | Get all blogs      | No             |
+| GET    | `/:id`          | Get blog by ID     | No             |
+| POST   | `/`             | Create new blog    | No             |
+| PATCH  | `/:id`          | Update blog        | No             |
+| DELETE | `/:id`          | Delete blog        | No             |
+| POST   | `/debug-upload` | Debug upload files | No             |
 
 ### GET `/blog`
 
 Get all blogs with pagination.
 
 **Query Parameters:**
+
 - `page`: Page number (optional)
 - `limit`: Items per page (optional)
 - `search`: Search in title or content (optional)
@@ -733,6 +787,7 @@ Get all blogs with pagination.
 - `kategori`: Filter by category (optional)
 
 **Response (200):**
+
 ```json
 {
   "data": [
@@ -764,9 +819,11 @@ Get all blogs with pagination.
 Get blog by ID.
 
 **Parameters:**
+
 - `id`: Blog ID
 
 **Response (200):**
+
 ```json
 {
   "data": {
@@ -790,6 +847,7 @@ Get blog by ID.
 Create new blog.
 
 **Request Body (multipart/form-data):**
+
 - `judul`: string (required)
 - `konten`: string (required)
 - `file`, `gambar`, or `image`: File (optional) - Image file
@@ -800,6 +858,7 @@ Create new blog.
 - `meta_description`: string (optional)
 
 **Response (201):**
+
 ```json
 {
   "message": "Blog berhasil dibuat",
@@ -823,9 +882,11 @@ Create new blog.
 Update blog.
 
 **Parameters:**
+
 - `id`: Blog ID
 
 **Request Body (multipart/form-data):**
+
 - `judul`: string (optional)
 - `konten`: string (optional)
 - `file`, `gambar`, or `image`: File (optional) - Image file
@@ -836,6 +897,7 @@ Update blog.
 - `meta_description`: string (optional)
 
 **Response (200):**
+
 ```json
 {
   "message": "Blog berhasil diperbarui",
@@ -859,9 +921,11 @@ Update blog.
 Delete blog.
 
 **Parameters:**
+
 - `id`: Blog ID
 
 **Response (200):**
+
 ```json
 {
   "message": "Blog berhasil dihapus"
@@ -872,19 +936,20 @@ Delete blog.
 
 Base URL: `/whatsapp`
 
-| Method | Endpoint | Description | Authentication |
-|--------|----------|-------------|----------------|
-| POST   | `/send`  | Send WhatsApp message | No |
-| POST   | `/send-admin` | Send message to admin | No |
-| POST   | `/reset-connection` | Reset WhatsApp connection | No |
-| GET    | `/status` | Check WhatsApp connection status | No |
-| GET    | `/qrcode` | Get WhatsApp QR code | No |
+| Method | Endpoint            | Description                      | Authentication |
+| ------ | ------------------- | -------------------------------- | -------------- |
+| POST   | `/send`             | Send WhatsApp message            | No             |
+| POST   | `/send-admin`       | Send message to admin            | No             |
+| POST   | `/reset-connection` | Reset WhatsApp connection        | No             |
+| GET    | `/status`           | Check WhatsApp connection status | No             |
+| GET    | `/qrcode`           | Get WhatsApp QR code             | No             |
 
 ### POST `/whatsapp/send`
 
 Send WhatsApp message.
 
 **Request Body:**
+
 ```json
 {
   "to": "628123456789",
@@ -893,6 +958,7 @@ Send WhatsApp message.
 ```
 
 **Response (200):**
+
 ```json
 {
   "success": true,
@@ -905,6 +971,7 @@ Send WhatsApp message.
 Send message to admin WhatsApp.
 
 **Request Body:**
+
 ```json
 {
   "message": "Hello admin, this is a test message"
@@ -912,6 +979,7 @@ Send message to admin WhatsApp.
 ```
 
 **Response (200):**
+
 ```json
 {
   "success": true,
@@ -924,6 +992,7 @@ Send message to admin WhatsApp.
 Reset WhatsApp connection.
 
 **Response (200):**
+
 ```json
 {
   "success": true,
@@ -936,6 +1005,7 @@ Reset WhatsApp connection.
 Check WhatsApp connection status.
 
 **Response (200):**
+
 ```json
 {
   "status": {
@@ -954,6 +1024,7 @@ Check WhatsApp connection status.
 Get WhatsApp QR code for authentication.
 
 **Response (200):**
+
 ```json
 {
   "qrCode": "data:image/png;base64,..."
@@ -964,20 +1035,21 @@ Get WhatsApp QR code for authentication.
 
 Base URL: `/debug/redis`
 
-| Method | Endpoint | Description | Authentication |
-|--------|----------|-------------|----------------|
-| GET    | `/ping`  | Test Redis connection | No |
-| GET    | `/info`  | Get Redis server info | No |
-| GET    | `/keys`  | Get Redis keys by pattern | No |
-| GET    | `/key/:key` | Get value of a Redis key | No |
-| POST   | `/key`   | Set a Redis key-value pair | No |
-| DELETE | `/key/:key` | Delete a Redis key | No |
+| Method | Endpoint    | Description                | Authentication |
+| ------ | ----------- | -------------------------- | -------------- |
+| GET    | `/ping`     | Test Redis connection      | No             |
+| GET    | `/info`     | Get Redis server info      | No             |
+| GET    | `/keys`     | Get Redis keys by pattern  | No             |
+| GET    | `/key/:key` | Get value of a Redis key   | No             |
+| POST   | `/key`      | Set a Redis key-value pair | No             |
+| DELETE | `/key/:key` | Delete a Redis key         | No             |
 
 ### GET `/debug/redis/ping`
 
 Test Redis connection.
 
 **Response (200):**
+
 ```json
 {
   "status": "success",
@@ -990,6 +1062,7 @@ Test Redis connection.
 Get Redis server info.
 
 **Response (200):**
+
 ```json
 {
   "status": "success",
@@ -1002,9 +1075,11 @@ Get Redis server info.
 Get Redis keys by pattern.
 
 **Query Parameters:**
-- `pattern`: Key pattern to search for (default: '*')
+
+- `pattern`: Key pattern to search for (default: '\*')
 
 **Response (200):**
+
 ```json
 {
   "status": "success",
@@ -1017,9 +1092,11 @@ Get Redis keys by pattern.
 Get value of a Redis key.
 
 **Parameters:**
+
 - `key`: Redis key
 
 **Response (200):**
+
 ```json
 {
   "status": "success",
@@ -1036,6 +1113,7 @@ Get value of a Redis key.
 Set a Redis key-value pair.
 
 **Request Body:**
+
 ```json
 {
   "key": "testKey",
@@ -1045,6 +1123,7 @@ Set a Redis key-value pair.
 ```
 
 **Response (200):**
+
 ```json
 {
   "status": "success",
@@ -1057,9 +1136,11 @@ Set a Redis key-value pair.
 Delete a Redis key.
 
 **Parameters:**
+
 - `key`: Redis key to delete
 
 **Response (200):**
+
 ```json
 {
   "status": "success",
@@ -1073,4 +1154,4 @@ For all endpoints that accept file uploads:
 
 1. Supported image formats: jpg, jpeg, png, gif, webp
 2. Maximum file size: 5MB
-3. File fields can be named: `file`, `gambar`, or `image` 
+3. File fields can be named: `file`, `gambar`, or `image`

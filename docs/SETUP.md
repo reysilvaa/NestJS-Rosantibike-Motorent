@@ -204,6 +204,7 @@ Aplikasi dilengkapi dengan endpoint `/health` untuk health checking.
 ### Logging
 
 Log aplikasi disimpan di:
+
 - Console (development)
 - File (production): `logs/app.log`
 
@@ -229,11 +230,13 @@ docker-compose up -d
 ### Manual Deployment
 
 1. Build aplikasi:
+
 ```bash
 npm run build
 ```
 
 2. Jalankan di production server:
+
 ```bash
 NODE_ENV=production node dist/main
 ```
@@ -250,4 +253,4 @@ Pastikan Redis server berjalan dan dapat diakses.
 
 ### WhatsApp Integration Issues
 
-Periksa token WhatsApp dan nomor telepon di `.env`. 
+Periksa token WhatsApp dan nomor telepon di `.env`.

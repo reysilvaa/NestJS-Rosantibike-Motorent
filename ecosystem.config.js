@@ -1,31 +1,31 @@
 module.exports = {
   apps: [
     {
-      name: "rental-backend",
-      script: "dist/main.js",
-      exec_mode: "cluster",
+      name: 'rental-backend',
+      script: 'dist/main.js',
+      exec_mode: 'cluster',
       instances: process.env.PM2_INSTANCES || 1,
-      max_memory_restart: process.env.PM2_MAX_MEMORY || "750M",
-      node_args: process.env.PM2_NODE_ARGS || "--max-old-space-size=700",
+      max_memory_restart: process.env.PM2_MAX_MEMORY || '750M',
+      node_args: process.env.PM2_NODE_ARGS || '--max-old-space-size=700',
       env: {
-        NODE_ENV: "development"
+        NODE_ENV: 'development',
       },
       env_production: {
-        NODE_ENV: "production",
-        PORT: 3000
+        NODE_ENV: 'production',
+        PORT: 3000,
       },
       watch: false,
       source_map_support: false,
-      error_file: "logs/error.log",
-      out_file: "logs/output.log",
-      log_date_format: "YYYY-MM-DD HH:mm:ss",
+      error_file: 'logs/error.log',
+      out_file: 'logs/output.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
       merge_logs: true,
-      min_uptime: "60s",
+      min_uptime: '60s',
       max_restarts: 10,
       restart_delay: 5000,
       autorestart: true,
       listen_timeout: 30000,
-      kill_timeout: 5000
-    }
-  ]
-}; 
+      kill_timeout: 5000,
+    },
+  ],
+};

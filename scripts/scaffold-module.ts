@@ -1,5 +1,5 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import path from 'node:path';
 import chalk from 'chalk';
 
 const SRC_PATH = path.join(process.cwd(), 'src');
@@ -188,15 +188,15 @@ function toCamelCase(str: string): string {
 // Helper: PascalCase to kebab-case
 function toKebabCase(str: string): string {
   return str
-    .replace(/([a-z])([A-Z])/g, '$1-$2')
-    .replace(/\s+/g, '-')
+    .replaceAll(/([a-z])([A-Z])/g, '$1-$2')
+    .replaceAll(/\s+/g, '-')
     .toLowerCase();
 }
 
 // Fungsi untuk membuat scaffold modul dengan pilihan Redis
 function scaffoldModule(moduleName: string, useRedis: boolean = false) {
   // Validasi nama modul (harus kebab-case)
-  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(moduleName)) {
+  if (!/^[\da-z]+(-[\da-z]+)*$/.test(moduleName)) {
     console.error(
       chalk.red(
         `Nama modul '${moduleName}' tidak valid. Gunakan format kebab-case (contoh: 'my-module').`,
@@ -209,52 +209,56 @@ function scaffoldModule(moduleName: string, useRedis: boolean = false) {
   const moduleClassName = toPascalCase(moduleName);
 
   // Buat direktori modul jika belum ada
-  if (!fs.existsSync(modulePath)) {
+  if (fs.existsSync(modulePath)) {
+    console.log(chalk.yellow(`! Direktori modul ${moduleName} sudah ada`));
+  } else {
     fs.mkdirSync(modulePath, { recursive: true });
     console.log(chalk.green(`✓ Direktori modul ${moduleName} dibuat`));
-  } else {
-    console.log(chalk.yellow(`! Direktori modul ${moduleName} sudah ada`));
   }
 
   // Buat subdirektori yang diperlukan
   for (const dir of MODULE_DIRS) {
     const dirPath = path.join(modulePath, dir);
-    if (!fs.existsSync(dirPath)) {
+    if (fs.existsSync(dirPath)) {
+      console.log(chalk.yellow(`! Direktori ${dir}/ sudah ada`));
+    } else {
       fs.mkdirSync(dirPath, { recursive: true });
       console.log(chalk.green(`✓ Direktori ${dir}/ dibuat`));
-    } else {
-      console.log(chalk.yellow(`! Direktori ${dir}/ sudah ada`));
     }
   }
 
   // Buat file modul
   const moduleFilePath = path.join(modulePath, `${moduleName}.module.ts`);
-  if (!fs.existsSync(moduleFilePath)) {
+  if (fs.existsSync(moduleFilePath)) {
+    console.log(chalk.yellow(`! File ${moduleName}.module.ts sudah ada`));
+  } else {
     const moduleTemplate = useRedis ? MODULE_WITH_REDIS_TEMPLATE : MODULE_TEMPLATE;
     fs.writeFileSync(moduleFilePath, moduleTemplate(moduleName, moduleClassName));
-    console.log(chalk.green(`✓ File ${moduleName}.module.ts dibuat ${useRedis ? 'dengan dukungan Redis' : ''}`));
-  } else {
-    console.log(chalk.yellow(`! File ${moduleName}.module.ts sudah ada`));
+    console.log(
+      chalk.green(
+        `✓ File ${moduleName}.module.ts dibuat ${useRedis ? 'dengan dukungan Redis' : ''}`,
+      ),
+    );
   }
 
   // Buat file controller di folder controllers
   const controllersPath = path.join(modulePath, 'controllers');
   const controllerFilePath = path.join(controllersPath, `${moduleName}.controller.ts`);
-  if (!fs.existsSync(controllerFilePath)) {
+  if (fs.existsSync(controllerFilePath)) {
+    console.log(chalk.yellow(`! File controllers/${moduleName}.controller.ts sudah ada`));
+  } else {
     fs.writeFileSync(controllerFilePath, CONTROLLER_TEMPLATE(moduleName, moduleClassName));
     console.log(chalk.green(`✓ File controllers/${moduleName}.controller.ts dibuat`));
-  } else {
-    console.log(chalk.yellow(`! File controllers/${moduleName}.controller.ts sudah ada`));
   }
 
   // Buat file service di folder services
   const servicesPath = path.join(modulePath, 'services');
   const serviceFilePath = path.join(servicesPath, `${moduleName}.service.ts`);
-  if (!fs.existsSync(serviceFilePath)) {
+  if (fs.existsSync(serviceFilePath)) {
+    console.log(chalk.yellow(`! File services/${moduleName}.service.ts sudah ada`));
+  } else {
     fs.writeFileSync(serviceFilePath, SERVICE_TEMPLATE(moduleName, moduleClassName));
     console.log(chalk.green(`✓ File services/${moduleName}.service.ts dibuat`));
-  } else {
-    console.log(chalk.yellow(`! File services/${moduleName}.service.ts sudah ada`));
   }
 
   // Buat DTO dasar
@@ -263,25 +267,25 @@ function scaffoldModule(moduleName: string, useRedis: boolean = false) {
   const updateDtoFilePath = path.join(dtoPath, `update-${moduleName}.dto.ts`);
   const dtoIndexFilePath = path.join(dtoPath, `index.ts`);
 
-  if (!fs.existsSync(createDtoFilePath)) {
+  if (fs.existsSync(createDtoFilePath)) {
+    console.log(chalk.yellow(`! File dto/create-${moduleName}.dto.ts sudah ada`));
+  } else {
     fs.writeFileSync(createDtoFilePath, CREATE_DTO_TEMPLATE(moduleClassName));
     console.log(chalk.green(`✓ File dto/create-${moduleName}.dto.ts dibuat`));
-  } else {
-    console.log(chalk.yellow(`! File dto/create-${moduleName}.dto.ts sudah ada`));
   }
 
-  if (!fs.existsSync(updateDtoFilePath)) {
+  if (fs.existsSync(updateDtoFilePath)) {
+    console.log(chalk.yellow(`! File dto/update-${moduleName}.dto.ts sudah ada`));
+  } else {
     fs.writeFileSync(updateDtoFilePath, UPDATE_DTO_TEMPLATE(moduleClassName));
     console.log(chalk.green(`✓ File dto/update-${moduleName}.dto.ts dibuat`));
-  } else {
-    console.log(chalk.yellow(`! File dto/update-${moduleName}.dto.ts sudah ada`));
   }
 
-  if (!fs.existsSync(dtoIndexFilePath)) {
+  if (fs.existsSync(dtoIndexFilePath)) {
+    console.log(chalk.yellow(`! File dto/index.ts sudah ada`));
+  } else {
     fs.writeFileSync(dtoIndexFilePath, DTO_INDEX_TEMPLATE(moduleName, moduleClassName));
     console.log(chalk.green(`✓ File dto/index.ts dibuat`));
-  } else {
-    console.log(chalk.yellow(`! File dto/index.ts sudah ada`));
   }
 
   console.log(chalk.green.bold(`\nModul ${moduleName} berhasil di-scaffold!`));
@@ -301,12 +305,16 @@ function main() {
     console.error(chalk.red('Nama modul tidak diberikan!'));
     console.log(`Penggunaan: ${chalk.blue('npm run scaffold:module -- <nama-modul> [--redis]')}`);
     console.log(`Contoh: ${chalk.blue('npm run scaffold:module -- user-management')}`);
-    console.log(`Contoh dengan Redis: ${chalk.blue('npm run scaffold:module -- user-management --redis')}`);
+    console.log(
+      `Contoh dengan Redis: ${chalk.blue('npm run scaffold:module -- user-management --redis')}`,
+    );
     process.exit(1);
   }
 
   // Memastikan direktori modules ada
-  if (!fs.existsSync(MODULES_PATH)) {
+  if (fs.existsSync(MODULES_PATH)) {
+    // Direktori sudah ada, tidak perlu dibuat
+  } else {
     fs.mkdirSync(MODULES_PATH, { recursive: true });
     console.log(chalk.green('✓ Direktori modules/ dibuat'));
   }

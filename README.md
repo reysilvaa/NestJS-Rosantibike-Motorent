@@ -3,6 +3,7 @@
 Aplikasi backend untuk layanan rental motor yang menyediakan API lengkap untuk pengelolaan unit motor, transaksi sewa, blog, dan fitur administrasi. Dibangun dengan NestJS, PostgreSQL, dan Prisma ORM.
 
 ## Daftar Isi
+
 - [Fitur Utama](#fitur-utama)
 - [Teknologi yang Digunakan](#teknologi-yang-digunakan)
 - [Struktur Proyek](#struktur-proyek)
@@ -29,15 +30,18 @@ Aplikasi backend untuk layanan rental motor yang menyediakan API lengkap untuk p
 ## Fitur Utama
 
 ### 1. Manajemen Jenis Motor
+
 - Pengelolaan data merk, model, dan spesifikasi motor
 - Penyimpanan informasi harga sewa untuk setiap jenis motor
 
 ### 2. Manajemen Unit Motor
+
 - Pencatatan detail setiap unit motor (plat nomor, status, dll)
 - Pelacakan status unit motor (tersedia, disewa, dipesan, overdue, atau perbaikan)
 - Pengelolaan ketersediaan unit motor untuk disewa
 
 ### 3. Transaksi Sewa
+
 - Pembuatan dan pengelolaan transaksi sewa
 - Pengecekan ketersediaan unit motor berdasarkan tanggal
 - Pelacakan status transaksi (menunggu, berjalan, selesai, batal, atau overdue)
@@ -45,22 +49,26 @@ Aplikasi backend untuk layanan rental motor yang menyediakan API lengkap untuk p
 - Pencatatan riwayat transaksi
 
 ### 4. Integrasi WhatsApp
+
 - Notifikasi otomatis via WhatsApp ke penyewa dan admin
 - Status koneksi WhatsApp
 - Reset koneksi WhatsApp
 - Pengiriman pesan WhatsApp manual
 
 ### 5. Manajemen Blog
+
 - Penulisan dan publikasi artikel blog
 - Pengelolaan kategori dan tag untuk artikel
 - Status artikel (draft atau terbit)
 - Pencarian artikel berdasarkan tag, kategori, atau keyword
 
 ### 6. Manajemen Admin
+
 - Autentikasi admin dengan JWT
 - Pengelolaan akun admin (penambahan, perubahan, penghapusan)
 
 ### 7. Fitur Tambahan
+
 - Caching dengan Redis untuk performa optimal
 - Sistem antrian menggunakan Bull untuk tugas asinkron
 - Komunikasi real-time dengan WebSocket/Socket.io
@@ -69,34 +77,41 @@ Aplikasi backend untuk layanan rental motor yang menyediakan API lengkap untuk p
 ## Teknologi yang Digunakan
 
 ### Backend Framework & Runtime
+
 - [NestJS](https://nestjs.com/) - Framework Node.js progresif
 - [Node.js](https://nodejs.org/) - JavaScript runtime
 
 ### Database & ORM
+
 - [PostgreSQL](https://www.postgresql.org/) - Database relasional
 - [Prisma](https://www.prisma.io/) - ORM modern untuk Node.js dan TypeScript
 
 ### Caching & Message Queue
+
 - [Redis](https://redis.io/) - In-memory data store untuk caching
 - [Bull](https://github.com/OptimalBits/bull) - Queue library berbasis Redis
 
 ### Komunikasi & Integrasi
+
 - [Socket.io](https://socket.io/) - Komunikasi real-time
 - [Baileys](https://github.com/whiskeysockets/baileys) - Library WhatsApp Web API
 
 ### Autentikasi & Keamanan
+
 - [JWT](https://jwt.io/) - JSON Web Token untuk autentikasi
 - [Passport](http://www.passportjs.org/) - Authentication middleware
 - [bcrypt](https://github.com/kelektiv/node.bcrypt.js) - Password hashing
 - [Helmet](https://helmetjs.github.io/) - HTTP header security
 
 ### Dokumentasi & Tooling
+
 - [Swagger](https://swagger.io/) - API documentation
 - [Jest](https://jestjs.io/) - Testing framework
 - [ESLint](https://eslint.org/) - Linting utility
 - [Prettier](https://prettier.io/) - Code formatter
 
 ## Struktur Proyek
+
 Proyek ini mengikuti struktur folder yang konsisten untuk memudahkan pengembangan:
 
 ```
@@ -114,7 +129,7 @@ backend/
 │   │   ├── unit-motor/       # Modul pengelolaan unit motor
 │   │   └── whatsapp/         # Modul integrasi WhatsApp
 │   ├── app.controller.ts     # Controller aplikasi utama
-│   ├── app.module.ts         # Modul aplikasi utama 
+│   ├── app.module.ts         # Modul aplikasi utama
 │   ├── app.service.ts        # Service aplikasi utama
 │   └── main.ts               # File entrypoint aplikasi
 ├── prisma/                   # Prisma schema dan migrasi
@@ -137,13 +152,15 @@ backend/
 ### Standar Penamaan
 
 - File: `kebab-case.ts` (contoh: `auth-service.ts`)
-- Kelas: `PascalCase` (contoh: `UserService`)  
+- Kelas: `PascalCase` (contoh: `UserService`)
 - Fungsi/Metode: `camelCase` (contoh: `getUserById()`)
 - Konstanta: `SCREAMING_SNAKE_CASE` (contoh: `MAX_LOGIN_ATTEMPTS`)
 - Variabel: `camelCase` (contoh: `userId`)
 
 ### Struktur Modul
+
 Setiap modul harus berisi file-file berikut:
+
 - `[module].module.ts`: Definisi modul
 - `[module].controller.ts`: Controller REST API
 - `[module].service.ts`: Logic dan business rules
@@ -206,17 +223,20 @@ docker-compose up -d
 Aplikasi menggunakan file `.env` untuk konfigurasi. Berikut adalah daftar variabel yang tersedia:
 
 ### Database Configuration
+
 ```
 DATABASE_URL="postgresql://username:password@localhost:5432/rental_motor?schema=public"
 ```
 
 ### JWT Configuration
+
 ```
 JWT_SECRET="rahasia-aman-untuk-jwt-authentication"
 JWT_EXPIRES_IN="7d"
 ```
 
 ### Redis Configuration
+
 ```
 REDIS_HOST="localhost"
 REDIS_PORT="6379"
@@ -224,11 +244,13 @@ REDIS_PASSWORD=""
 ```
 
 ### BullMQ Configuration
+
 ```
 QUEUE_PREFIX="rental_motor"
 ```
 
 ### Server Configuration
+
 ```
 PORT=3000
 NODE_ENV="development"
@@ -236,17 +258,20 @@ CORS_ORIGIN="http://localhost:3000"
 ```
 
 ### Rate Limiting
+
 ```
 RATE_LIMIT_WINDOW_MS=60000
 RATE_LIMIT_MAX=100
 ```
 
 ### Compression
+
 ```
 COMPRESSION_LEVEL=6
 ```
 
 ### Baileys WhatsApp Configuration
+
 ```
 BAILEYS_SESSION_PATH="./storage/whatsapp-sessions"
 ADMIN_WHATSAPP_NUMBER="6281234567890"
@@ -289,90 +314,90 @@ npx prisma studio
 
 ### 1. Auth
 
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| POST   | `/auth/login` | Login admin |
+| Method | Endpoint        | Deskripsi                                  |
+| ------ | --------------- | ------------------------------------------ |
+| POST   | `/auth/login`   | Login admin                                |
 | GET    | `/auth/profile` | Mendapatkan profil admin yang sedang login |
-| POST   | `/auth/refresh` | Memperbarui token JWT |
+| POST   | `/auth/refresh` | Memperbarui token JWT                      |
 
 ### 2. Admin
 
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| GET    | `/admin` | Mendapatkan daftar admin |
+| Method | Endpoint     | Deskripsi                               |
+| ------ | ------------ | --------------------------------------- |
+| GET    | `/admin`     | Mendapatkan daftar admin                |
 | GET    | `/admin/:id` | Mendapatkan detail admin berdasarkan ID |
-| POST   | `/admin` | Buat admin baru |
-| PUT    | `/admin/:id` | Update admin |
-| DELETE | `/admin/:id` | Hapus admin |
+| POST   | `/admin`     | Buat admin baru                         |
+| PUT    | `/admin/:id` | Update admin                            |
+| DELETE | `/admin/:id` | Hapus admin                             |
 
 ### 3. Jenis Motor
 
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| GET    | `/jenis-motor` | Mendapatkan semua jenis motor |
+| Method | Endpoint           | Deskripsi                                     |
+| ------ | ------------------ | --------------------------------------------- |
+| GET    | `/jenis-motor`     | Mendapatkan semua jenis motor                 |
 | GET    | `/jenis-motor/:id` | Mendapatkan detail jenis motor berdasarkan ID |
-| POST   | `/jenis-motor` | Membuat jenis motor baru |
-| PATCH  | `/jenis-motor/:id` | Memperbarui jenis motor |
-| DELETE | `/jenis-motor/:id` | Menghapus jenis motor |
+| POST   | `/jenis-motor`     | Membuat jenis motor baru                      |
+| PATCH  | `/jenis-motor/:id` | Memperbarui jenis motor                       |
+| DELETE | `/jenis-motor/:id` | Menghapus jenis motor                         |
 
 ### 4. Unit Motor
 
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| GET    | `/unit-motor` | Mendapatkan semua unit motor |
-| GET    | `/unit-motor/available` | Mendapatkan unit motor yang tersedia |
-| GET    | `/unit-motor/:id` | Mendapatkan detail unit motor berdasarkan ID |
-| POST   | `/unit-motor` | Membuat unit motor baru |
-| PATCH  | `/unit-motor/:id` | Memperbarui unit motor |
-| PATCH  | `/unit-motor/:id/status` | Memperbarui status unit motor |
-| DELETE | `/unit-motor/:id` | Menghapus unit motor |
+| Method | Endpoint                 | Deskripsi                                    |
+| ------ | ------------------------ | -------------------------------------------- |
+| GET    | `/unit-motor`            | Mendapatkan semua unit motor                 |
+| GET    | `/unit-motor/available`  | Mendapatkan unit motor yang tersedia         |
+| GET    | `/unit-motor/:id`        | Mendapatkan detail unit motor berdasarkan ID |
+| POST   | `/unit-motor`            | Membuat unit motor baru                      |
+| PATCH  | `/unit-motor/:id`        | Memperbarui unit motor                       |
+| PATCH  | `/unit-motor/:id/status` | Memperbarui status unit motor                |
+| DELETE | `/unit-motor/:id`        | Menghapus unit motor                         |
 
 ### 5. Transaksi
 
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| GET    | `/transaksi` | Mendapatkan semua transaksi |
-| GET    | `/transaksi/active` | Mendapatkan transaksi aktif |
-| GET    | `/transaksi/history` | Mendapatkan history transaksi (selesai/overdue) |
-| GET    | `/transaksi/:id` | Mendapatkan detail transaksi berdasarkan ID |
-| POST   | `/transaksi` | Membuat transaksi baru |
-| PATCH  | `/transaksi/:id` | Memperbarui transaksi |
-| DELETE | `/transaksi/:id` | Menghapus transaksi |
-| POST   | `/transaksi/:id/selesai` | Menyelesaikan transaksi sewa |
-| POST   | `/transaksi/:id/batal` | Membatalkan transaksi sewa |
+| Method | Endpoint                 | Deskripsi                                       |
+| ------ | ------------------------ | ----------------------------------------------- |
+| GET    | `/transaksi`             | Mendapatkan semua transaksi                     |
+| GET    | `/transaksi/active`      | Mendapatkan transaksi aktif                     |
+| GET    | `/transaksi/history`     | Mendapatkan history transaksi (selesai/overdue) |
+| GET    | `/transaksi/:id`         | Mendapatkan detail transaksi berdasarkan ID     |
+| POST   | `/transaksi`             | Membuat transaksi baru                          |
+| PATCH  | `/transaksi/:id`         | Memperbarui transaksi                           |
+| DELETE | `/transaksi/:id`         | Menghapus transaksi                             |
+| POST   | `/transaksi/:id/selesai` | Menyelesaikan transaksi sewa                    |
+| POST   | `/transaksi/:id/batal`   | Membatalkan transaksi sewa                      |
 
 ### 6. Blog
 
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| GET    | `/blog` | Mendapatkan semua artikel |
-| GET    | `/blog/featured` | Mendapatkan artikel unggulan |
-| GET    | `/blog/tags` | Mendapatkan semua tag blog |
-| GET    | `/blog/tags/:id` | Mendapatkan detail tag berdasarkan ID |
-| GET    | `/blog/:slug` | Mendapatkan artikel berdasarkan slug |
-| POST   | `/blog` | Membuat artikel baru |
-| PUT    | `/blog/:id` | Memperbarui artikel |
-| PATCH  | `/blog/:id/status` | Memperbarui status artikel |
-| DELETE | `/blog/:id` | Menghapus artikel |
-| POST   | `/blog/tags` | Membuat tag baru |
-| DELETE | `/blog/tags/:id` | Menghapus tag |
+| Method | Endpoint           | Deskripsi                             |
+| ------ | ------------------ | ------------------------------------- |
+| GET    | `/blog`            | Mendapatkan semua artikel             |
+| GET    | `/blog/featured`   | Mendapatkan artikel unggulan          |
+| GET    | `/blog/tags`       | Mendapatkan semua tag blog            |
+| GET    | `/blog/tags/:id`   | Mendapatkan detail tag berdasarkan ID |
+| GET    | `/blog/:slug`      | Mendapatkan artikel berdasarkan slug  |
+| POST   | `/blog`            | Membuat artikel baru                  |
+| PUT    | `/blog/:id`        | Memperbarui artikel                   |
+| PATCH  | `/blog/:id/status` | Memperbarui status artikel            |
+| DELETE | `/blog/:id`        | Menghapus artikel                     |
+| POST   | `/blog/tags`       | Membuat tag baru                      |
+| DELETE | `/blog/tags/:id`   | Menghapus tag                         |
 
 ### 7. WhatsApp
 
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| POST   | `/whatsapp/send` | Kirim pesan WhatsApp |
-| POST   | `/whatsapp/send-admin` | Kirim pesan ke admin WhatsApp |
-| POST   | `/whatsapp/reset-connection` | Reset koneksi WhatsApp |
-| GET    | `/whatsapp/status` | Cek status koneksi WhatsApp |
-| GET    | `/whatsapp/qr` | Mendapatkan QR code untuk koneksi WhatsApp |
+| Method | Endpoint                     | Deskripsi                                  |
+| ------ | ---------------------------- | ------------------------------------------ |
+| POST   | `/whatsapp/send`             | Kirim pesan WhatsApp                       |
+| POST   | `/whatsapp/send-admin`       | Kirim pesan ke admin WhatsApp              |
+| POST   | `/whatsapp/reset-connection` | Reset koneksi WhatsApp                     |
+| GET    | `/whatsapp/status`           | Cek status koneksi WhatsApp                |
+| GET    | `/whatsapp/qr`               | Mendapatkan QR code untuk koneksi WhatsApp |
 
 ### 8. Redis Debug
 
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| GET    | `/debug/redis` | Operasi debug untuk Redis |
-| GET    | `/debug/redis/keys` | Daftar keys di Redis |
+| Method | Endpoint             | Deskripsi                     |
+| ------ | -------------------- | ----------------------------- |
+| GET    | `/debug/redis`       | Operasi debug untuk Redis     |
+| GET    | `/debug/redis/keys`  | Daftar keys di Redis          |
 | DELETE | `/debug/redis/flush` | Menghapus semua data di Redis |
 
 ## Parameter API Detail
@@ -380,6 +405,7 @@ npx prisma studio
 ### Auth API
 
 #### Login
+
 ```
 POST /auth/login
 
@@ -404,13 +430,14 @@ Response:
 ### Admin API
 
 #### Buat Admin
+
 ```
 POST /admin
 
 Request:
 {
   "username": "string",
-  "password": "string", 
+  "password": "string",
   "nama": "string"
 }
 
@@ -425,6 +452,7 @@ Response:
 ```
 
 #### Update Admin
+
 ```
 PUT /admin/:id
 
@@ -447,6 +475,7 @@ Response:
 ### Jenis Motor API
 
 #### Buat Jenis Motor
+
 ```
 POST /jenis-motor
 
@@ -471,6 +500,7 @@ Response:
 ### Unit Motor API
 
 #### Filter Unit Motor
+
 ```
 GET /unit-motor?jenisId=uuid&search=string&status=string
 
@@ -500,6 +530,7 @@ Response:
 ```
 
 #### Buat Unit Motor
+
 ```
 POST /unit-motor
 
@@ -526,6 +557,7 @@ Response:
 ### Transaksi API
 
 #### Filter Transaksi
+
 ```
 GET /transaksi?search=string&status=string&tanggalMulai=date&tanggalSelesai=date
 
@@ -560,6 +592,7 @@ Response:
 ```
 
 #### Buat Transaksi
+
 ```
 POST /transaksi
 
@@ -600,6 +633,7 @@ Response:
 ### Blog API
 
 #### Filter Blog
+
 ```
 GET /blog?search=string&status=string&kategori=string&page=number&limit=number
 
@@ -631,6 +665,7 @@ Response:
 ```
 
 #### Buat Blog
+
 ```
 POST /blog
 
@@ -668,6 +703,7 @@ Response:
 ### WhatsApp API
 
 #### Kirim Pesan
+
 ```
 POST /whatsapp/send
 
@@ -689,6 +725,7 @@ Response:
 Sebagian besar endpoint memerlukan autentikasi menggunakan JWT Bearer Token yang didapatkan dari endpoint login.
 
 Header yang diperlukan:
+
 ```
 Authorization: Bearer [token]
 ```
@@ -721,6 +758,7 @@ Aplikasi ini menggunakan Baileys untuk terintegrasi dengan WhatsApp. Fitur yang 
 Aplikasi menggunakan Redis untuk caching data. Ini meningkatkan performa dengan menyimpan data yang sering diakses dalam memori.
 
 Beberapa data yang di-cache:
+
 - Jenis motor
 - Unit motor tersedia
 - Artikel blog populer
@@ -731,6 +769,7 @@ Cache otomatis di-invalidate ketika data berubah.
 ## Job Queuing
 
 Aplikasi menggunakan Bull untuk menangani tugas asinkron, seperti:
+
 - Pengiriman notifikasi WhatsApp
 - Pemrosesan transaksi dengan volume tinggi
 - Tugas terjadwal seperti pengecekan transaksi overdue
@@ -738,6 +777,7 @@ Aplikasi menggunakan Bull untuk menangani tugas asinkron, seperti:
 ## Websocket
 
 Aplikasi menyediakan komunikasi real-time melalui Socket.io untuk:
+
 - Status koneksi WhatsApp
 - Notifikasi transaksi baru
 - Dashboard updates
@@ -768,17 +808,20 @@ Anda dapat mengakses Swagger UI di: http://localhost:3000/api/docs
 ## Status Entity
 
 ### Status Motor
+
 - `TERSEDIA` - Motor tersedia untuk disewa
 - `DISEWA` - Motor sedang disewa
 - `DIPESAN` - Motor telah dipesan tapi belum disewa
 - `OVERDUE` - Motor belum dikembalikan melewati batas waktu
 
 ### Status Transaksi
+
 - `AKTIF` - Transaksi sedang berjalan (motor sedang disewa)
 - `SELESAI` - Transaksi telah selesai
 - `OVERDUE` - Batas waktu transaksi telah berakhir tapi belum dikembalikan
 
 ### Status Artikel
+
 - `DRAFT` - Artikel masih dalam proses penulisan
 - `TERBIT` - Artikel telah dipublikasikan
 
@@ -797,20 +840,24 @@ Anda dapat mengakses Swagger UI di: http://localhost:3000/api/docs
 ## Troubleshooting
 
 ### Koneksi Database
+
 - Pastikan PostgreSQL berjalan
 - Verifikasi DATABASE_URL di file .env
 - Jalankan `npx prisma db push` untuk memverifikasi koneksi
 
 ### Koneksi Redis
+
 - Pastikan Redis server berjalan
 - Verifikasi REDIS_HOST dan REDIS_PORT di file .env
 
 ### Koneksi WhatsApp
+
 - Jika QR code tidak muncul, coba reset koneksi dengan endpoint `/whatsapp/reset-connection`
 - Periksa logs untuk error detail
 - Pastikan folder session WhatsApp (`./storage/whatsapp-sessions`) memiliki izin yang tepat
 
 ### Error Umum
+
 - `PrismaClientInitializationError`: Periksa koneksi database
 - `Error: connect ECONNREFUSED`: Redis server tidak berjalan
 - `ValidationError`: Format request tidak valid, periksa dokumentasi API
@@ -820,11 +867,13 @@ Anda dapat mengakses Swagger UI di: http://localhost:3000/api/docs
 ### Menambahkan Modul Baru
 
 1. Buat modul baru menggunakan NestJS CLI:
+
    ```bash
    npm run scaffold:module -- nama-modul
    ```
-   
+
    Atau secara manual:
+
    ```bash
    nest g module modules/nama-modul
    nest g controller modules/nama-modul
@@ -834,6 +883,7 @@ Anda dapat mengakses Swagger UI di: http://localhost:3000/api/docs
 2. Tambahkan model ke schema.prisma jika diperlukan
 
 3. Jalankan migration:
+
    ```bash
    npx prisma migrate dev --name "add_nama_feature"
    ```
@@ -882,46 +932,46 @@ module.exports = {
   apps: [
     {
       // Konfigurasi dasar
-      name: "rental-backend",
-      script: "dist/main.js",
-      
+      name: 'rental-backend',
+      script: 'dist/main.js',
+
       // Konfigurasi Cluster dan Worker
-      exec_mode: "cluster", // Mode cluster untuk load balancing
+      exec_mode: 'cluster', // Mode cluster untuk load balancing
       instances: process.env.PM2_INSTANCES || 1, // Default 1 worker untuk VPS RAM 1GB
       // instances: "max", // Uncomment ini untuk menggunakan semua CPU core
-      
+
       // Batas dan optimasi memori
-      max_memory_restart: process.env.PM2_MAX_MEMORY || "750M",
-      node_args: process.env.PM2_NODE_ARGS || "--max-old-space-size=700",
-      
+      max_memory_restart: process.env.PM2_MAX_MEMORY || '750M',
+      node_args: process.env.PM2_NODE_ARGS || '--max-old-space-size=700',
+
       // Environment variables
       env: {
-        NODE_ENV: "development"
+        NODE_ENV: 'development',
       },
       env_production: {
-        NODE_ENV: "production",
-        PORT: 3000
+        NODE_ENV: 'production',
+        PORT: 3000,
       },
-      
+
       // Fitur pengawasan
       watch: false,
       source_map_support: false,
-      
+
       // Pengaturan log
-      error_file: "logs/error.log",
-      out_file: "logs/output.log",
-      log_date_format: "YYYY-MM-DD HH:mm:ss",
+      error_file: 'logs/error.log',
+      out_file: 'logs/output.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
       merge_logs: true,
-      
+
       // Pengaturan restart
-      min_uptime: "60s",
+      min_uptime: '60s',
       max_restarts: 10,
       restart_delay: 5000,
       autorestart: true,
       listen_timeout: 30000,
-      kill_timeout: 5000
-    }
-  ]
+      kill_timeout: 5000,
+    },
+  ],
 };
 ```
 
@@ -943,31 +993,37 @@ Anda dapat mengontrol jumlah worker via:
 ### Langkah-langkah Deployment
 
 1. Pastikan Anda telah menginstal PM2 secara global:
+
    ```bash
    npm install -g pm2
    ```
 
 2. Build aplikasi:
+
    ```bash
    npm run build
    ```
 
 3. Jalankan aplikasi dengan PM2:
+
    ```bash
    npm run pm2:start
    ```
 
 4. Setelah memverifikasi bahwa aplikasi berjalan dengan benar, pastikan PM2 dimulai pada system boot:
+
    ```bash
    npm run pm2:setup
    ```
 
 5. Pantau aplikasi secara real-time:
+
    ```bash
    npm run pm2:monit
    ```
 
 6. Skala aplikasi ke jumlah worker tertentu:
+
    ```bash
    npm run pm2:scale <jumlah>
    ```

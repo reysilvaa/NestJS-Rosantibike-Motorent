@@ -7,7 +7,7 @@ import { CreateJenisMotorDto, UpdateJenisMotorDto } from '../dto';
 // Mock helper functions
 jest.mock('../helpers', () => ({
   verifyJenisMotorExists: jest.fn(),
-  verifyCanDeleteJenisMotor: jest.fn()
+  verifyCanDeleteJenisMotor: jest.fn(),
 }));
 
 // Import after mocking
@@ -27,7 +27,7 @@ describe('JenisMotorService', () => {
     },
     unitMotor: {
       findMany: jest.fn(),
-    }
+    },
   };
 
   beforeEach(async () => {
@@ -43,7 +43,7 @@ describe('JenisMotorService', () => {
 
     service = module.get<JenisMotorService>(JenisMotorService);
     prisma = module.get<PrismaService>(PrismaService);
-    
+
     // Reset mocks
     jest.clearAllMocks();
   });
@@ -59,7 +59,7 @@ describe('JenisMotorService', () => {
         model: 'Vario',
         cc: 150,
       };
-      
+
       const expected = {
         id: 'some-id',
         ...dto,
@@ -70,7 +70,7 @@ describe('JenisMotorService', () => {
       mockPrismaService.jenisMotor.create.mockResolvedValue(expected);
 
       const result = await service.create(dto);
-      
+
       expect(mockPrismaService.jenisMotor.create).toHaveBeenCalledWith({
         data: dto,
       });
@@ -93,7 +93,7 @@ describe('JenisMotorService', () => {
       mockPrismaService.jenisMotor.findMany.mockResolvedValue(expected);
 
       const result = await service.findAll();
-      
+
       expect(mockPrismaService.jenisMotor.findMany).toHaveBeenCalledWith({
         include: { unitMotor: true },
       });
@@ -115,7 +115,7 @@ describe('JenisMotorService', () => {
       (verifyJenisMotorExists as jest.Mock).mockResolvedValue(expected);
 
       const result = await service.findOne(id);
-      
+
       expect(verifyJenisMotorExists).toHaveBeenCalledWith(id, prisma, expect.any(Logger));
       expect(result).toEqual(expected);
     });
@@ -127,7 +127,7 @@ describe('JenisMotorService', () => {
       const dto: UpdateJenisMotorDto = {
         merk: 'Honda Updated',
       };
-      
+
       const expected = {
         id,
         merk: 'Honda Updated',
@@ -139,7 +139,7 @@ describe('JenisMotorService', () => {
       mockPrismaService.jenisMotor.update.mockResolvedValue(expected);
 
       const result = await service.update(id, dto);
-      
+
       expect(verifyJenisMotorExists).toHaveBeenCalledWith(id, prisma, expect.any(Logger));
       expect(mockPrismaService.jenisMotor.update).toHaveBeenCalledWith({
         where: { id },
@@ -164,7 +164,7 @@ describe('JenisMotorService', () => {
       mockPrismaService.jenisMotor.delete.mockResolvedValue(expected);
 
       const result = await service.remove(id);
-      
+
       expect(verifyJenisMotorExists).toHaveBeenCalledWith(id, prisma, expect.any(Logger));
       expect(verifyCanDeleteJenisMotor).toHaveBeenCalledWith(id, prisma, expect.any(Logger));
       expect(mockPrismaService.jenisMotor.delete).toHaveBeenCalledWith({

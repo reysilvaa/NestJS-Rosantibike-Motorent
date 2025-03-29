@@ -29,6 +29,7 @@ nano .env
 ```
 
 Pastikan untuk mengisi nilai yang benar untuk:
+
 - `DATABASE_URL`
 - `JWT_SECRET`
 - `APP_PORT` (default: 3000)
@@ -131,6 +132,7 @@ Konfigurasi sudah dioptimalkan untuk VPS dengan RAM 1GB:
 3. **Redis**: Dibatasi maksimum 100MB memory dengan kebijakan LRU
 
 Total alokasi RAM:
+
 - API: ~500MB
 - PostgreSQL: ~300MB
 - Redis: ~150MB
@@ -196,4 +198,4 @@ ufw allow 3000/tcp
 
 # Menggunakan iptables
 iptables -A INPUT -p tcp --dport 3000 -j ACCEPT
-``` 
+```

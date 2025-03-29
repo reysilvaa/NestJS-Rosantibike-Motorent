@@ -1,6 +1,6 @@
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
-import { JenisMotorController } from './jenis-motor.controller';
+import { JenisMotorController } from '../controllers/jenis-motor.controller';
 
 describe('JenisMotorController', () => {
   let controller: JenisMotorController;

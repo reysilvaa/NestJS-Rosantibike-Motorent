@@ -17,26 +17,26 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Build aplikasi
         run: npm run build
-      
+
       - name: Generate Prisma client
         run: npx prisma generate
-      
+
       - name: Setup SSH key
         uses: webfactory/ssh-agent@v0.7.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-      
+
       - name: Tambahkan host ke known_hosts
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -p ${{ secrets.SSH_PORT || 22 }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-      
+
       - name: Deploy ke VPS
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
@@ -48,46 +48,46 @@ jobs:
 
           # Transfer ke VPS
           scp -P $SSH_PORT deploy.tar.gz $SSH_USER@$SSH_HOST:/tmp/
-          
+
           # Buat script deployment
           cat > deploy.sh << 'EOFSCRIPT'
           #!/bin/bash
           mkdir -p /var/www/rosantibikemotorent/backend
-          
+
           if [ -f /var/www/rosantibikemotorent/backend/.env ]; then
             cp /var/www/rosantibikemotorent/backend/.env /var/www/rosantibikemotorent/backend/.env.backup
           fi
-          
+
           tar -xzf /tmp/deploy.tar.gz -C /var/www/rosantibikemotorent/backend
-          
+
           if [ -f /var/www/rosantibikemotorent/backend/.env.backup ]; then
             cp /var/www/rosantibikemotorent/backend/.env.backup /var/www/rosantibikemotorent/backend/.env
           else
             cp /var/www/rosantibikemotorent/backend/.env.example /var/www/rosantibikemotorent/backend/.env
             sed -i 's/localhost:5432/localhost:5432/g' /var/www/rosantibikemotorent/backend/.env
           fi
-          
+
           cd /var/www/rosantibikemotorent/backend
           npx prisma migrate deploy
-          
+
           mkdir -p /var/www/rosantibikemotorent/backend/logs
           mkdir -p /var/www/rosantibikemotorent/backend/storage
-          
+
           if pm2 list | grep -q "rental-backend"; then
             pm2 reload ecosystem.config.js --env production
           else
             pm2 start ecosystem.config.js --env production
           fi
-          
+
           pm2 save
-          
+
           rm /tmp/deploy.tar.gz
-          
+
           echo "Deployed at $(date)" >> /var/www/rosantibikemotorent/deploy.log
           EOFSCRIPT
-          
+
           # Transfer script ke VPS
           scp -P $SSH_PORT deploy.sh $SSH_USER@$SSH_HOST:/tmp/
-          
+
           # Jalankan script di VPS
-          ssh -p $SSH_PORT $SSH_USER@$SSH_HOST "chmod +x /tmp/deploy.sh && /tmp/deploy.sh && rm /tmp/deploy.sh" 
+          ssh -p $SSH_PORT $SSH_USER@$SSH_HOST "chmod +x /tmp/deploy.sh && /tmp/deploy.sh && rm /tmp/deploy.sh"

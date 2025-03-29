@@ -11,7 +11,7 @@ Proyek ini mengikuti struktur folder standar untuk memudahkan pengembangan. Untu
 ### Standar Penamaan
 
 - File: `kebab-case.ts` (contoh: `auth-service.ts`)
-- Kelas: `PascalCase` (contoh: `UserService`)  
+- Kelas: `PascalCase` (contoh: `UserService`)
 - Fungsi/Metode: `camelCase` (contoh: `getUserById()`)
 - Konstanta: `SCREAMING_SNAKE_CASE` (contoh: `MAX_LOGIN_ATTEMPTS`)
 - Variabel: `camelCase` (contoh: `userId`)
@@ -58,6 +58,7 @@ npm run check:structure
 Proyek ini menggunakan ESLint dan Prettier untuk memastikan kode tetap konsisten dan berkualitas tinggi.
 
 - Untuk menjalankan linter:
+
   ```bash
   npm run lint
   ```
@@ -80,4 +81,4 @@ Proyek ini menggunakan ESLint dan Prettier untuk memastikan kode tetap konsisten
 
 Jika Anda memiliki pertanyaan atau memerlukan bantuan, jangan ragu untuk membuka issue baru di repositori ini.
 
-Terima kasih telah berkontribusi! 
+Terima kasih telah berkontribusi!

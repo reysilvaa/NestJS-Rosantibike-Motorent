@@ -39,7 +39,7 @@ export async function seedUnitMotor(
       hargaSewa: new Decimal(75000),
       status: StatusMotor.TERSEDIA,
     },
-    
+
     // Yamaha NMAX (Jenis Motor 1)
     {
       jenisId: jenisMotor[1].id,
@@ -65,7 +65,7 @@ export async function seedUnitMotor(
       hargaSewa: new Decimal(125000),
       status: StatusMotor.TERSEDIA,
     },
-    
+
     // Honda PCX (Jenis Motor 2)
     {
       jenisId: jenisMotor[2].id,
@@ -85,7 +85,7 @@ export async function seedUnitMotor(
       hargaSewa: new Decimal(125000),
       status: StatusMotor.TERSEDIA,
     },
-    
+
     // Vespa Sprint (Jenis Motor 3)
     {
       jenisId: jenisMotor[3].id,
@@ -105,7 +105,7 @@ export async function seedUnitMotor(
       hargaSewa: new Decimal(150000),
       status: StatusMotor.TERSEDIA,
     },
-    
+
     // Kawasaki Ninja 250 (Jenis Motor 4)
     {
       jenisId: jenisMotor[4].id,

@@ -133,7 +133,11 @@ export class CloudinaryService {
     try {
       // URL Cloudinary format: https://res.cloudinary.com/cloud_name/image/upload/v1234567890/folder/public_id.ext
       const urlParts = url.split('/');
-      const filenameParts = urlParts.at(-1).split('.');
+      const lastPart = urlParts.at(-1);
+
+      if (!lastPart) return null;
+
+      const filenameParts = lastPart.split('.');
 
       // Hapus ekstensi file
       filenameParts.pop();

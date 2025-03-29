@@ -15,16 +15,16 @@ export default [
   ...compat.extends(
     'plugin:@typescript-eslint/recommended',
     'plugin:prettier/recommended',
-    'plugin:unicorn/recommended'
+    'plugin:unicorn/recommended',
   ),
   {
     ignores: [
-      'dist/', 
-      'node_modules/', 
+      'dist/',
+      'node_modules/',
       'eslint.config.mjs',
       'test/**/*.ts',
       'src/**/*.spec.ts',
-      'src/**/__tests__/**/*.ts'
+      'src/**/__tests__/**/*.ts',
     ],
   },
   {
@@ -44,11 +44,14 @@ export default [
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/consistent-type-imports': 'warn',
-      '@typescript-eslint/no-unused-vars': ['warn', { 
-        argsIgnorePattern: '^_',
-        varsIgnorePattern: '^_',
-        caughtErrorsIgnorePattern: '^_'
-      }],
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-invalid-void-type': 'off',
       'no-console': 'off',
@@ -64,52 +67,52 @@ export default [
       '@typescript-eslint/naming-convention': [
         'error',
         {
-          'selector': 'default',
-          'format': ['camelCase']
+          selector: 'default',
+          format: ['camelCase'],
         },
         {
-          'selector': 'variable',
-          'format': ['camelCase', 'UPPER_CASE'],
-          'leadingUnderscore': 'allow'
+          selector: 'variable',
+          format: ['camelCase', 'UPPER_CASE'],
+          leadingUnderscore: 'allow',
         },
         {
-          'selector': 'parameter',
-          'format': ['camelCase'],
-          'leadingUnderscore': 'allow'
+          selector: 'parameter',
+          format: ['camelCase'],
+          leadingUnderscore: 'allow',
         },
         {
-          'selector': 'memberLike',
-          'modifiers': ['private'],
-          'format': ['camelCase'],
-          'leadingUnderscore': 'allow'
+          selector: 'memberLike',
+          modifiers: ['private'],
+          format: ['camelCase'],
+          leadingUnderscore: 'allow',
         },
         {
-          'selector': 'typeLike',
-          'format': ['PascalCase']
+          selector: 'typeLike',
+          format: ['PascalCase'],
         },
         {
-          'selector': 'class',
-          'format': ['PascalCase']
+          selector: 'class',
+          format: ['PascalCase'],
         },
         {
-          'selector': 'enum',
-          'format': ['PascalCase']
+          selector: 'enum',
+          format: ['PascalCase'],
         },
         {
-          'selector': 'enumMember',
-          'format': ['UPPER_CASE']
+          selector: 'enumMember',
+          format: ['UPPER_CASE'],
         },
         {
-          'selector': 'objectLiteralProperty',
-          'format': ['camelCase', 'UPPER_CASE', 'snake_case']
-        }
+          selector: 'objectLiteralProperty',
+          format: ['camelCase', 'UPPER_CASE', 'snake_case'],
+        },
       ],
       'unicorn/filename-case': [
         'error',
         {
-          'case': 'kebabCase'
-        }
-      ]
+          case: 'kebabCase',
+        },
+      ],
     },
   },
 ];

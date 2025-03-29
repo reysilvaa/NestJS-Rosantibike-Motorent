@@ -1,5 +1,5 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import path from 'node:path';
 import chalk from 'chalk';
 
 const SRC_PATH = path.join(process.cwd(), 'src');
