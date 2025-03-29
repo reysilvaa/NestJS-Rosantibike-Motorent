@@ -21,15 +21,16 @@ model JenisMotor {
 }
 
 model UnitMotor {
-  id        String          @id @default(uuid())
-  jenisId   String
-  platNomor String          @unique @db.VarChar(20)
-  status    StatusMotor     @default(TERSEDIA)
-  hargaSewa Decimal         @db.Decimal(10, 2)
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
-  sewa      TransaksiSewa[]
-  jenis     JenisMotor      @relation(fields: [jenisId], references: [id])
+  id             String          @id @default(uuid())
+  jenisId        String
+  platNomor      String          @unique @db.VarChar(20)
+  status         StatusMotor     @default(TERSEDIA)
+  hargaSewa      Decimal         @db.Decimal(10, 2)
+  tahunPembuatan Int             @default(2020)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  sewa           TransaksiSewa[]
+  jenis          JenisMotor      @relation(fields: [jenisId], references: [id])
 
   @@index([platNomor])
   @@index([status])

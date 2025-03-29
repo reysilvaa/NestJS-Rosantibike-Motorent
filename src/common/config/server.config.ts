@@ -12,9 +12,9 @@ export const startServer = async (
 ): Promise<{ server: Server; port: number }> => {
   const port = configService.get<number>('PORT', 3000);
   const server = await app.listen(port, '0.0.0.0');
-  
+
   logger.log(`Server running on port ${port}`);
-  
+
   return { server, port };
 };
 

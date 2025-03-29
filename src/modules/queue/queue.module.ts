@@ -17,7 +17,7 @@ import { HttpRequestProcessor } from './processors/http-request.processor';
           maxRetriesPerRequest: 3,
           enableReadyCheck: false,
           enableOfflineQueue: false,
-          connectTimeout: 5000
+          connectTimeout: 5000,
         },
         prefix: configService.get('QUEUE_PREFIX', 'rental'),
         defaultJobOptions: {
@@ -33,39 +33,39 @@ import { HttpRequestProcessor } from './processors/http-request.processor';
           lockDuration: 30_000,
           stalledInterval: 30_000,
           maxStalledCount: 2,
-          guardInterval: 5000
+          guardInterval: 5000,
         },
         limiter: {
           max: 100,
-          duration: 5000
-        }
+          duration: 5000,
+        },
       }),
     }),
     // Daftarkan antrian secara umum
     BullModule.registerQueue(
       {
         name: 'transaksi',
-        limiter: { max: 30, duration: 5000 }
+        limiter: { max: 30, duration: 5000 },
       },
       {
         name: 'whatsapp',
-        limiter: { max: 20, duration: 10_000 }
+        limiter: { max: 20, duration: 10_000 },
       },
       {
         name: 'blog',
-        limiter: { max: 10, duration: 5000 }
+        limiter: { max: 10, duration: 5000 },
       },
       {
         name: 'unit-motor',
-        limiter: { max: 20, duration: 5000 }
+        limiter: { max: 20, duration: 5000 },
       },
       {
         name: 'jenis-motor',
-        limiter: { max: 10, duration: 5000 }
+        limiter: { max: 10, duration: 5000 },
       },
       {
         name: 'http-request',
-        limiter: { max: 50, duration: 5000 }
+        limiter: { max: 50, duration: 5000 },
       },
     ),
   ],

@@ -10,7 +10,7 @@ export class QueueService implements OnModuleDestroy {
   private queueEvents: Map<string, QueueEvents> = new Map();
   private workers: Map<string, Worker> = new Map();
   private redisConfig: { host: string; port: number };
-  
+
   // Membatasi jumlah worker debug yang dapat dibuat
   private readonly maxDebugWorkers = 5;
 
@@ -65,7 +65,7 @@ export class QueueService implements OnModuleDestroy {
   async addHttpRequestJob(requestData: any) {
     // Tentukan prioritas berdasarkan method dan path
     let priority = 5; // default priority
-    
+
     switch (requestData.method) {
       case 'GET': {
         priority = 10; // prioritas tinggi untuk GET request
@@ -80,7 +80,7 @@ export class QueueService implements OnModuleDestroy {
         break;
       }
     }
-    
+
     return this.httpRequestQueue.add('http-request', requestData, {
       priority,
       attempts: 2,
@@ -110,8 +110,8 @@ export class QueueService implements OnModuleDestroy {
     const now = Date.now();
     const cacheKey = queueName;
     const cachedInfo = this.queueInfoCache.get(cacheKey);
-    
-    if (cachedInfo && (now - cachedInfo.timestamp) < this.cacheTtl) {
+
+    if (cachedInfo && now - cachedInfo.timestamp < this.cacheTtl) {
       return cachedInfo.data;
     }
 
@@ -141,7 +141,7 @@ export class QueueService implements OnModuleDestroy {
 
       // Simpan ke cache
       this.queueInfoCache.set(cacheKey, { data: result, timestamp: now });
-      
+
       return result;
     } catch (error) {
       this.logger.error(`Error getting queue info for ${queueName}: ${error.message}`, error.stack);
@@ -156,11 +156,11 @@ export class QueueService implements OnModuleDestroy {
   getScheduler(queueName: string): any {
     if (!this.schedulers.has(queueName)) {
       const scheduler = { name: queueName, connection: this.redisConfig };
-      
+
       this.schedulers.set(queueName, scheduler);
       this.logger.log(`Scheduler created for queue: ${queueName}`);
     }
-    
+
     return this.schedulers.get(queueName)!;
   }
 
@@ -173,24 +173,27 @@ export class QueueService implements OnModuleDestroy {
       const queueEvents = new QueueEvents(queueName, {
         connection: this.redisConfig,
       });
-      
+
       this.queueEvents.set(queueName, queueEvents);
       this.logger.log(`QueueEvents created for queue: ${queueName}`);
-      
+
       queueEvents.on('error', error => {
-        this.logger.error(`QueueEvents error for queue ${queueName}: ${error.message}`, error.stack);
+        this.logger.error(
+          `QueueEvents error for queue ${queueName}: ${error.message}`,
+          error.stack,
+        );
       });
-      
+
       // Log hanya event penting untuk mengurangi beban
       queueEvents.on('failed', ({ jobId, failedReason }) => {
         this.logger.error(`Job ${jobId} failed in queue ${queueName}: ${failedReason}`);
       });
-      
+
       queueEvents.on('stalled', ({ jobId }) => {
         this.logger.warn(`Job ${jobId} stalled in queue ${queueName}`);
       });
     }
-    
+
     return this.queueEvents.get(queueName)!;
   }
 
@@ -201,24 +204,26 @@ export class QueueService implements OnModuleDestroy {
   createDebugWorker(queueName: string, concurrency: number = 1): Worker {
     // Batasi jumlah worker yang dapat dibuat
     if (this.workers.size >= this.maxDebugWorkers && !this.workers.has(queueName)) {
-      this.logger.warn(`Reached max debug workers limit (${this.maxDebugWorkers}). Cannot create worker for ${queueName}`);
+      this.logger.warn(
+        `Reached max debug workers limit (${this.maxDebugWorkers}). Cannot create worker for ${queueName}`,
+      );
       throw new Error(`Max debug workers limit reached (${this.maxDebugWorkers})`);
     }
-    
+
     // Close existing worker if needed
     if (this.workers.has(queueName)) {
       this.workers.get(queueName)!.close();
     }
-    
+
     const worker = new Worker(
       queueName,
       async job => {
         this.logger.debug(`Processing job ${job.id} in debug worker (${queueName})`);
         this.logger.debug(`Job data: ${JSON.stringify(job.data)}`);
-        
+
         // Simulasi pemrosesan dengan batasan waktu
         await new Promise(resolve => setTimeout(resolve, Math.min(1000, 50 + Math.random() * 100)));
-        
+
         return { processed: true, timestamp: new Date() };
       },
       {
@@ -226,13 +231,13 @@ export class QueueService implements OnModuleDestroy {
         concurrency,
         limiter: {
           max: 50,
-          duration: 5000
-        }
+          duration: 5000,
+        },
       },
     );
-    
+
     this.workers.set(queueName, worker);
-    
+
     // Hanya catat error untuk mengurangi log
     worker.on('failed', (job, error) => {
       this.logger.error(
@@ -240,9 +245,9 @@ export class QueueService implements OnModuleDestroy {
         error.stack,
       );
     });
-    
+
     this.logger.log(`Debug worker created for queue: ${queueName} with concurrency ${concurrency}`);
-    
+
     return worker;
   }
 
@@ -251,29 +256,29 @@ export class QueueService implements OnModuleDestroy {
    */
   async closeAll() {
     this.logger.log('Closing all queue resources...');
-    
+
     const closePromises: Promise<void>[] = [];
-    
+
     // Close workers
     for (const [name, worker] of this.workers.entries()) {
       this.logger.log(`Closing worker for queue: ${name}`);
       closePromises.push(worker.close());
     }
-    
+
     // Close queue events
     for (const [name, queueEvents] of this.queueEvents.entries()) {
       this.logger.log(`Closing queue events for queue: ${name}`);
       closePromises.push(queueEvents.close());
     }
-    
+
     // Tutup resource secara paralel
     await Promise.all(closePromises);
-    
+
     this.workers.clear();
     this.queueEvents.clear();
     this.schedulers.clear();
     this.queueInfoCache.clear();
-    
+
     this.logger.log('All queue resources closed');
   }
 

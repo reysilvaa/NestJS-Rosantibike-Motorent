@@ -24,6 +24,7 @@ import {
   handleError,
   logInfo,
   logRequestDebugInfo,
+  successResponse,
 } from '../../../common/helpers';
 
 @ApiTags('Jenis Motor')

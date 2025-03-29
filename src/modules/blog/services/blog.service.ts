@@ -34,7 +34,7 @@ export class BlogService {
     }
 
     const skip = (page - 1) * limit;
-    
+
     const [total, data] = await Promise.all([
       this.prisma.blogPost.count({ where }),
       this.prisma.blogPost.findMany({
@@ -42,16 +42,16 @@ export class BlogService {
         include: {
           tags: {
             include: {
-              tag: true
-            }
-          }
+              tag: true,
+            },
+          },
         },
         orderBy: {
-          createdAt: "desc"
+          createdAt: 'desc',
         },
         skip: parseInt(skip.toString()),
-        take: parseInt(limit.toString())
-      })
+        take: parseInt(limit.toString()),
+      }),
     ]);
 
     return {

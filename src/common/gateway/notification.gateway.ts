@@ -10,9 +10,17 @@ import { Server, Socket } from 'socket.io';
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: ['http://localhost:3001', 'http://localhost:3000', '*'],
+    methods: ['GET', 'POST'],
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   },
   namespace: '/notifications',
+  transports: ['websocket', 'polling'],
+  pingInterval: 25_000,
+  pingTimeout: 60_000,
+  allowUpgrades: true,
+  upgradeTimeout: 10_000,
 })
 export class NotificationGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
@@ -36,10 +44,34 @@ export class NotificationGateway
     } else {
       this.logger.log(`Client connected: ${client.id}, no userId`);
     }
+
+    // Kirim pesan konfirmasi koneksi ke client
+    client.emit('connected', {
+      status: 'connected',
+      socketId: client.id,
+      timestamp: new Date().toISOString(),
+    });
+
+    // Setup interval ping untuk mencegah terputus
+    const pingInterval = setInterval(() => {
+      if (client.connected) {
+        client.emit('ping', { timestamp: new Date().toISOString() });
+      } else {
+        clearInterval(pingInterval);
+      }
+    }, 20_000);
+
+    // Menyimpan interval di objek client untuk dibersihkan saat disconnect
+    client.data.pingInterval = pingInterval;
   }
 
   handleDisconnect(client: Socket) {
-    // Find and remove the disconnected client
+    // Membersihkan interval ping
+    if (client.data.pingInterval) {
+      clearInterval(client.data.pingInterval);
+    }
+
+    // Mencari dan menghapus klien dari map clients
     for (const [userId, socket] of this.clients.entries()) {
       if (socket.id === client.id) {
         this.clients.delete(userId);
@@ -47,6 +79,8 @@ export class NotificationGateway
         break;
       }
     }
+
+    this.logger.log(`Client disconnected: ${client.id}`);
   }
 
   /**
@@ -62,15 +96,15 @@ export class NotificationGateway
    */
   sendToUser(userId: string, event: string, data: any) {
     const client = this.clients.get(userId);
-
-    if (client) {
+    if (client && client.connected) {
       client.emit(event, data);
       this.logger.debug(`Sent event "${event}" to user ${userId}`);
       return true;
-    } else {
-      this.logger.debug(`Failed to send event "${event}": User ${userId} not connected`);
-      return false;
     }
+    this.logger.warn(
+      `Failed to send notification to user ${userId}: client not found or disconnected`,
+    );
+    return false;
   }
 
   /**
