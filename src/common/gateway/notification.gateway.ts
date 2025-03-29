@@ -5,9 +5,10 @@ import { Server, Socket } from 'socket.io';
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
-    methods: ['GET', 'POST'],
+    origin: true,
+    methods: ['GET', 'POST', 'OPTIONS'],
     credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-csrf-token']
   },
   transports: ['polling', 'websocket'],
   path: '/socket.io/',
