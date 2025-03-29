@@ -1,4 +1,5 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import type { OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaClient, Prisma } from '@prisma/client';
 import type { Prisma as _Prisma } from '@prisma/client';
 

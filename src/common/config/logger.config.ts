@@ -9,7 +9,7 @@ export const createLogger = () => {
   const readableFormat = winston.format.printf(
     ({ level, message, timestamp, context, trace, ...meta }) => {
       const contextStr = context ? `[${context}] ` : '';
-      const metaStr = Object.keys(meta).length ? `\n${JSON.stringify(meta, null, 2)}` : '';
+      const metaStr = Object.keys(meta).length > 0 ? `\n${JSON.stringify(meta, null, 2)}` : '';
       const traceStr = trace ? `\n${trace}` : '';
 
       return `${timestamp} ${level.toUpperCase().padEnd(7)} ${contextStr}${message}${metaStr}${traceStr}`;

@@ -3,11 +3,16 @@ import {
   NotFoundException,
   BadRequestException,
   InternalServerErrorException,
-  Logger
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { UnitMotorService } from '../../unit-motor/services/unit-motor.service';
-import { CreateTransaksiDto, UpdateTransaksiDto, FilterTransaksiDto, CalculatePriceDto } from '../dto/index';
+import type {
+  CreateTransaksiDto,
+  UpdateTransaksiDto,
+  FilterTransaksiDto,
+  CalculatePriceDto,
+} from '../dto/index';
 import { StatusMotor, StatusTransaksi } from '../../../common/enums/status.enum';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bullmq';
@@ -19,7 +24,7 @@ import {
   verifyTransaksiExists,
   verifyUnitMotorExists,
   verifyUnitMotorAvailability,
-  verifyCanCompleteTransaksi
+  verifyCanCompleteTransaksi,
 } from '../helpers';
 
 @Injectable()
@@ -119,7 +124,11 @@ export class TransaksiService {
   async create(createTransaksiDto: CreateTransaksiDto) {
     try {
       // Pastikan unit motor ada
-      const unitMotor = await verifyUnitMotorExists(createTransaksiDto.unitId, this.prisma, this.logger);
+      const unitMotor = await verifyUnitMotorExists(
+        createTransaksiDto.unitId,
+        this.prisma,
+        this.logger,
+      );
 
       // Periksa ketersediaan unit pada rentang waktu tertentu
       const tanggalMulai = new Date(createTransaksiDto.tanggalMulai);
@@ -132,7 +141,7 @@ export class TransaksiService {
         tanggalSelesai,
         null, // tidak ada transaksi ID karena ini pembuatan baru
         this.prisma,
-        this.logger
+        this.logger,
       );
 
       // Hitung total biaya jika tidak disediakan
@@ -144,7 +153,7 @@ export class TransaksiService {
           createTransaksiDto.jamMulai || '08:00',
           createTransaksiDto.jamSelesai || '08:00',
           Number(unitMotor.hargaSewa),
-          this.logger
+          this.logger,
         );
       }
 
@@ -251,7 +260,7 @@ export class TransaksiService {
           tanggalSelesai,
           id, // exclude current transaction
           this.prisma,
-          this.logger
+          this.logger,
         );
       }
 
@@ -283,7 +292,7 @@ export class TransaksiService {
           jamMulai,
           jamSelesai,
           Number(unitMotor.hargaSewa),
-          this.logger
+          this.logger,
         );
       }
 
@@ -310,7 +319,7 @@ export class TransaksiService {
       }
 
       let result;
-      
+
       // Update transaksi dan status unit motor jika diperlukan dalam transaksi database
       if (updateTransaksiDto.status === StatusTransaksi.SELESAI) {
         // Jika status diubah menjadi SELESAI, panggil method selesaiSewa
@@ -412,7 +421,7 @@ export class TransaksiService {
   async selesaiSewa(id: string) {
     try {
       const transaksi = await verifyTransaksiExists(id, this.prisma, this.logger);
-      
+
       // Verifikasi transaksi dapat diselesaikan
       verifyCanCompleteTransaksi(transaksi, this.logger);
 
@@ -428,11 +437,11 @@ export class TransaksiService {
         });
 
         // Update status transaksi menjadi SELESAI dan tambahkan denda jika ada
-        const updateData: any = { 
+        const updateData: any = {
           status: StatusTransaksi.SELESAI,
-          biayaDenda: biayaDenda
+          biayaDenda: biayaDenda,
         };
-        
+
         const transaksiUpdated = await tx.transaksiSewa.update({
           where: { id },
           data: updateData,
@@ -455,7 +464,7 @@ export class TransaksiService {
         platNomor: result.unitMotor.platNomor,
         message: `Unit motor ${result.unitMotor.platNomor} telah dikembalikan`,
       });
-      
+
       // Jika ada denda, kirim notifikasi denda
       if (biayaDenda > 0) {
         this.notificationGateway.sendDendaNotification({
@@ -481,10 +490,10 @@ export class TransaksiService {
     try {
       const start = new Date(startDate);
       const end = new Date(endDate);
-      
+
       // Set end date to end of day
       end.setHours(23, 59, 59, 999);
-      
+
       // Gunakan where kondisi yang dinamis untuk menghindari error linter
       const whereClause: any = {
         status: StatusTransaksi.SELESAI,
@@ -494,7 +503,7 @@ export class TransaksiService {
           lte: end,
         },
       };
-      
+
       const transaksiDengan = await this.prisma.transaksiSewa.findMany({
         where: whereClause,
         include: {
@@ -506,12 +515,12 @@ export class TransaksiService {
         },
         orderBy: { updatedAt: 'desc' },
       });
-      
+
       const totalDenda = transaksiDengan.reduce(
         (total, transaksi) => total + Number((transaksi as any).biayaDenda),
         0,
       );
-      
+
       return {
         data: transaksiDengan,
         totalDenda,
@@ -524,7 +533,7 @@ export class TransaksiService {
       return handleError(this.logger, error, 'Gagal mendapatkan laporan denda');
     }
   }
-  
+
   /**
    * Mendapatkan laporan penggunaan fasilitas
    */
@@ -532,37 +541,31 @@ export class TransaksiService {
     try {
       const start = new Date(startDate);
       const end = new Date(endDate);
-      
+
       // Set end date to end of day
       end.setHours(23, 59, 59, 999);
-      
+
       // Gunakan where kondisi yang dinamis untuk menghindari error linter
       const whereClause: any = {
         updatedAt: {
           gte: start,
           lte: end,
         },
-        OR: [
-          { jasHujan: { gt: 0 } },
-          { helm: { gt: 0 } },
-        ],
+        OR: [{ jasHujan: { gt: 0 } }, { helm: { gt: 0 } }],
       };
-      
+
       const transaksi = await this.prisma.transaksiSewa.findMany({
         where: whereClause,
         orderBy: { updatedAt: 'desc' },
       });
-      
+
       const totalJasHujan = transaksi.reduce(
         (total, transaksi) => total + (transaksi as any).jasHujan,
         0,
       );
-      
-      const totalHelm = transaksi.reduce(
-        (total, transaksi) => total + (transaksi as any).helm,
-        0,
-      );
-      
+
+      const totalHelm = transaksi.reduce((total, transaksi) => total + (transaksi as any).helm, 0);
+
       return {
         data: transaksi,
         totalJasHujan,
@@ -621,7 +624,11 @@ export class TransaksiService {
       }
 
       // Ambil informasi unit motor
-      const unitMotor = await verifyUnitMotorExists(calculatePriceDto.unitId, this.prisma, this.logger);
+      const unitMotor = await verifyUnitMotorExists(
+        calculatePriceDto.unitId,
+        this.prisma,
+        this.logger,
+      );
 
       // Konversi tanggal ke objek Date
       const tanggalMulai = new Date(calculatePriceDto.tanggalMulai);
@@ -639,31 +646,34 @@ export class TransaksiService {
       const jamMulai = calculatePriceDto.jamMulai || '08:00';
       const jamSelesai = calculatePriceDto.jamSelesai || '08:00';
       const hargaSewaPerHari = Number(unitMotor.hargaSewa);
-      
+
       // Gabungkan tanggal dan jam untuk perhitungan yang lebih akurat
       const tanggalJamMulai = new Date(tanggalMulai);
       const tanggalJamSelesai = new Date(tanggalSelesai);
-      
+
       // Set jam dari parameter
       const [jamMulaiHour, jamMulaiMinute] = jamMulai.split(':').map(Number);
       const [jamSelesaiHour, jamSelesaiMinute] = jamSelesai.split(':').map(Number);
-      
+
       tanggalJamMulai.setHours(jamMulaiHour, jamMulaiMinute, 0, 0);
       tanggalJamSelesai.setHours(jamSelesaiHour, jamSelesaiMinute, 0, 0);
-      
+
       // Hitung total jam
-      const diffHours = Math.max(1, Math.ceil((tanggalJamSelesai.getTime() - tanggalJamMulai.getTime()) / (1000 * 60 * 60)));
-      
+      const diffHours = Math.max(
+        1,
+        Math.ceil((tanggalJamSelesai.getTime() - tanggalJamMulai.getTime()) / (1000 * 60 * 60)),
+      );
+
       // Hitung jumlah hari penuh dan jam tambahan
       let fullDays = Math.floor(diffHours / 24);
       let extraHours = diffHours % 24;
-      
+
       // Jika keterlambatan lebih dari 6 jam, dihitung sebagai 1 hari penuh
       if (extraHours > 6) {
         fullDays += 1;
         extraHours = 0;
       }
-      
+
       // Hitung biaya menggunakan helper function
       const totalBiaya = hitungTotalBiaya(
         tanggalMulai,
@@ -671,7 +681,7 @@ export class TransaksiService {
         jamMulai,
         jamSelesai,
         hargaSewaPerHari,
-        this.logger
+        this.logger,
       );
 
       // Hitung komponen biaya untuk detail

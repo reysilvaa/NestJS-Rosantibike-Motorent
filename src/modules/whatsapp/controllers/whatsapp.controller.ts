@@ -13,7 +13,7 @@ interface SendMessageDto {
 @Controller('whatsapp')
 export class WhatsappController {
   private readonly logger = new Logger(WhatsappController.name);
-  
+
   constructor(private readonly whatsappService: WhatsappService) {}
 
   @Post('send')
@@ -42,12 +42,7 @@ export class WhatsappController {
       logInfo(this.logger, 'Pesan berhasil dikirim');
       return { success: true, message: 'Pesan berhasil dikirim' };
     } catch (error) {
-      return handleError(
-        this.logger,
-        error,
-        'Gagal mengirim pesan WhatsApp',
-        'sendMessage'
-      );
+      return handleError(this.logger, error, 'Gagal mengirim pesan WhatsApp', 'sendMessage');
     }
   }
 
@@ -79,7 +74,7 @@ export class WhatsappController {
         this.logger,
         error,
         'Gagal mengirim pesan ke admin WhatsApp',
-        'sendToAdmin'
+        'sendToAdmin',
       );
     }
   }
@@ -94,12 +89,7 @@ export class WhatsappController {
       logInfo(this.logger, 'Koneksi WhatsApp berhasil di-reset');
       return { success: true, message: 'Koneksi WhatsApp berhasil di-reset' };
     } catch (error) {
-      return handleError(
-        this.logger,
-        error,
-        'Gagal reset koneksi WhatsApp',
-        'resetConnection'
-      );
+      return handleError(this.logger, error, 'Gagal reset koneksi WhatsApp', 'resetConnection');
     }
   }
 
@@ -129,7 +119,7 @@ export class WhatsappController {
       } else {
         statusMessage = 'WhatsApp tidak terhubung, silakan scan QR code';
       }
-      
+
       logInfo(this.logger, `Status koneksi WhatsApp: ${status.status}`);
 
       return {
@@ -144,7 +134,7 @@ export class WhatsappController {
         this.logger,
         error,
         'Gagal mendapatkan status koneksi WhatsApp',
-        'getStatus'
+        'getStatus',
       );
     }
   }
@@ -168,12 +158,7 @@ export class WhatsappController {
       logInfo(this.logger, 'QR code berhasil diambil');
       return { qrCode };
     } catch (error) {
-      return handleError(
-        this.logger,
-        error,
-        'Gagal mendapatkan QR code WhatsApp',
-        'getQrCode'
-      );
+      return handleError(this.logger, error, 'Gagal mendapatkan QR code WhatsApp', 'getQrCode');
     }
   }
 }

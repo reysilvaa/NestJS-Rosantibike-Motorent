@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import type { Logger } from '@nestjs/common';
 
 /**
  * Mencatat detail request untuk debugging
@@ -22,7 +22,7 @@ export const logRequestDebugInfo = (req: any, logger: Logger) => {
   logger.log('Request IP:', req.ip);
   logger.log('Request Original URL:', req.originalUrl);
   logger.log('Request Base URL:', req.baseUrl);
-  
+
   // Log setiap field dalam body
   if (req.body) {
     logger.log('Body Fields:');
@@ -30,7 +30,7 @@ export const logRequestDebugInfo = (req: any, logger: Logger) => {
       logger.log(`- ${key}: ${typeof req.body[key]}`);
     });
   }
-  
+
   // Log setiap field dalam files
   if (req.files && Object.keys(req.files).length > 0) {
     logger.log('File Fields:');
@@ -45,9 +45,9 @@ export const logRequestDebugInfo = (req: any, logger: Logger) => {
   // Log raw request body jika ada
   if (req.rawBody) {
     logger.log('Raw Request Body Length:', req.rawBody.length);
-    logger.log('Raw Request Body Preview:', req.rawBody.toString().substring(0, 1000));
+    logger.log('Raw Request Body Preview:', req.rawBody.toString().slice(0, 1000));
   }
-  
+
   return {
     message: 'Debug info',
     headers: req.headers,
@@ -64,4 +64,4 @@ export const logRequestDebugInfo = (req: any, logger: Logger) => {
     hasRawBody: !!req.rawBody,
     rawBodyLength: req.rawBody ? req.rawBody.length : 0,
   };
-}; 
+};

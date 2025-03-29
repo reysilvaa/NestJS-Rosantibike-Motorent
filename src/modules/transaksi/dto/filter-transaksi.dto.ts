@@ -1,5 +1,5 @@
 import { IsOptional, IsString, IsDateString, IsUUID } from 'class-validator';
-import { StatusTransaksi } from '../../../common/enums/status.enum';
+import type { StatusTransaksi } from '../../../common/enums/status.enum';
 import { Transform } from 'class-transformer';
 
 export class FilterTransaksiDto {

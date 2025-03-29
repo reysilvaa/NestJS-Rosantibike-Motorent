@@ -1,5 +1,5 @@
-import * as cluster from 'cluster';
-import { cpus } from 'os';
+import * as cluster from 'node:cluster';
+import { cpus } from 'node:os';
 import { Logger } from '@nestjs/common';
 
 // Type assertion untuk mengatasi masalah TypeScript dengan Node.js cluster API
@@ -39,4 +39,4 @@ export function setupCluster(bootstrapFunction: () => Promise<void>): void {
       process.exit(1);
     });
   }
-} 
+}

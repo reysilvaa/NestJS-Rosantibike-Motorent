@@ -31,7 +31,7 @@ export class RedisController {
     try {
       const info = await this.redisService.getRedisInfo();
       return { status: 'success', info };
-    } catch (_error) {
+    } catch {
       return { status: 'error', info: 'Gagal mendapatkan informasi Redis' };
     }
   }
@@ -45,7 +45,7 @@ export class RedisController {
     try {
       const keys = await this.redisService.keys(pattern);
       return { status: 'success', keys };
-    } catch (_error) {
+    } catch {
       return { status: 'error', keys: [] };
     }
   }
@@ -64,7 +64,7 @@ export class RedisController {
       const value = await this.redisService.get(key);
       const ttl = await this.redisService.ttl(key);
       return { status: 'success', exists: true, value: { data: value, ttl } };
-    } catch (_error) {
+    } catch {
       return { status: 'error', exists: false, value: null };
     }
   }
@@ -91,7 +91,7 @@ export class RedisController {
       }
       await this.redisService.del(key);
       return { status: 'success', message: `Key ${key} deleted successfully` };
-    } catch (_error) {
+    } catch {
       return { status: 'error', message: 'Gagal menghapus key' };
     }
   }

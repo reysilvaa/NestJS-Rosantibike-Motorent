@@ -1,6 +1,11 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, Query, Logger } from '@nestjs/common';
 import { TransaksiService } from '../services/transaksi.service';
-import { CreateTransaksiDto, UpdateTransaksiDto, FilterTransaksiDto, CalculatePriceDto } from '../dto/index';
+import {
+  CreateTransaksiDto,
+  UpdateTransaksiDto,
+  FilterTransaksiDto,
+  CalculatePriceDto,
+} from '../dto/index';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { StatusTransaksi } from '../../../common/enums/status.enum';
 import { successResponse, handleError, paginationResponse } from '../../../common/helpers';
@@ -9,7 +14,7 @@ import { successResponse, handleError, paginationResponse } from '../../../commo
 @Controller('transaksi')
 export class TransaksiController {
   private readonly logger = new Logger(TransaksiController.name);
-  
+
   constructor(private readonly transaksiService: TransaksiService) {}
 
   @Post()
@@ -41,7 +46,7 @@ export class TransaksiController {
         result.meta.total,
         result.meta.page,
         result.meta.limit,
-        'Daftar transaksi berhasil diambil'
+        'Daftar transaksi berhasil diambil',
       );
     } catch (error) {
       return handleError(this.logger, error, 'Gagal mengambil daftar transaksi');
@@ -64,7 +69,7 @@ export class TransaksiController {
         result.meta.total,
         result.meta.page,
         result.meta.limit,
-        'History transaksi berhasil diambil'
+        'History transaksi berhasil diambil',
       );
     } catch (error) {
       return handleError(this.logger, error, 'Gagal mengambil history transaksi');
@@ -79,7 +84,11 @@ export class TransaksiController {
       const result = await this.transaksiService.findByPhone(noHP);
       return successResponse(result, `Transaksi dengan nomor telepon ${noHP} berhasil ditemukan`);
     } catch (error) {
-      return handleError(this.logger, error, `Gagal mencari transaksi dengan nomor telepon ${noHP}`);
+      return handleError(
+        this.logger,
+        error,
+        `Gagal mencari transaksi dengan nomor telepon ${noHP}`,
+      );
     }
   }
 
@@ -153,10 +162,7 @@ export class TransaksiController {
     status: 200,
     description: 'Laporan denda berhasil diambil',
   })
-  async getLaporanDenda(
-    @Query('startDate') startDate: string,
-    @Query('endDate') endDate: string,
-  ) {
+  async getLaporanDenda(@Query('startDate') startDate: string, @Query('endDate') endDate: string) {
     try {
       const result = await this.transaksiService.getLaporanDenda(startDate, endDate);
       return successResponse(result, 'Laporan denda berhasil diambil');

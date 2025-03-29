@@ -1,4 +1,14 @@
-import { IsString, IsOptional, IsUUID, IsDateString, IsNumber, Min, IsEnum, Matches, Max } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsUUID,
+  IsDateString,
+  IsNumber,
+  Min,
+  IsEnum,
+  Matches,
+  Max,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 import { StatusTransaksi } from '../../../common/enums/status.enum';
 
@@ -24,15 +34,15 @@ export class UpdateTransaksiDto {
   tanggalSelesai?: string;
 
   @IsString()
-  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, { 
-    message: 'Format jam mulai tidak valid. Gunakan format HH:MM (contoh: 08:00)' 
+  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
+    message: 'Format jam mulai tidak valid. Gunakan format HH:MM (contoh: 08:00)',
   })
   @IsOptional()
   jamMulai?: string;
 
   @IsString()
-  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, { 
-    message: 'Format jam selesai tidak valid. Gunakan format HH:MM (contoh: 08:00)' 
+  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
+    message: 'Format jam selesai tidak valid. Gunakan format HH:MM (contoh: 08:00)',
   })
   @IsOptional()
   jamSelesai?: string;

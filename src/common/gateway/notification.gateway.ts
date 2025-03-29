@@ -1,11 +1,5 @@
-import {
-  WebSocketGateway,
-  WebSocketServer,
-  OnGatewayInit,
-  OnGatewayConnection,
-  OnGatewayDisconnect,
-  SubscribeMessage,
-} from '@nestjs/websockets';
+import type { OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
+import { WebSocketGateway, WebSocketServer, SubscribeMessage } from '@nestjs/websockets';
 import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 
@@ -18,9 +12,9 @@ import { Server, Socket } from 'socket.io';
   transports: ['polling', 'websocket'],
   path: '/socket.io/',
   allowEIO3: true,
-  pingTimeout: 60000,
-  pingInterval: 25000,
-  connectTimeout: 10000,
+  pingTimeout: 60_000,
+  pingInterval: 25_000,
+  connectTimeout: 10_000,
 })
 export class NotificationGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
@@ -30,23 +24,23 @@ export class NotificationGateway
 
   afterInit(server: Server) {
     this.logger.log('Notification gateway initialized');
-    
+
     // Handle server-level events
-    server.on('error', (err) => {
+    server.on('error', err => {
       this.logger.error(`Socket.io server error: ${err.message}`, err.stack);
     });
-    
+
     // Log transport changes
-    server.engine.on('connection_error', (err) => {
+    server.engine.on('connection_error', err => {
       this.logger.error(`Socket.io connection_error: ${err.message}`, err.stack);
     });
   }
 
   handleConnection(client: Socket) {
     this.logger.log(`Client connected: ${client.id}`);
-    
+
     // Monitor for client errors
-    client.on('error', (error) => {
+    client.on('error', error => {
       this.logger.error(`Client ${client.id} error: ${error.message}`);
     });
   }
@@ -120,18 +114,14 @@ export class NotificationGateway
 
   @SubscribeMessage('test-denda')
   handleTestDenda(client: Socket, data: any) {
-    this.logger.log(
-      `Client ${client.id} sent test denda with data: ${JSON.stringify(data)}`,
-    );
+    this.logger.log(`Client ${client.id} sent test denda with data: ${JSON.stringify(data)}`);
     this.server.emit('denda-notification', data);
     return { status: 'ok', message: 'Test notifikasi denda berhasil dikirim' };
   }
 
   @SubscribeMessage('test-fasilitas')
   handleTestFasilitas(client: Socket, data: any) {
-    this.logger.log(
-      `Client ${client.id} sent test fasilitas with data: ${JSON.stringify(data)}`,
-    );
+    this.logger.log(`Client ${client.id} sent test fasilitas with data: ${JSON.stringify(data)}`);
     this.server.emit('fasilitas-notification', data);
     return { status: 'ok', message: 'Test notifikasi fasilitas berhasil dikirim' };
   }

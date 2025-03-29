@@ -17,13 +17,13 @@ import { CreateJenisMotorDto, UpdateJenisMotorDto } from '../dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { CloudinaryService } from '../../../common/services';
 import { Logger } from '@nestjs/common';
-import { 
+import {
   createFileUploadInterceptor,
   getFirstFile,
   getFileInfo,
   handleError,
   logInfo,
-  logRequestDebugInfo
+  logRequestDebugInfo,
 } from '../../../common/helpers';
 
 @ApiTags('Jenis Motor')
@@ -126,12 +126,7 @@ export class JenisMotorController {
         data: created,
       };
     } catch (error) {
-      return handleError(
-        this.logger,
-        error,
-        'Gagal membuat jenis motor',
-        'create'
-      );
+      return handleError(this.logger, error, 'Gagal membuat jenis motor', 'create');
     }
   }
 
@@ -224,12 +219,7 @@ export class JenisMotorController {
         data: updated,
       };
     } catch (error) {
-      return handleError(
-        this.logger,
-        error,
-        'Gagal memperbarui jenis motor',
-        'update'
-      );
+      return handleError(this.logger, error, 'Gagal memperbarui jenis motor', 'update');
     }
   }
 

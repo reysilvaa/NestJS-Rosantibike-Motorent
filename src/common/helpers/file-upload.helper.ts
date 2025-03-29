@@ -18,7 +18,7 @@ export const createFileUploadInterceptor = () => {
         // Tidak ada file gambar, itu ok
         return cb(null, true);
       }
-      if (!file.mimetype.match(/^image\/(jpg|jpeg|png|gif|webp)$/)) {
+      if (!/^image\/(jpg|jpeg|png|gif|webp)$/.test(file.mimetype)) {
         return cb(new BadRequestException('Hanya file gambar yang diperbolehkan!'), false);
       }
       cb(null, true);
@@ -39,7 +39,7 @@ export const getFirstFile = (files: Express.Multer.File[], throwIfEmpty = true) 
     }
     return null;
   }
-  
+
   return files[0];
 };
 
@@ -51,4 +51,4 @@ export const getFirstFile = (files: Express.Multer.File[], throwIfEmpty = true) 
 export const getFileInfo = (file: Express.Multer.File) => {
   if (!file) return 'No file';
   return `File info: ${file.originalname}, size: ${file.size}, mimetype: ${file.mimetype}, fieldname: ${file.fieldname}`;
-}; 
+};

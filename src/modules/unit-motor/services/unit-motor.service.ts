@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService, StatusMotor, StatusTransaksi } from '../../../common';
-import {
+import type {
   CreateUnitMotorDto,
   UpdateUnitMotorDto,
   FilterUnitMotorDto,
@@ -11,7 +11,7 @@ import { handleError } from '../../../common/helpers';
 @Injectable()
 export class UnitMotorService {
   private readonly logger = new Logger(UnitMotorService.name);
-  
+
   constructor(private prisma: PrismaService) {}
 
   async findAll(filter: FilterUnitMotorDto = {}) {
@@ -137,12 +137,12 @@ export class UnitMotorService {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      
+
       // Jika error adalah Prisma not found error
       if (error.code === 'P2025') {
         throw new NotFoundException(`Unit motor dengan ID ${id} tidak ditemukan`);
       }
-      
+
       handleError(this.logger, error, `Gagal memperbarui unit motor dengan ID ${id}`);
     }
   }
@@ -169,12 +169,12 @@ export class UnitMotorService {
       if (error instanceof BadRequestException || error instanceof NotFoundException) {
         throw error;
       }
-      
+
       // Jika error adalah Prisma not found error
       if (error.code === 'P2025') {
         throw new NotFoundException(`Unit motor dengan ID ${id} tidak ditemukan`);
       }
-      
+
       handleError(this.logger, error, `Gagal menghapus unit motor dengan ID ${id}`);
     }
   }
@@ -243,16 +243,16 @@ export class UnitMotorService {
         }
 
         // Hapus duplikat
-        const uniqueBookedDates = [
-          ...new Set(bookedDates.map(date => date.toISOString().split('T')[0])),
-        ];
+        const uniqueBookedDates = new Set(
+          new Set(bookedDates.map(date => date.toISOString().split('T')[0])),
+        );
 
         // Buat data ketersediaan untuk setiap hari
         const dailyAvailability = dayList.map(day => {
           const dayString = day.toISOString().split('T')[0];
           return {
             date: dayString,
-            isAvailable: !uniqueBookedDates.includes(dayString),
+            isAvailable: !uniqueBookedDates.has(dayString),
           };
         });
 

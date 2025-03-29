@@ -54,7 +54,7 @@ export class CloudinaryService {
       const result = await cloudinary.uploader.upload(fileBase64, {
         folder,
         resource_type: 'auto', // Otomatis deteksi tipe resource (image, video, dll)
-        timeout: 60000, // 60 detik timeout
+        timeout: 60_000, // 60 detik timeout
       });
 
       if (!result || !result.secure_url) {
@@ -133,7 +133,7 @@ export class CloudinaryService {
     try {
       // URL Cloudinary format: https://res.cloudinary.com/cloud_name/image/upload/v1234567890/folder/public_id.ext
       const urlParts = url.split('/');
-      const filenameParts = urlParts[urlParts.length - 1].split('.');
+      const filenameParts = urlParts.at(-1).split('.');
 
       // Hapus ekstensi file
       filenameParts.pop();
@@ -142,7 +142,7 @@ export class CloudinaryService {
       const filename = filenameParts.join('.');
 
       // Dapatkan folder + filename sebagai public_id
-      const folderIndex = urlParts.findIndex(part => part === 'upload');
+      const folderIndex = urlParts.indexOf('upload');
       if (folderIndex === -1) return null;
 
       // Skip 'v1234567890' version part

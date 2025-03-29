@@ -1,13 +1,9 @@
 import { Process, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bull';
-import {
-  PrismaService,
-  StatusMotor,
-  StatusTransaksi,
-  TransaksiWithRelations,
-} from '../../../common';
-import * as fs from 'fs';
+import type { TransaksiWithRelations } from '../../../common';
+import { PrismaService, StatusMotor, StatusTransaksi } from '../../../common';
+import * as fs from 'node:fs';
 import { delay } from 'baileys';
 import { NotificationGateway } from '../../../common/gateway/notification.gateway';
 import { WhatsappService } from '../../whatsapp/services/whatsapp.service';
@@ -27,7 +23,7 @@ export class TransaksiProcessor {
   private async sendWhatsAppMessage(to: string, message: string) {
     try {
       // Format nomor WhatsApp (pastikan pakai kode negara)
-      const formattedNumber = to.startsWith('+') ? to.substring(1) : to;
+      const formattedNumber = to.startsWith('+') ? to.slice(1) : to;
       const whatsappId = `${formattedNumber}@s.whatsapp.net`;
 
       // Kirim pesan menggunakan WhatsappService

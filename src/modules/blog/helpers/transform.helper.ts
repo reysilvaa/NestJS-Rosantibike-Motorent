@@ -11,8 +11,8 @@ export function transformBlogPostForFrontend(post: any) {
     status: post.status === 'TERBIT' ? 'published' : 'draft',
     kategori: post.kategori,
     tags: post.tags.map(tag => tag.tag.nama),
-    meta_description: post.konten.substring(0, 150) + '...',
+    meta_description: post.konten.slice(0, 150) + '...',
     createdAt: post.createdAt.toISOString(),
     updatedAt: post.updatedAt.toISOString(),
   };
-} 
+}

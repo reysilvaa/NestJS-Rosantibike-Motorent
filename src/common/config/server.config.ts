@@ -1,6 +1,6 @@
-import { INestApplication, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Server } from 'http';
+import type { INestApplication, Logger } from '@nestjs/common';
+import type { ConfigService } from '@nestjs/config';
+import type { Server } from 'node:http';
 
 /**
  * Konfigurasi untuk menjalankan server dengan penanganan port yang lebih baik

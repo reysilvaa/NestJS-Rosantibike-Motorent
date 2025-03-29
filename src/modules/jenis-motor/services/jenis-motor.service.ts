@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../common/prisma/prisma.service';
-import { CreateJenisMotorDto, UpdateJenisMotorDto } from '../dto';
+import type { CreateJenisMotorDto, UpdateJenisMotorDto } from '../dto';
 import { verifyJenisMotorExists, verifyCanDeleteJenisMotor } from '../helpers';
 import { handleError } from '../../../common/helpers';
 
@@ -63,7 +63,7 @@ export class JenisMotorService {
     try {
       // Verifikasi bahwa jenis motor ada
       await verifyJenisMotorExists(id, this.prisma, this.logger);
-      
+
       // Verifikasi bahwa jenis motor dapat dihapus
       await verifyCanDeleteJenisMotor(id, this.prisma, this.logger);
 

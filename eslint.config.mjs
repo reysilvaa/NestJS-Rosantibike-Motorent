@@ -52,6 +52,15 @@ export default [
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-invalid-void-type': 'off',
       'no-console': 'off',
+      'unicorn/no-null': 'off',
+      'unicorn/prefer-module': 'off',
+      'unicorn/no-process-exit': 'off',
+      'unicorn/no-array-for-each': 'off',
+      'unicorn/prevent-abbreviations': 'off',
+      'unicorn/prefer-number-properties': 'off',
+      'unicorn/prefer-ternary': 'off',
+      'unicorn/no-empty-file': 'off',
+      'unicorn/prefer-top-level-await': 'off',
       '@typescript-eslint/naming-convention': [
         'error',
         {
@@ -60,7 +69,8 @@ export default [
         },
         {
           'selector': 'variable',
-          'format': ['camelCase', 'UPPER_CASE']
+          'format': ['camelCase', 'UPPER_CASE'],
+          'leadingUnderscore': 'allow'
         },
         {
           'selector': 'parameter',
@@ -82,17 +92,16 @@ export default [
           'format': ['PascalCase']
         },
         {
-          'selector': 'interface',
-          'format': ['PascalCase'],
-          'prefix': ['I']
-        },
-        {
           'selector': 'enum',
           'format': ['PascalCase']
         },
         {
           'selector': 'enumMember',
           'format': ['UPPER_CASE']
+        },
+        {
+          'selector': 'objectLiteralProperty',
+          'format': ['camelCase', 'UPPER_CASE', 'snake_case']
         }
       ],
       'unicorn/filename-case': [

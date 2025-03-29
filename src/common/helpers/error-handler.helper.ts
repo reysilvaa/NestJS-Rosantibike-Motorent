@@ -1,4 +1,9 @@
-import { BadRequestException, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
+import type { Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 
 /**
  * Menangani error dengan mencatat log dan melempar exception yang sesuai
@@ -7,19 +12,14 @@ import { BadRequestException, InternalServerErrorException, Logger, NotFoundExce
  * @param message Pesan error untuk internal server error
  * @param context Konteks error (opsional)
  */
-export const handleError = (
-  logger: Logger,
-  error: any,
-  message: string,
-  context?: string
-) => {
+export const handleError = (logger: Logger, error: any, message: string, context?: string) => {
   logger.error(`Error: ${error.message}`, context);
   logger.error(`Error stack: ${error.stack}`, context);
-  
+
   if (error instanceof NotFoundException || error instanceof BadRequestException) {
     throw error;
   }
-  
+
   throw new InternalServerErrorException(`${message}: ${error.message}`);
 };
 
@@ -29,10 +29,6 @@ export const handleError = (
  * @param message Pesan untuk log
  * @param context Konteks log
  */
-export const logInfo = (
-  logger: Logger,
-  message: string,
-  context?: string
-) => {
+export const logInfo = (logger: Logger, message: string, context?: string) => {
   logger.log(message, context);
-}; 
+};

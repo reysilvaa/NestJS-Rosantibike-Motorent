@@ -23,13 +23,13 @@ import { CloudinaryService } from '../../../common/services';
 import { memoryStorage } from 'multer';
 import { Logger } from '@nestjs/common';
 import { AnyFilesInterceptor } from '@nestjs/platform-express';
-import { 
+import {
   createFileUploadInterceptor,
   getFirstFile,
   getFileInfo,
   handleError,
   logInfo,
-  logRequestDebugInfo
+  logRequestDebugInfo,
 } from '../../../common/helpers';
 
 @ApiTags('Blog')
@@ -66,15 +66,10 @@ export class BlogController {
       const blog = await this.blogService.findBySlug(slug);
       return {
         data: blog,
-        message: 'Blog post berhasil ditemukan'
+        message: 'Blog post berhasil ditemukan',
       };
     } catch (error) {
-      return handleError(
-        this.logger,
-        error,
-        'Gagal mengambil blog',
-        'getBlogBySlug'
-      );
+      return handleError(this.logger, error, 'Gagal mengambil blog', 'getBlogBySlug');
     }
   }
 
@@ -141,8 +136,8 @@ export class BlogController {
       if (!createBlogDto.slug && createBlogDto.judul) {
         createBlogDto.slug = createBlogDto.judul
           .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/(^-|-$)/g, '');
+          .replaceAll(/[^\da-z]+/g, '-')
+          .replaceAll(/(^-|-$)/g, '');
       }
 
       // Jika ada file gambar, upload ke Cloudinary
@@ -175,12 +170,7 @@ export class BlogController {
         data: createdBlog,
       };
     } catch (error) {
-      return handleError(
-        this.logger,
-        error,
-        'Gagal membuat blog',
-        'createBlog'
-      );
+      return handleError(this.logger, error, 'Gagal membuat blog', 'createBlog');
     }
   }
 
@@ -287,12 +277,7 @@ export class BlogController {
         data: updated,
       };
     } catch (error) {
-      return handleError(
-        this.logger,
-        error,
-        'Gagal memperbarui blog',
-        'updateBlog'
-      );
+      return handleError(this.logger, error, 'Gagal memperbarui blog', 'updateBlog');
     }
   }
 
@@ -313,12 +298,7 @@ export class BlogController {
       // Hapus blog
       return this.blogService.remove(id);
     } catch (error) {
-      return handleError(
-        this.logger,
-        error,
-        'Gagal menghapus blog',
-        'removeBlog'
-      );
+      return handleError(this.logger, error, 'Gagal menghapus blog', 'removeBlog');
     }
   }
 

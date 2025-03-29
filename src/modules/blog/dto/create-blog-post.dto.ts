@@ -18,8 +18,8 @@ export class CreateBlogPostDto {
     if (obj.judul) {
       return obj.judul
         .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '');
+        .replaceAll(/[^\da-z]+/g, '-')
+        .replaceAll(/(^-|-$)/g, '');
     }
     return '';
   })

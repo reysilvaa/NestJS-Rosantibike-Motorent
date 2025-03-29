@@ -1,4 +1,4 @@
-import { FilterBlogPostDto } from '../dto';
+import type { FilterBlogPostDto } from '../dto';
 
 /**
  * Membuat kondisi where untuk query blog post berdasarkan filter
@@ -29,4 +29,4 @@ export function createBlogWhereCondition(filter: FilterBlogPostDto) {
   Object.keys(where).forEach(key => where[key] === undefined && delete where[key]);
 
   return where;
-} 
+}

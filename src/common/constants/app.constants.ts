@@ -14,7 +14,7 @@ export const APP_CONSTANTS = {
   CACHE_TTL: 60 * 60, // 1 hour in seconds
 
   // Rate Limiting
-  RATE_LIMIT_WINDOW_MS: 60000, // 1 minute
+  RATE_LIMIT_WINDOW_MS: 60_000, // 1 minute
   RATE_LIMIT_MAX: 100,
 
   // WhatsApp

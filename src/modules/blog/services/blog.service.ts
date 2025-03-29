@@ -1,26 +1,26 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../common/prisma/prisma.service';
-import { CreateBlogPostDto, UpdateBlogPostDto, FilterBlogPostDto } from '../dto';
+import type { CreateBlogPostDto, UpdateBlogPostDto, FilterBlogPostDto } from '../dto';
 import { StatusArtikel } from '../../../common/enums/status.enum';
-import { 
-  verifyBlogPostExists, 
-  verifyBlogPostBySlugExists, 
+import {
+  verifyBlogPostExists,
+  verifyBlogPostBySlugExists,
   verifySlugIsUnique,
   transformBlogPostForFrontend,
-  createBlogWhereCondition
+  createBlogWhereCondition,
 } from '../helpers';
 import { handleError } from '../../../common/helpers';
 
 @Injectable()
 export class BlogService {
   private readonly logger = new Logger(BlogService.name);
-  
+
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(filter: FilterBlogPostDto) {
     try {
       const where = createBlogWhereCondition(filter);
-      
+
       const page = filter.page || 1;
       const limit = filter.limit || 10;
       const skip = (page - 1) * limit;
@@ -165,7 +165,7 @@ export class BlogService {
     try {
       // Verifikasi keberadaan artikel
       await verifyBlogPostExists(id, this.prisma, this.logger);
-      
+
       return await this.prisma.$transaction(async tx => {
         // Hapus relasi tag
         await tx.blogPostTag.deleteMany({

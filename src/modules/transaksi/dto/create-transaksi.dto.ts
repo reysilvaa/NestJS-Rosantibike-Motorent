@@ -33,15 +33,15 @@ export class CreateTransaksiDto {
   tanggalSelesai: string;
 
   @IsString()
-  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, { 
-    message: 'Format jam mulai tidak valid. Gunakan format HH:MM (contoh: 08:00)' 
+  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
+    message: 'Format jam mulai tidak valid. Gunakan format HH:MM (contoh: 08:00)',
   })
   @IsNotEmpty({ message: 'Jam mulai sewa harus diisi' })
   jamMulai: string;
 
   @IsString()
-  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, { 
-    message: 'Format jam selesai tidak valid. Gunakan format HH:MM (contoh: 08:00)' 
+  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
+    message: 'Format jam selesai tidak valid. Gunakan format HH:MM (contoh: 08:00)',
   })
   @IsNotEmpty({ message: 'Jam selesai sewa harus diisi' })
   jamSelesai: string;
@@ -81,15 +81,15 @@ export class CalculatePriceDto {
   tanggalSelesai: string;
 
   @IsString()
-  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, { 
-    message: 'Format jam mulai tidak valid. Gunakan format HH:MM (contoh: 08:00)' 
+  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
+    message: 'Format jam mulai tidak valid. Gunakan format HH:MM (contoh: 08:00)',
   })
   @IsNotEmpty({ message: 'Jam mulai sewa harus diisi' })
   jamMulai: string;
 
   @IsString()
-  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, { 
-    message: 'Format jam selesai tidak valid. Gunakan format HH:MM (contoh: 08:00)' 
+  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
+    message: 'Format jam selesai tidak valid. Gunakan format HH:MM (contoh: 08:00)',
   })
   @IsNotEmpty({ message: 'Jam selesai sewa harus diisi' })
   jamSelesai: string;

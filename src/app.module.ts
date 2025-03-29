@@ -17,7 +17,7 @@ import { GatewayModule } from './common/gateway/gateway.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { extname, join } from 'path';
+import { extname, join } from 'node:path';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { CommonModule } from './common/common.module';
 
@@ -35,7 +35,7 @@ import { CommonModule } from './common/common.module';
     // Rate Limiting
     ThrottlerModule.forRoot([
       {
-        ttl: 60000,
+        ttl: 60_000,
         limit: 100,
       },
     ]),
@@ -75,7 +75,7 @@ import { CommonModule } from './common/common.module';
         }),
         fileFilter: (req, file, cb) => {
           // Filter tipe file (hanya gambar)
-          if (!file.originalname.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
+          if (!/\.(jpg|jpeg|png|gif|webp)$/.test(file.originalname)) {
             return cb(new Error('Hanya file gambar yang diperbolehkan!'), false);
           }
           cb(null, true);

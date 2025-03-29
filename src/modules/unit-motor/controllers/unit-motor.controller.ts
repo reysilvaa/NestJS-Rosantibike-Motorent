@@ -13,7 +13,7 @@ import { successResponse, handleError } from '../../../common/helpers';
 @Controller('unit-motor')
 export class UnitMotorController {
   private readonly logger = new Logger(UnitMotorController.name);
-  
+
   constructor(private readonly unitMotorService: UnitMotorService) {}
 
   @Get()

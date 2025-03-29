@@ -5,11 +5,7 @@
  * @param statusCode Kode HTTP status (default: 200)
  * @returns Object response standar
  */
-export const successResponse = <T>(
-  data: T,
-  message = 'Operasi berhasil',
-  statusCode = 200
-) => {
+export const successResponse = <T>(data: T, message = 'Operasi berhasil', statusCode = 200) => {
   return {
     statusCode,
     success: true,
@@ -32,10 +28,10 @@ export const paginationResponse = <T>(
   totalItems: number,
   currentPage: number,
   itemsPerPage: number,
-  message = 'Data berhasil diambil'
+  message = 'Data berhasil diambil',
 ) => {
   const totalPages = Math.ceil(totalItems / itemsPerPage);
-  
+
   return {
     statusCode: 200,
     success: true,
@@ -57,15 +53,11 @@ export const paginationResponse = <T>(
  * @param error Object error
  * @returns Object response error standar
  */
-export const errorResponse = (
-  message: string,
-  statusCode = 400,
-  error?: any
-) => {
+export const errorResponse = (message: string, statusCode = 400, error?: any) => {
   return {
     statusCode,
     success: false,
     message,
     error: error || null,
   };
-}; 
+};

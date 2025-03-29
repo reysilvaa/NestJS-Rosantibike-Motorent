@@ -1,4 +1,5 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import type { OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   DisconnectReason,
@@ -6,11 +7,11 @@ import {
   useMultiFileAuthState,
   type ConnectionState,
 } from 'baileys';
-import { Boom } from '@hapi/boom';
+import type { Boom } from '@hapi/boom';
 import type { JidWithDevice } from 'baileys';
 import * as qrcodeTerminal from 'qrcode-terminal';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 const appStateFiles = [
   'app-state-sync-version-',
@@ -64,7 +65,7 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     | 'authenticated' = 'disconnected';
   private qrCodeSent = false;
   private lastQrTimestamp = 0;
-  private qrMinInterval = 30000;
+  private qrMinInterval = 30_000;
   private lastQrCode: string | null = null;
   private qrHistory: Set<string> = new Set();
   private hasRegisteredListeners = false;
@@ -189,11 +190,11 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       this.client = makeWASocket({
         auth: state,
         printQRInTerminal: false,
-        qrTimeout: 90000,
-        connectTimeoutMs: 180000,
+        qrTimeout: 90_000,
+        connectTimeoutMs: 180_000,
         retryRequestDelayMs: 2000,
-        defaultQueryTimeoutMs: 180000,
-        keepAliveIntervalMs: 60000,
+        defaultQueryTimeoutMs: 180_000,
+        keepAliveIntervalMs: 60_000,
         browser: ['Rental App', 'Chrome', '108.0.0'],
         syncFullHistory: false,
         logger: verboseLogger,
@@ -242,7 +243,7 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
             this.qrHistory.add(qr);
 
             if (this.qrHistory.size > 10) {
-              const oldestQrs = Array.from(this.qrHistory).slice(0, 5);
+              const oldestQrs = [...this.qrHistory].slice(0, 5);
               oldestQrs.forEach(oldQr => this.qrHistory.delete(oldQr));
             }
           } else {
@@ -255,107 +256,120 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
           this.connectionStatus = 'authenticated';
         }
 
-        if (connection === 'connecting') {
-          this.logger.log('WhatsApp connecting...');
-        } else if (connection === 'open') {
-          this.logger.log('WhatsApp connection established successfully');
-          this.retryCount = 0;
-          this.isConnecting = false;
-          this.connectionStatus = 'connected';
-          this.authenticationInProgress = false;
-          this.lastQrCode = null;
-          this.qrCodeSent = false;
+        switch (connection) {
+          case 'connecting': {
+            this.logger.log('WhatsApp connecting...');
 
-          if (this.sendDebugMessages) {
-            setTimeout(() => {
-              this.sendToAdmin('WhatsApp berhasil terhubung').catch(err =>
-                this.logger.error(`Failed to send connection notification: ${err.message}`),
-              );
-            }, 5000);
+            break;
           }
-        } else if (connection === 'close') {
-          this.isConnecting = false;
-
-          const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
-          const errorMessage = (lastDisconnect?.error as Boom)?.output?.payload?.message || '';
-
-          if (statusCode === 515 && errorMessage.includes('Stream Errored')) {
-            this.logger.log(
-              'Stream error 515 terdeteksi setelah pairing. Ini perilaku normal WhatsApp, melakukan reconnect...',
-            );
-
-            this.authenticationInProgress = false;
-            this.connectionStatus = 'reconnecting';
-            this.reconnectAttemptInProgress = true;
-
-            setTimeout(async () => {
-              this.reconnectAttemptInProgress = false;
-              await this.connect();
-            }, 5000);
-            return;
-          }
-
-          if (this.authenticationInProgress && statusCode !== 515) {
-            this.logger.log(
-              'Connection close detected, but authentication in progress. Waiting...',
-            );
-            return;
-          }
-
-          this.connectionStatus = 'disconnected';
-          const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-
-          this.logger.error(
-            `WhatsApp connection closed. Status code: ${statusCode}, Message: ${errorMessage}`,
-          );
-
-          if (statusCode === 401 || statusCode === 428) {
-            this.logger.log('Authentication issue detected (QR scan related)');
-            await this.cleanupSessionFiles();
-            this.qrCodeSent = false;
-            this.authenticationInProgress = false;
-
-            setTimeout(async () => {
-              await this.connect();
-            }, this.retryDelay);
-            return;
-          }
-
-          if (errorMessage.includes('conflict') || statusCode === 409 || statusCode === 440) {
-            this.logger.log('Detected conflict with another session, cleaning all session files');
-            await this.cleanupSessionFiles();
-            this.qrCodeSent = false;
-            this.authenticationInProgress = false;
-          }
-
-          if (shouldReconnect && this.retryCount < this.maxRetries) {
-            this.retryCount++;
-            this.connectionStatus = 'reconnecting';
-            this.logger.log(
-              `Akan mencoba menghubungkan kembali dalam ${this.retryDelay / 1000} detik... (Percobaan ${this.retryCount}/${this.maxRetries})`,
-            );
-
-            this.reconnectAttemptInProgress = true;
-
-            setTimeout(async () => {
-              this.reconnectAttemptInProgress = false;
-              this.authenticationInProgress = false;
-              await this.connect();
-            }, this.retryDelay);
-          } else if (!shouldReconnect) {
-            this.logger.error('User logged out from WhatsApp. Need to scan QR code again.');
-            await this.cleanupSessionFiles();
-            this.connectionStatus = 'disconnected';
+          case 'open': {
+            this.logger.log('WhatsApp connection established successfully');
             this.retryCount = 0;
+            this.isConnecting = false;
+            this.connectionStatus = 'connected';
+            this.authenticationInProgress = false;
+            this.lastQrCode = null;
             this.qrCodeSent = false;
 
-            setTimeout(async () => {
-              await this.connect();
-            }, this.retryDelay);
-          } else {
-            this.logger.error('Maximum retry attempts reached. Giving up on WhatsApp connection.');
-            this.connectionStatus = 'error';
+            if (this.sendDebugMessages) {
+              setTimeout(() => {
+                this.sendToAdmin('WhatsApp berhasil terhubung').catch(error =>
+                  this.logger.error(`Failed to send connection notification: ${error.message}`),
+                );
+              }, 5000);
+            }
+
+            break;
           }
+          case 'close': {
+            this.isConnecting = false;
+
+            const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
+            const errorMessage = (lastDisconnect?.error as Boom)?.output?.payload?.message || '';
+
+            if (statusCode === 515 && errorMessage.includes('Stream Errored')) {
+              this.logger.log(
+                'Stream error 515 terdeteksi setelah pairing. Ini perilaku normal WhatsApp, melakukan reconnect...',
+              );
+
+              this.authenticationInProgress = false;
+              this.connectionStatus = 'reconnecting';
+              this.reconnectAttemptInProgress = true;
+
+              setTimeout(async () => {
+                this.reconnectAttemptInProgress = false;
+                await this.connect();
+              }, 5000);
+              return;
+            }
+
+            if (this.authenticationInProgress && statusCode !== 515) {
+              this.logger.log(
+                'Connection close detected, but authentication in progress. Waiting...',
+              );
+              return;
+            }
+
+            this.connectionStatus = 'disconnected';
+            const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+
+            this.logger.error(
+              `WhatsApp connection closed. Status code: ${statusCode}, Message: ${errorMessage}`,
+            );
+
+            if (statusCode === 401 || statusCode === 428) {
+              this.logger.log('Authentication issue detected (QR scan related)');
+              await this.cleanupSessionFiles();
+              this.qrCodeSent = false;
+              this.authenticationInProgress = false;
+
+              setTimeout(async () => {
+                await this.connect();
+              }, this.retryDelay);
+              return;
+            }
+
+            if (errorMessage.includes('conflict') || statusCode === 409 || statusCode === 440) {
+              this.logger.log('Detected conflict with another session, cleaning all session files');
+              await this.cleanupSessionFiles();
+              this.qrCodeSent = false;
+              this.authenticationInProgress = false;
+            }
+
+            if (shouldReconnect && this.retryCount < this.maxRetries) {
+              this.retryCount++;
+              this.connectionStatus = 'reconnecting';
+              this.logger.log(
+                `Akan mencoba menghubungkan kembali dalam ${this.retryDelay / 1000} detik... (Percobaan ${this.retryCount}/${this.maxRetries})`,
+              );
+
+              this.reconnectAttemptInProgress = true;
+
+              setTimeout(async () => {
+                this.reconnectAttemptInProgress = false;
+                this.authenticationInProgress = false;
+                await this.connect();
+              }, this.retryDelay);
+            } else if (shouldReconnect) {
+              this.logger.error(
+                'Maximum retry attempts reached. Giving up on WhatsApp connection.',
+              );
+              this.connectionStatus = 'error';
+            } else {
+              this.logger.error('User logged out from WhatsApp. Need to scan QR code again.');
+              await this.cleanupSessionFiles();
+              this.connectionStatus = 'disconnected';
+              this.retryCount = 0;
+              this.qrCodeSent = false;
+
+              setTimeout(async () => {
+                await this.connect();
+              }, this.retryDelay);
+            }
+
+            break;
+          }
+          // No default
         }
       });
 
@@ -415,7 +429,7 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       let formattedNumber = to;
 
       if (formattedNumber.startsWith('+')) {
-        formattedNumber = formattedNumber.substring(1);
+        formattedNumber = formattedNumber.slice(1);
       }
 
       if (!formattedNumber.includes('@')) {
@@ -426,7 +440,7 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       const result = await Promise.race([
         this.client.sendMessage(formattedNumber, { text: message }),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Send message timeout')), 30000),
+          setTimeout(() => reject(new Error('Send message timeout')), 30_000),
         ),
       ]);
 
@@ -468,7 +482,7 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     let adminNumber = this.adminNumber;
 
     if (adminNumber.startsWith('+')) {
-      adminNumber = adminNumber.substring(1);
+      adminNumber = adminNumber.slice(1);
     }
 
     if (!adminNumber.includes('@')) {

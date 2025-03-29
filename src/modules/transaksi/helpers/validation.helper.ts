@@ -1,15 +1,12 @@
-import { BadRequestException, NotFoundException, Logger } from '@nestjs/common';
-import { PrismaService } from '../../../common/prisma/prisma.service';
+import type { Logger } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
+import type { PrismaService } from '../../../common/prisma/prisma.service';
 import { StatusMotor, StatusTransaksi } from '../../../common/enums/status.enum';
 
 /**
  * Memverifikasi keberadaan transaksi berdasarkan ID
  */
-export async function verifyTransaksiExists(
-  id: string, 
-  prisma: PrismaService,
-  logger: Logger
-) {
+export async function verifyTransaksiExists(id: string, prisma: PrismaService, logger: Logger) {
   const transaksi = await prisma.transaksiSewa.findUnique({
     where: { id },
     include: {
@@ -32,11 +29,7 @@ export async function verifyTransaksiExists(
 /**
  * Memverifikasi keberadaan unit motor berdasarkan ID
  */
-export async function verifyUnitMotorExists(
-  id: string,
-  prisma: PrismaService,
-  logger: Logger
-) {
+export async function verifyUnitMotorExists(id: string, prisma: PrismaService, logger: Logger) {
   const unitMotor = await prisma.unitMotor.findUnique({
     where: { id },
   });
@@ -58,7 +51,7 @@ export async function verifyUnitMotorAvailability(
   tanggalSelesai: Date,
   transaksiId: string | null,
   prisma: PrismaService,
-  logger: Logger
+  logger: Logger,
 ) {
   if (tanggalMulai >= tanggalSelesai) {
     logger.error('Validasi tanggal gagal: Tanggal mulai harus sebelum tanggal selesai');
@@ -92,7 +85,9 @@ export async function verifyUnitMotorAvailability(
   });
 
   if (existingBooking) {
-    logger.error(`Unit motor dengan ID ${unitId} sudah dipesan pada rentang waktu tersebut (${tanggalMulai.toISOString()} - ${tanggalSelesai.toISOString()})`);
+    logger.error(
+      `Unit motor dengan ID ${unitId} sudah dipesan pada rentang waktu tersebut (${tanggalMulai.toISOString()} - ${tanggalSelesai.toISOString()})`,
+    );
     throw new BadRequestException('Unit motor sudah dipesan pada rentang waktu tersebut');
   }
 
@@ -104,7 +99,7 @@ export async function verifyUnitMotorAvailability(
     where: {
       unitId,
       status: StatusTransaksi.SELESAI,
-      updatedAt: { gte: oneHourAgo }
+      updatedAt: { gte: oneHourAgo },
     },
     orderBy: { updatedAt: 'desc' },
   });
@@ -113,8 +108,10 @@ export async function verifyUnitMotorAvailability(
     const waktuPengembalian = recentTransaction.updatedAt;
     const waktuSetelahSatuJam = new Date(waktuPengembalian);
     waktuSetelahSatuJam.setHours(waktuSetelahSatuJam.getHours() + 1);
-    
-    logger.error(`Unit motor baru saja dikembalikan. Silakan pesan setelah ${waktuSetelahSatuJam.toLocaleTimeString('id-ID')}`);
+
+    logger.error(
+      `Unit motor baru saja dikembalikan. Silakan pesan setelah ${waktuSetelahSatuJam.toLocaleTimeString('id-ID')}`,
+    );
     throw new BadRequestException(
       `Unit motor baru saja dikembalikan. Silakan pesan setelah ${waktuSetelahSatuJam.toLocaleTimeString('id-ID')}`,
     );
