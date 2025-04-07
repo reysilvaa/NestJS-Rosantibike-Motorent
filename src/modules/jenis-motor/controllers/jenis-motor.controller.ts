@@ -44,6 +44,19 @@ export class JenisMotorController {
     return this.jenisMotorService.findAll();
   }
 
+  @Get('slug/:slug')
+  @ApiOperation({ summary: 'Mendapatkan detail jenis motor berdasarkan slug' })
+  @ApiResponse({ status: 200, description: 'Detail jenis motor berhasil diambil' })
+  @ApiResponse({ status: 404, description: 'Jenis motor tidak ditemukan' })
+  async findBySlug(@Param('slug') slug: string) {
+    try {
+      const result = await this.jenisMotorService.findBySlug(slug);
+      return successResponse(result, `Detail jenis motor dengan slug ${slug} berhasil diambil`);
+    } catch (error) {
+      return handleError(this.logger, error, `Gagal mengambil detail jenis motor dengan slug ${slug}`);
+    }
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Mendapatkan detail jenis motor berdasarkan ID' })
   @ApiResponse({ status: 200, description: 'Detail jenis motor berhasil diambil' })

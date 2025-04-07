@@ -133,6 +133,25 @@ export class UnitMotorService {
     }
   }
 
+  async findBySlug(slug: string) {
+    try {
+      const unitMotor = await this.prisma.unitMotor.findUnique({
+        where: { slug },
+        include: {
+          jenis: true,
+        },
+      });
+
+      if (!unitMotor) {
+        throw new NotFoundException(`Unit motor dengan slug ${slug} tidak ditemukan`);
+      }
+
+      return unitMotor;
+    } catch (error) {
+      handleError(this.logger, error, `Gagal mencari unit motor dengan slug ${slug}`);
+    }
+  }
+
   async create(createUnitMotorDto: CreateUnitMotorDto) {
     try {
       // Periksa apakah jenis motor ada
@@ -155,8 +174,15 @@ export class UnitMotorService {
         throw new BadRequestException(`Plat nomor ${createUnitMotorDto.platNomor} sudah digunakan`);
       }
 
+      // Membuat slug dari slug jenis motor dan plat nomor
+      const sanitizedPlat = createUnitMotorDto.platNomor.replaceAll(/\s+/g, '');
+      const finalSlug = `${jenisMotor.slug}-${sanitizedPlat}`;
+
       const newUnit = await this.prisma.unitMotor.create({
-        data: createUnitMotorDto,
+        data: {
+          ...createUnitMotorDto,
+          slug: finalSlug,
+        },
         include: {
           jenis: true,
         },
@@ -176,8 +202,18 @@ export class UnitMotorService {
 
   async update(id: string, updateUnitMotorDto: UpdateUnitMotorDto) {
     try {
+      // Dapatkan data motor saat ini
+      const currentUnit = await this.prisma.unitMotor.findUnique({
+        where: { id },
+        include: { jenis: true },
+      });
+
+      if (!currentUnit) {
+        throw new NotFoundException(`Unit motor dengan ID ${id} tidak ditemukan`);
+      }
+
       // Jika mengubah plat nomor, periksa apakah sudah digunakan
-      if (updateUnitMotorDto.platNomor) {
+      if (updateUnitMotorDto.platNomor && updateUnitMotorDto.platNomor !== currentUnit.platNomor) {
         const existingUnit = await this.prisma.unitMotor.findUnique({
           where: { platNomor: updateUnitMotorDto.platNomor },
         });
@@ -189,17 +225,32 @@ export class UnitMotorService {
         }
       }
 
-      // Jika mengubah jenis motor, periksa apakah jenis motor ada
-      if (updateUnitMotorDto.jenisId) {
-        const jenisMotor = await this.prisma.jenisMotor.findUnique({
-          where: { id: updateUnitMotorDto.jenisId },
-        });
+      // Jika mengubah jenis motor atau plat nomor, update juga slug
+      let newSlug = currentUnit.slug;
+      if (updateUnitMotorDto.jenisId || updateUnitMotorDto.platNomor) {
+        // Dapatkan data yang akan digunakan
+        const jenisId = updateUnitMotorDto.jenisId || currentUnit.jenisId;
+        const platNomor = updateUnitMotorDto.platNomor || currentUnit.platNomor;
+        
+        // Jika jenis motor berubah, dapatkan slug jenis motor baru
+        let jenisSlug = currentUnit.jenis.slug;
+        if (updateUnitMotorDto.jenisId && updateUnitMotorDto.jenisId !== currentUnit.jenisId) {
+          const jenisMotor = await this.prisma.jenisMotor.findUnique({
+            where: { id: jenisId },
+          });
 
-        if (!jenisMotor) {
-          throw new BadRequestException(
-            `Jenis motor dengan ID ${updateUnitMotorDto.jenisId} tidak ditemukan`,
-          );
+          if (!jenisMotor) {
+            throw new BadRequestException(
+              `Jenis motor dengan ID ${jenisId} tidak ditemukan`,
+            );
+          }
+          
+          jenisSlug = jenisMotor.slug;
         }
+        
+        // Generate slug baru dari slug jenis dan plat nomor
+        const sanitizedPlat = platNomor.replaceAll(/\s+/g, '');
+        newSlug = `${jenisSlug}-${sanitizedPlat}`;
       }
 
       const updateData = {
@@ -207,6 +258,7 @@ export class UnitMotorService {
         ...(updateUnitMotorDto.jenisId && { jenisId: updateUnitMotorDto.jenisId }),
         ...(updateUnitMotorDto.status && { status: updateUnitMotorDto.status }),
         ...(updateUnitMotorDto.hargaSewa && { hargaSewa: updateUnitMotorDto.hargaSewa }),
+        ...(updateUnitMotorDto.jenisId || updateUnitMotorDto.platNomor) && { slug: newSlug },
       };
 
       const updatedUnit = await this.prisma.unitMotor.update({

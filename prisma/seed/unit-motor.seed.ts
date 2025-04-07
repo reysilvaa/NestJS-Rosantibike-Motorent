@@ -3,6 +3,12 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { JenisMotorType, UnitMotorType } from './types';
 import { StatusMotor } from '../../src/common/enums/status.enum';
 
+function generateSlug(jenisMotor: JenisMotorType, platNomor: string): string {
+  // Gunakan slug dari jenis motor dan plat nomor yang disanitasi
+  const sanitizedPlat = platNomor.replaceAll(/\s+/g, '');
+  return `${jenisMotor.slug}-${sanitizedPlat}`;
+}
+
 export async function seedUnitMotor(
   prisma: PrismaClient,
   jenisMotor: JenisMotorType[],
@@ -134,8 +140,28 @@ export async function seedUnitMotor(
       where: { platNomor: data.platNomor },
     });
 
+    // Dapatkan jenis motor terkait
+    const relatedJenisMotor = jenisMotor.find(jm => jm.id === data.jenisId);
+    if (!relatedJenisMotor) {
+      console.error(`Jenis motor dengan ID ${data.jenisId} tidak ditemukan.`);
+      continue;
+    }
+
+    // Generate slug dari jenis motor dan plat nomor
+    const slug = generateSlug(relatedJenisMotor, data.platNomor);
+
     if (existingUnit) {
       console.log(`Unit motor ${data.platNomor} sudah ada`);
+      
+      // Update slug jika belum ada
+      if (!existingUnit.slug) {
+        await prisma.unitMotor.update({
+          where: { id: existingUnit.id },
+          data: { slug }
+        });
+        console.log(`Slug untuk unit motor ${data.platNomor} telah diperbarui menjadi ${slug}`);
+      }
+      
       unitMotor.push(existingUnit);
     } else {
       const unit = await prisma.unitMotor.create({
@@ -144,10 +170,11 @@ export async function seedUnitMotor(
           platNomor: data.platNomor,
           hargaSewa: data.hargaSewa,
           status: data.status,
+          slug: slug,
         },
       });
       unitMotor.push(unit);
-      console.log(`Unit motor ${unit.platNomor} berhasil dibuat`);
+      console.log(`Unit motor ${unit.platNomor} berhasil dibuat dengan slug ${unit.slug}`);
     }
   }
   return unitMotor;

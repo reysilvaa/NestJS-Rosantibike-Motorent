@@ -53,6 +53,19 @@ export class UnitMotorController {
     }
   }
 
+  @Get('slug/:slug')
+  @ApiOperation({ summary: 'Mendapatkan detail unit motor berdasarkan slug' })
+  @ApiResponse({ status: 200, description: 'Detail unit motor berhasil diambil' })
+  @ApiResponse({ status: 404, description: 'Unit motor tidak ditemukan' })
+  async findBySlug(@Param('slug') slug: string) {
+    try {
+      const result = await this.unitMotorService.findBySlug(slug);
+      return successResponse(result, `Detail unit motor dengan slug ${slug} berhasil diambil`);
+    } catch (error) {
+      return handleError(this.logger, error, `Gagal mengambil detail unit motor dengan slug ${slug}`);
+    }
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Mendapatkan detail unit motor berdasarkan ID' })
   @ApiResponse({ status: 200, description: 'Detail unit motor berhasil diambil' })
