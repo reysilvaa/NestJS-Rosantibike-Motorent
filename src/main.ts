@@ -1,60 +1,84 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
-import type { NestExpressApplication } from '@nestjs/platform-express';
-import {
-  configureMiddleware,
-  configureStaticAssets,
-  configureCors,
-  configureGlobalPipes,
-  configureSwagger,
-  startServer,
-  configureShutdown,
-  createLogger,
-} from './common/config';
-import { setupCluster } from './cluster';
+import { ConfigService } from '@nestjs/config';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 
+/**
+ * Class yang memperluas IoAdapter untuk konfigurasi Socket.IO
+ */
+export class CustomIoAdapter extends IoAdapter {
+  createIOServer(port: number, options?: any): any {
+    const server = super.createIOServer(port, {
+      ...options,
+      cors: {
+        origin: '*',
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+        credentials: true,
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+      },
+      pingTimeout: 60_000, // Waktu timeout ping: 60 detik
+      pingInterval: 25_000, // Interval ping: 25 detik
+      transports: ['websocket', 'polling'], // Support polling sebagai fallback
+      allowUpgrades: true,
+      upgradeTimeout: 10_000,
+      cookie: false,
+    });
+    return server;
+  }
+}
+
+/**
+ * Bootstrap aplikasi dengan konfigurasi minimal
+ */
 async function bootstrap() {
-  // Inisialisasi aplikasi
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    cors: true,
-    bufferLogs: true,
-  });
+  try {
+    // Buat aplikasi dengan konfigurasi dasar
+    const app = await NestFactory.create(AppModule, {
+      logger: ['error', 'warn', 'log'],
+      cors: true,
+      bodyParser: true,
+    });
 
-  // Inisialisasi logger
-  const logger = createLogger();
-  app.useLogger(logger);
+    // Konfigurasi CORS yang lebih spesifik
+    app.enableCors({
+      origin: [
+        'http://localhost:3001',
+        'http://localhost:3000',
+        'https://rosantibikemotorent.com',
+        '*',
+      ],
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+      credentials: true,
+    });
 
-  // Dapatkan config service
-  const configService = app.get(ConfigService);
+    // Konfigurasi adapter WebSocket
+    app.useWebSocketAdapter(new CustomIoAdapter(app));
 
-  // Konfigurasi aplikasi
-  configureMiddleware(app);
-  configureStaticAssets(app);
-  configureCors(app);
-  configureGlobalPipes(app);
-  configureSwagger(app);
+    // Konfigurasi Swagger
+    const config = new DocumentBuilder()
+      .setTitle('Rental Motor API')
+      .setDescription('API untuk sistem rental motor')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
 
-  // Jalankan server
-  const { server, port } = await startServer(app, configService, new Logger('Bootstrap'));
+    // Ambil port dari config service
+    const configService = app.get(ConfigService);
+    const port = configService.get('PORT', 3030);
 
-  // Konfigurasi shutdown handler
-  configureShutdown(server, new Logger('Bootstrap'));
-
-  // Log informasi server
-  Logger.log(`Application is running on: http://localhost:${port}`);
-  Logger.log(`API Documentation available at: http://localhost:${port}/api/docs`);
-  Logger.log(`WebSocket test page: http://localhost:${port}/test-socket.html`);
-  Logger.log(`Realtime test page: http://localhost:${port}/test-realtime.html`);
+    // Jalankan aplikasi
+    await app.listen(port);
+    Logger.log(`Aplikasi berjalan di http://localhost:${port}`);
+    Logger.log(`Dokumentasi API tersedia di http://localhost:${port}/api/docs`);
+  } catch (error) {
+    Logger.error(`Error saat menjalankan aplikasi: ${error.message}`);
+    Logger.error(error.stack);
+  }
 }
 
-// Gunakan cluster jika NODE_ENV adalah production dan tidak dalam mode PM2 (PM2 sudah menangani clustering)
-if (process.env.NODE_ENV === 'production' && !process.env.PM2_HOME) {
-  setupCluster(bootstrap);
-} else {
-  bootstrap().catch(error => {
-    Logger.error(`Failed to start application: ${error.message}`, error.stack);
-    process.exit(1);
-  });
-}
+bootstrap();

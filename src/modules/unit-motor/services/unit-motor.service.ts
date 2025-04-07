@@ -7,28 +7,103 @@ import type {
   CheckAvailabilityDto,
 } from '../dto';
 import { handleError } from '../../../common/helpers';
+import { UnitMotorQueue } from '../queues/unit-motor.queue';
 
 @Injectable()
 export class UnitMotorService {
   private readonly logger = new Logger(UnitMotorService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private unitMotorQueue: UnitMotorQueue,
+  ) {}
 
   async findAll(filter: FilterUnitMotorDto = {}) {
     try {
-      const where = {
-        ...(filter.jenisId && { jenisId: filter.jenisId }),
-        ...(filter.status && { status: filter.status }),
-        ...(filter.search && {
-          platNomor: { contains: filter.search, mode: 'insensitive' as const },
+      const { ccMin, ccMax, yearMin, yearMax, brands, ...otherFilters } = filter;
+
+      let whereClause: any = {
+        ...(otherFilters.jenisId && { jenisId: otherFilters.jenisId }),
+        ...(otherFilters.status && { status: otherFilters.status }),
+        ...(otherFilters.search && {
+          OR: [
+            { platNomor: { contains: otherFilters.search, mode: 'insensitive' as const } },
+            { jenis: { model: { contains: otherFilters.search, mode: 'insensitive' as const } } },
+            { jenis: { merk: { contains: otherFilters.search, mode: 'insensitive' as const } } },
+          ],
         }),
       };
 
+      // Filter jenis berdasarkan cc - pastikan konversi ke number
+      if (ccMin !== undefined || ccMax !== undefined) {
+        whereClause.jenis = {
+          ...whereClause.jenis,
+          ...(ccMin !== undefined && { cc: { gte: Number(ccMin) } }),
+          ...(ccMax !== undefined && { cc: { lte: Number(ccMax) } }),
+        };
+      }
+
+      // Filter berdasarkan merek - pastikan selalu array
+      if (brands) {
+        // Pastikan brands selalu diproses sebagai array
+        const brandsArray = Array.isArray(brands) ? brands : [brands];
+
+        // Hanya lanjutkan jika array tidak kosong
+        if (brandsArray.length > 0) {
+          whereClause.jenis = {
+            ...whereClause.jenis,
+            merk: { in: brandsArray },
+          };
+
+          // Log untuk debugging
+          this.logger.log(`Filtering by brands: ${JSON.stringify(brandsArray)}`);
+        }
+      }
+
       // Hapus filter yang undefined
-      Object.keys(where).forEach(key => where[key] === undefined && delete where[key]);
+      Object.keys(whereClause).forEach(
+        key => whereClause[key] === undefined && delete whereClause[key],
+      );
+
+      // Log untuk debugging
+      console.log('Filter where clause:', JSON.stringify(whereClause, null, 2));
+
+      // Coba mendapatkan model terlebih dahulu untuk memeriksa apakah field tahunPembuatan ada
+      try {
+        const modelInfo = await this.prisma.$queryRaw`
+          SELECT column_name 
+          FROM information_schema.columns 
+          WHERE table_name = 'unit_motor' AND column_name = 'tahunPembuatan'
+        `;
+
+        const hasTahunPembuatan = Array.isArray(modelInfo) && modelInfo.length > 0;
+        this.logger.log(
+          `Field tahunPembuatan ${hasTahunPembuatan ? 'ada' : 'tidak ada'} di tabel unit_motor`,
+        );
+
+        // Tambahkan filter tahun hanya jika kolom tahunPembuatan ada
+        if (hasTahunPembuatan && (yearMin !== undefined || yearMax !== undefined)) {
+          whereClause = {
+            ...whereClause,
+            ...(yearMin !== undefined && { tahunPembuatan: { gte: Number(yearMin) } }),
+            ...(yearMax !== undefined && { tahunPembuatan: { lte: Number(yearMax) } }),
+          };
+
+          console.log(
+            'Updated whereClause with tahunPembuatan:',
+            JSON.stringify(whereClause, null, 2),
+          );
+        } else if (yearMin !== undefined || yearMax !== undefined) {
+          this.logger.warn(
+            'Filter tahun tidak dapat diterapkan karena kolom tahunPembuatan tidak ada',
+          );
+        }
+      } catch (error) {
+        this.logger.error('Gagal memeriksa struktur tabel:', error);
+      }
 
       return this.prisma.unitMotor.findMany({
-        where,
+        where: whereClause,
         include: {
           jenis: true,
         },
@@ -80,12 +155,20 @@ export class UnitMotorService {
         throw new BadRequestException(`Plat nomor ${createUnitMotorDto.platNomor} sudah digunakan`);
       }
 
-      return this.prisma.unitMotor.create({
+      const newUnit = await this.prisma.unitMotor.create({
         data: createUnitMotorDto,
         include: {
           jenis: true,
         },
       });
+
+      // Jadwalkan pemeliharaan rutin unit motor baru
+      await this.unitMotorQueue.addMaintenanceReminderJob(newUnit.id);
+
+      // Jadwalkan sinkronisasi data setelah penambahan unit baru
+      await this.unitMotorQueue.addSyncDataJob();
+
+      return newUnit;
     } catch (error) {
       handleError(this.logger, error, 'Gagal membuat unit motor baru');
     }
@@ -126,13 +209,20 @@ export class UnitMotorService {
         ...(updateUnitMotorDto.hargaSewa && { hargaSewa: updateUnitMotorDto.hargaSewa }),
       };
 
-      return await this.prisma.unitMotor.update({
+      const updatedUnit = await this.prisma.unitMotor.update({
         where: { id },
         data: updateData,
         include: {
           jenis: true,
         },
       });
+
+      // Jika status berubah, tambahkan job untuk memperbarui status
+      if (updateUnitMotorDto.status) {
+        await this.unitMotorQueue.addUpdateStatusJob(id, updateUnitMotorDto.status);
+      }
+
+      return updatedUnit;
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
@@ -162,9 +252,14 @@ export class UnitMotorService {
         throw new BadRequestException('Unit motor sedang disewa, tidak dapat dihapus');
       }
 
-      return await this.prisma.unitMotor.delete({
+      const deletedUnit = await this.prisma.unitMotor.delete({
         where: { id },
       });
+
+      // Sinkronisasi data setelah penghapusan unit
+      await this.unitMotorQueue.addSyncDataJob();
+
+      return deletedUnit;
     } catch (error) {
       if (error instanceof BadRequestException || error instanceof NotFoundException) {
         throw error;
@@ -176,6 +271,57 @@ export class UnitMotorService {
       }
 
       handleError(this.logger, error, `Gagal menghapus unit motor dengan ID ${id}`);
+    }
+  }
+
+  async processUnitImages(unitMotorId: string, images: string[]) {
+    try {
+      // Memastikan unit motor ada
+      const unitMotor = await this.prisma.unitMotor.findUnique({
+        where: { id: unitMotorId },
+      });
+
+      if (!unitMotor) {
+        throw new NotFoundException(`Unit motor dengan ID ${unitMotorId} tidak ditemukan`);
+      }
+
+      // Memasukkan tugas pemrosesan gambar ke dalam antrian
+      await this.unitMotorQueue.addProcessImageJob(unitMotorId, images);
+
+      return {
+        message: 'Pemrosesan gambar sudah dijadwalkan',
+        unitMotorId,
+        imagesCount: images.length,
+      };
+    } catch (error) {
+      handleError(this.logger, error, `Gagal memproses gambar unit motor ${unitMotorId}`);
+    }
+  }
+
+  async scheduleMaintenanceReminder(unitMotorId: string) {
+    try {
+      // Memastikan unit motor ada
+      const unitMotor = await this.prisma.unitMotor.findUnique({
+        where: { id: unitMotorId },
+      });
+
+      if (!unitMotor) {
+        throw new NotFoundException(`Unit motor dengan ID ${unitMotorId} tidak ditemukan`);
+      }
+
+      // Memasukkan tugas pengingat pemeliharaan ke dalam antrian
+      await this.unitMotorQueue.addMaintenanceReminderJob(unitMotorId);
+
+      return {
+        message: 'Pengingat pemeliharaan sudah dijadwalkan',
+        unitMotorId,
+      };
+    } catch (error) {
+      handleError(
+        this.logger,
+        error,
+        `Gagal menjadwalkan pengingat pemeliharaan untuk unit motor ${unitMotorId}`,
+      );
     }
   }
 
@@ -293,5 +439,25 @@ export class UnitMotorService {
     }
 
     return dayList;
+  }
+
+  async getBrands() {
+    try {
+      // Mengambil semua merk motor yang unik dari jenis motor
+      const brands = await this.prisma.jenisMotor.findMany({
+        select: {
+          id: true,
+          merk: true,
+        },
+        distinct: ['merk'],
+        orderBy: {
+          merk: 'asc',
+        },
+      });
+
+      return brands;
+    } catch (error) {
+      handleError(this.logger, error, 'Gagal mengambil daftar merek motor');
+    }
   }
 }

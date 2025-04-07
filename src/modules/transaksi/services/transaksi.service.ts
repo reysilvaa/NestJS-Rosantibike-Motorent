@@ -14,8 +14,6 @@ import type {
   CalculatePriceDto,
 } from '../dto/index';
 import { StatusMotor, StatusTransaksi } from '../../../common/enums/status.enum';
-import { InjectQueue } from '@nestjs/bull';
-import { Queue } from 'bullmq';
 import { NotificationGateway } from '../../../common/gateway/notification.gateway';
 import { handleError } from '../../../common/helpers';
 import {
@@ -26,6 +24,7 @@ import {
   verifyUnitMotorAvailability,
   verifyCanCompleteTransaksi,
 } from '../helpers';
+import { TransaksiQueue } from '../queues/transaksi.queue';
 
 @Injectable()
 export class TransaksiService {
@@ -33,7 +32,7 @@ export class TransaksiService {
   constructor(
     private prisma: PrismaService,
     private unitMotorService: UnitMotorService,
-    @InjectQueue('transaksi') private transaksiQueue: Queue,
+    private transaksiQueue: TransaksiQueue,
     private notificationGateway: NotificationGateway,
   ) {}
 
@@ -199,17 +198,31 @@ export class TransaksiService {
         });
 
         // Tambahkan ke antrian untuk pemrosesan asinkron (seperti notifikasi, dll)
-        if (this.transaksiQueue) {
-          await this.transaksiQueue.add('transaksi-created', { id: transaksi.id });
+        await this.transaksiQueue.addNotifikasiBookingJob(transaksi.id);
+
+        // Jadwalkan cek overdue untuk saat transaksi seharusnya selesai
+        const overdueTime = new Date(tanggalSelesai);
+        overdueTime.setHours(
+          parseInt(transaksi.jamSelesai.split(':')[0]),
+          parseInt(transaksi.jamSelesai.split(':')[1]),
+          0,
+          0,
+        );
+        await this.transaksiQueue.addScheduleCekOverdueJob(transaksi.id, overdueTime);
+
+        // Jadwalkan pengingat pengembalian untuk 3 jam sebelum waktu pengembalian
+        const reminderTime = new Date(overdueTime);
+        reminderTime.setHours(reminderTime.getHours() - 3);
+        if (reminderTime > new Date()) {
+          await this.transaksiQueue.addPengingatPengembalianJob(transaksi.id);
         }
 
         // Kirim notifikasi melalui WebSocket
         try {
-          // Menggunakan method yang tersedia
-          this.notificationGateway.sendMotorStatusNotification({
+          this.notificationGateway.sendToAll('motor-status-update', {
             id: transaksi.unitId,
             status: StatusMotor.DISEWA,
-            platNomor: transaksi.unitId, // Gunakan data yang tersedia
+            platNomor: transaksi.unitMotor.platNomor,
             message: `Transaksi baru: ${transaksi.namaPenyewa}`,
           });
         } catch (wsError) {
@@ -457,8 +470,11 @@ export class TransaksiService {
         return transaksiUpdated;
       });
 
-      // Kirim notifikasi
-      this.notificationGateway.sendMotorStatusNotification({
+      // Kirim notifikasi WhatsApp konfirmasi transaksi selesai
+      await this.transaksiQueue.addNotifikasiSelesaiJob(result.id);
+
+      // Kirim notifikasi motor status update
+      this.notificationGateway.sendToAll('motor-status-update', {
         id: result.unitMotor.id,
         status: StatusMotor.TERSEDIA,
         platNomor: result.unitMotor.platNomor,
@@ -467,7 +483,7 @@ export class TransaksiService {
 
       // Jika ada denda, kirim notifikasi denda
       if (biayaDenda > 0) {
-        this.notificationGateway.sendDendaNotification({
+        this.notificationGateway.sendToAll('denda-notification', {
           id: result.id,
           namaPenyewa: result.namaPenyewa,
           noWhatsapp: result.noWhatsapp,

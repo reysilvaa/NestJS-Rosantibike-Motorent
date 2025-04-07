@@ -152,7 +152,7 @@ export class TransaksiProcessor {
         await this.sendWhatsAppMessage(transaksi.noWhatsapp, message);
 
         // Kirim notifikasi real-time ke admin
-        this.notificationGateway.sendOverdueNotification({
+        this.notificationGateway.sendToAll('overdue-transaction', {
           id: transaksiId,
           unitMotor: {
             id: transaksi.unitMotor.id,

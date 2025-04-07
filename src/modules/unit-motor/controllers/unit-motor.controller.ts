@@ -28,6 +28,18 @@ export class UnitMotorController {
     }
   }
 
+  @Get('brands')
+  @ApiOperation({ summary: 'Mendapatkan daftar merek motor yang tersedia' })
+  @ApiResponse({ status: 200, description: 'Daftar merek motor berhasil diambil' })
+  async getBrands() {
+    try {
+      const result = await this.unitMotorService.getBrands();
+      return successResponse(result, 'Daftar merek motor berhasil diambil');
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal mengambil daftar merek motor');
+    }
+  }
+
   @Get('availability')
   @ApiOperation({ summary: 'Memeriksa ketersediaan motor untuk rentang tanggal tertentu' })
   @ApiResponse({ status: 200, description: 'Data ketersediaan berhasil diambil' })

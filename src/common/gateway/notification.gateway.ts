@@ -1,129 +1,133 @@
-import type { OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
-import { WebSocketGateway, WebSocketServer, SubscribeMessage } from '@nestjs/websockets';
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  OnGatewayInit,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+} from '@nestjs/websockets';
 import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 
 @WebSocketGateway({
   cors: {
-    origin: true,
-    methods: ['GET', 'POST', 'OPTIONS'],
+    origin: ['http://localhost:3001', 'http://localhost:3000', '*'],
+    methods: ['GET', 'POST'],
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-csrf-token']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   },
-  transports: ['polling', 'websocket'],
-  path: '/socket.io/',
-  allowEIO3: true,
-  pingTimeout: 60_000,
+  namespace: '/notifications',
+  transports: ['websocket', 'polling'],
   pingInterval: 25_000,
-  connectTimeout: 10_000,
+  pingTimeout: 60_000,
+  allowUpgrades: true,
+  upgradeTimeout: 10_000,
 })
 export class NotificationGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
+  private readonly logger = new Logger(NotificationGateway.name);
+
   @WebSocketServer() server: Server;
-  private logger: Logger = new Logger('NotificationGateway');
 
-  afterInit(server: Server) {
-    this.logger.log('Notification gateway initialized');
+  private clients: Map<string, Socket> = new Map();
 
-    // Handle server-level events
-    server.on('error', err => {
-      this.logger.error(`Socket.io server error: ${err.message}`, err.stack);
-    });
-
-    // Log transport changes
-    server.engine.on('connection_error', err => {
-      this.logger.error(`Socket.io connection_error: ${err.message}`, err.stack);
-    });
+  afterInit() {
+    this.logger.log('WebSocket Gateway Initialized');
   }
 
   handleConnection(client: Socket) {
-    this.logger.log(`Client connected: ${client.id}`);
+    const userId = client.handshake.query.userId as string;
 
-    // Monitor for client errors
-    client.on('error', error => {
-      this.logger.error(`Client ${client.id} error: ${error.message}`);
+    if (userId) {
+      this.clients.set(userId, client);
+      this.logger.log(`Client connected: ${client.id}, userId: ${userId}`);
+    } else {
+      this.logger.log(`Client connected: ${client.id}, no userId`);
+    }
+
+    // Kirim pesan konfirmasi koneksi ke client
+    client.emit('connected', {
+      status: 'connected',
+      socketId: client.id,
+      timestamp: new Date().toISOString(),
     });
+
+    // Setup interval ping untuk mencegah terputus
+    const pingInterval = setInterval(() => {
+      if (client.connected) {
+        client.emit('ping', { timestamp: new Date().toISOString() });
+      } else {
+        clearInterval(pingInterval);
+      }
+    }, 20_000);
+
+    // Menyimpan interval di objek client untuk dibersihkan saat disconnect
+    client.data.pingInterval = pingInterval;
   }
 
   handleDisconnect(client: Socket) {
+    // Membersihkan interval ping
+    if (client.data.pingInterval) {
+      clearInterval(client.data.pingInterval);
+    }
+
+    // Mencari dan menghapus klien dari map clients
+    for (const [userId, socket] of this.clients.entries()) {
+      if (socket.id === client.id) {
+        this.clients.delete(userId);
+        this.logger.log(`Client disconnected: ${client.id}, userId: ${userId}`);
+        break;
+      }
+    }
+
     this.logger.log(`Client disconnected: ${client.id}`);
   }
 
-  @SubscribeMessage('joinRoom')
-  handleJoinRoom(client: Socket, room: string) {
-    void client.join(room);
-    this.logger.log(`Client ${client.id} joined room: ${room}`);
+  /**
+   * Kirim notifikasi ke semua client
+   */
+  sendToAll(event: string, data: any) {
+    this.server.emit(event, data);
+    this.logger.debug(`Broadcasting event "${event}" to all clients`);
   }
 
-  @SubscribeMessage('leaveRoom')
-  handleLeaveRoom(client: Socket, room: string) {
-    void client.leave(room);
-    this.logger.log(`Client ${client.id} left room: ${room}`);
-  }
-
-  // Event untuk notifikasi transaksi baru
-  sendNewTransactionNotification(data: any) {
-    this.server.emit('new-transaction', data);
-  }
-
-  // Event untuk notifikasi transaksi overdue
-  sendOverdueNotification(data: any) {
-    this.server.emit('overdue-transaction', data);
-  }
-
-  // Event untuk notifikasi status motor berubah
-  sendMotorStatusNotification(data: any) {
-    this.server.emit('motor-status-update', data);
-  }
-
-  // Event untuk notifikasi denda
-  sendDendaNotification(data: any) {
-    this.server.emit('denda-notification', data);
-  }
-
-  // Event untuk notifikasi fasilitas
-  sendFasilitasNotification(data: any) {
-    this.server.emit('fasilitas-notification', data);
-  }
-
-  // Handler untuk event test dari client
-  @SubscribeMessage('test-new-transaction')
-  handleTestNewTransaction(client: Socket, data: any) {
-    this.logger.log(
-      `Client ${client.id} sent test new transaction with data: ${JSON.stringify(data)}`,
+  /**
+   * Kirim notifikasi ke client tertentu berdasarkan userId
+   */
+  sendToUser(userId: string, event: string, data: any) {
+    const client = this.clients.get(userId);
+    if (client && client.connected) {
+      client.emit(event, data);
+      this.logger.debug(`Sent event "${event}" to user ${userId}`);
+      return true;
+    }
+    this.logger.warn(
+      `Failed to send notification to user ${userId}: client not found or disconnected`,
     );
-    this.server.emit('new-transaction', data);
-    return { status: 'ok', message: 'Test notifikasi transaksi baru berhasil dikirim' };
+    return false;
   }
 
-  @SubscribeMessage('test-overdue')
-  handleTestOverdue(client: Socket, data: any) {
-    this.logger.log(`Client ${client.id} sent test overdue with data: ${JSON.stringify(data)}`);
-    this.server.emit('overdue-transaction', data);
-    return { status: 'ok', message: 'Test notifikasi overdue berhasil dikirim' };
+  /**
+   * Kirim update status queue/job ke semua client
+   */
+  sendQueueUpdate(queueName: string, jobId: string, status: string, data: any = {}) {
+    this.sendToAll('queue:update', {
+      queue: queueName,
+      jobId,
+      status,
+      timestamp: new Date(),
+      ...data,
+    });
   }
 
-  @SubscribeMessage('test-motor-status')
-  handleTestMotorStatus(client: Socket, data: any) {
-    this.logger.log(
-      `Client ${client.id} sent test motor status with data: ${JSON.stringify(data)}`,
-    );
-    this.server.emit('motor-status-update', data);
-    return { status: 'ok', message: 'Test notifikasi status motor berhasil dikirim' };
-  }
-
-  @SubscribeMessage('test-denda')
-  handleTestDenda(client: Socket, data: any) {
-    this.logger.log(`Client ${client.id} sent test denda with data: ${JSON.stringify(data)}`);
-    this.server.emit('denda-notification', data);
-    return { status: 'ok', message: 'Test notifikasi denda berhasil dikirim' };
-  }
-
-  @SubscribeMessage('test-fasilitas')
-  handleTestFasilitas(client: Socket, data: any) {
-    this.logger.log(`Client ${client.id} sent test fasilitas with data: ${JSON.stringify(data)}`);
-    this.server.emit('fasilitas-notification', data);
-    return { status: 'ok', message: 'Test notifikasi fasilitas berhasil dikirim' };
+  /**
+   * Kirim notifikasi HTTP request selesai
+   */
+  sendHttpRequestComplete(requestId: string, result: any) {
+    this.sendToAll('http:complete', {
+      requestId,
+      timestamp: new Date(),
+      result,
+    });
   }
 }
