@@ -392,6 +392,9 @@ export class UnitMotorService {
         throw new BadRequestException('Tanggal mulai harus sebelum tanggal selesai');
       }
 
+      // Log parameter
+      this.logger.log(`Checking availability from ${startDate} to ${endDate}${jenisId ? ` for jenisId: ${jenisId}` : ''}`);
+
       // Dapatkan semua unit motor yang tersedia
       const whereClause: any = {};
       if (jenisId) {
@@ -419,8 +422,11 @@ export class UnitMotorService {
         },
       });
 
+      this.logger.log(`Found ${unitMotors.length} units to check availability for`);
+
       // Buat array tanggal untuk periode yang diminta
       const dayList = this.generateDayList(start, end);
+      this.logger.log(`Generated ${dayList.length} days to check`);
 
       // Buat respons ketersediaan untuk setiap motor
       const availabilityData = unitMotors.map(unit => {
@@ -454,6 +460,9 @@ export class UnitMotorService {
           };
         });
 
+        // Log availability untuk unit ini
+        this.logger.log(`Unit ${unit.platNomor} has ${uniqueBookedDates.size} booked dates out of ${dayList.length} days`);
+
         return {
           unitId: unit.id,
           platNomor: unit.platNomor,
@@ -469,12 +478,15 @@ export class UnitMotorService {
         };
       });
 
-      return {
+      const result = {
         startDate: startDate,
         endDate: endDate,
         totalUnits: availabilityData.length,
         units: availabilityData,
       };
+
+      this.logger.log(`Returning availability data for ${result.totalUnits} units`);
+      return result;
     } catch (error) {
       handleError(this.logger, error, 'Gagal memeriksa ketersediaan motor');
     }

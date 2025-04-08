@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsDateString, IsUUID } from 'class-validator';
+import { IsOptional, IsString, IsDateString, IsUUID, IsNumber } from 'class-validator';
 import type { StatusTransaksi } from '../../../common/enums/status.enum';
 import { Transform } from 'class-transformer';
 
@@ -29,10 +29,18 @@ export class FilterTransaksiDto {
   status?: StatusTransaksi | StatusTransaksi[];
 
   @IsOptional()
-  @Transform(({ value }) => parseInt(value, 10))
+  @IsNumber()
+  @Transform(({ value }) => {
+    const parsed = parseInt(value, 10);
+    return isNaN(parsed) ? 1 : parsed;
+  })
   page?: number = 1;
 
   @IsOptional()
-  @Transform(({ value }) => parseInt(value, 10))
+  @IsNumber()
+  @Transform(({ value }) => {
+    const parsed = parseInt(value, 10);
+    return isNaN(parsed) ? 10 : parsed;
+  })
   limit?: number = 10;
 }
