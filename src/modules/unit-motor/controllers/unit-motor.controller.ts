@@ -4,7 +4,7 @@ import {
   CreateUnitMotorDto,
   UpdateUnitMotorDto,
   FilterUnitMotorDto,
-  CheckAvailabilityDto,
+  CheckAvailabilityDto
 } from '../dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { successResponse, handleError } from '../../../common/helpers';
