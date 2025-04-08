@@ -13,12 +13,7 @@ export class CustomIoAdapter extends IoAdapter {
     const server = super.createIOServer(port, {
       ...options,
       cors: {
-        origin: [
-          'http://localhost:3001',
-          'http://localhost:3000',
-          'https://rosantibikemotorent.com',
-          'https://api.rosantibikemotorent.com',
-        ],
+        origin: '*',
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
         credentials: true,
         allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -52,20 +47,11 @@ async function bootstrap() {
         'http://localhost:3001',
         'http://localhost:3000',
         'https://rosantibikemotorent.com',
-        'https://api.rosantibikemotorent.com',
+        '*',
       ],
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-      allowedHeaders: [
-        'Content-Type',
-        'Authorization',
-        'X-Requested-With',
-        'Accept',
-        'Origin',
-        'Access-Control-Allow-Origin',
-      ],
-      exposedHeaders: ['Content-Range', 'X-Content-Range'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
       credentials: true,
-      maxAge: 3600,
     });
 
     // Konfigurasi adapter WebSocket
