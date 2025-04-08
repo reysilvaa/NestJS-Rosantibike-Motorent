@@ -16,21 +16,19 @@ export async function seedAdmin(prisma: PrismaClient): Promise<AdminType[]> {
     },
   ];
 
-  const admins: AdminType[] = [];
-  for (const data of adminData) {
-    // Cek apakah admin sudah ada
-    const existingAdmin = await prisma.admin.findUnique({
-      where: { username: data.username },
+  try {
+    // Try to create all admins at once
+    const result = await prisma.admin.createMany({
+      data: adminData,
+      skipDuplicates: false, // Skip if username already exists
     });
 
-    if (existingAdmin) {
-      console.log(`Admin ${data.username} sudah ada, tidak perlu dibuat lagi`);
-      admins.push(existingAdmin as AdminType);
-    } else {
-      const admin = await prisma.admin.create({ data });
-      admins.push(admin as AdminType);
-      console.log(`Admin ${admin.username} berhasil dibuat`);
-    }
+    console.log(`${result.count} admin berhasil dibuat`);
+
+    // Return all admins from the database
+    return await prisma.admin.findMany();
+  } catch (error) {
+    console.error('Error seeding admin:', error);
+    return [];
   }
-  return admins;
 }
