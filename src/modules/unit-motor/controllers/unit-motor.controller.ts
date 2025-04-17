@@ -4,7 +4,7 @@ import {
   CreateUnitMotorDto,
   UpdateUnitMotorDto,
   FilterUnitMotorDto,
-  CheckAvailabilityDto
+  CheckAvailabilityDto,
 } from '../dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { successResponse, handleError } from '../../../common/helpers';
@@ -62,7 +62,11 @@ export class UnitMotorController {
       const result = await this.unitMotorService.findBySlug(slug);
       return successResponse(result, `Detail unit motor dengan slug ${slug} berhasil diambil`);
     } catch (error) {
-      return handleError(this.logger, error, `Gagal mengambil detail unit motor dengan slug ${slug}`);
+      return handleError(
+        this.logger,
+        error,
+        `Gagal mengambil detail unit motor dengan slug ${slug}`,
+      );
     }
   }
 

@@ -56,6 +56,34 @@ export class WhatsappProcessor {
     }
   }
 
+  @Process('start-all-sessions')
+  async handleStartAllSessions(job: Job) {
+    this.logger.debug(`Processing start all sessions job: ${job.id}`);
+
+    try {
+      const result = await this.whatsappService.startAllSessions();
+      this.logger.debug('Started all WhatsApp sessions successfully');
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to start all WhatsApp sessions: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  @Process('get-chats')
+  async handleGetChats(job: Job) {
+    this.logger.debug(`Processing get chats job: ${job.id}`);
+
+    try {
+      const result = await this.whatsappService.getChats();
+      this.logger.debug('Successfully retrieved chats');
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to get chats: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
   @Process('broadcast-message')
   async handleBroadcastMessage(job: Job<{ recipients: string[]; message: string; options?: any }>) {
     this.logger.debug(`Processing broadcast message job: ${job.id}`);

@@ -53,7 +53,11 @@ export class JenisMotorController {
       const result = await this.jenisMotorService.findBySlug(slug);
       return successResponse(result, `Detail jenis motor dengan slug ${slug} berhasil diambil`);
     } catch (error) {
-      return handleError(this.logger, error, `Gagal mengambil detail jenis motor dengan slug ${slug}`);
+      return handleError(
+        this.logger,
+        error,
+        `Gagal mengambil detail jenis motor dengan slug ${slug}`,
+      );
     }
   }
 

@@ -231,7 +231,7 @@ export class UnitMotorService {
         // Dapatkan data yang akan digunakan
         const jenisId = updateUnitMotorDto.jenisId || currentUnit.jenisId;
         const platNomor = updateUnitMotorDto.platNomor || currentUnit.platNomor;
-        
+
         // Jika jenis motor berubah, dapatkan slug jenis motor baru
         let jenisSlug = currentUnit.jenis.slug;
         if (updateUnitMotorDto.jenisId && updateUnitMotorDto.jenisId !== currentUnit.jenisId) {
@@ -240,14 +240,12 @@ export class UnitMotorService {
           });
 
           if (!jenisMotor) {
-            throw new BadRequestException(
-              `Jenis motor dengan ID ${jenisId} tidak ditemukan`,
-            );
+            throw new BadRequestException(`Jenis motor dengan ID ${jenisId} tidak ditemukan`);
           }
-          
+
           jenisSlug = jenisMotor.slug;
         }
-        
+
         // Generate slug baru dari slug jenis dan plat nomor
         const sanitizedPlat = platNomor.replaceAll(/\s+/g, '');
         newSlug = `${jenisSlug}-${sanitizedPlat}`;
@@ -258,7 +256,7 @@ export class UnitMotorService {
         ...(updateUnitMotorDto.jenisId && { jenisId: updateUnitMotorDto.jenisId }),
         ...(updateUnitMotorDto.status && { status: updateUnitMotorDto.status }),
         ...(updateUnitMotorDto.hargaSewa && { hargaSewa: updateUnitMotorDto.hargaSewa }),
-        ...(updateUnitMotorDto.jenisId || updateUnitMotorDto.platNomor) && { slug: newSlug },
+        ...((updateUnitMotorDto.jenisId || updateUnitMotorDto.platNomor) && { slug: newSlug }),
       };
 
       const updatedUnit = await this.prisma.unitMotor.update({
@@ -393,7 +391,9 @@ export class UnitMotorService {
       }
 
       // Log parameter
-      this.logger.log(`Checking availability from ${startDate} to ${endDate}${jenisId ? ` for jenisId: ${jenisId}` : ''}`);
+      this.logger.log(
+        `Checking availability from ${startDate} to ${endDate}${jenisId ? ` for jenisId: ${jenisId}` : ''}`,
+      );
 
       // Dapatkan semua unit motor yang tersedia
       const whereClause: any = {};
@@ -461,7 +461,9 @@ export class UnitMotorService {
         });
 
         // Log availability untuk unit ini
-        this.logger.log(`Unit ${unit.platNomor} has ${uniqueBookedDates.size} booked dates out of ${dayList.length} days`);
+        this.logger.log(
+          `Unit ${unit.platNomor} has ${uniqueBookedDates.size} booked dates out of ${dayList.length} days`,
+        );
 
         return {
           unitId: unit.id,

@@ -1,56 +1,17 @@
 import type { OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  DisconnectReason,
-  makeWASocket,
-  useMultiFileAuthState,
-  type ConnectionState,
-} from 'baileys';
-import type { Boom } from '@hapi/boom';
-import type { JidWithDevice } from 'baileys';
-import * as qrcodeTerminal from 'qrcode-terminal';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-
-const appStateFiles = [
-  'app-state-sync-version-',
-  'app-state-sync-key-',
-  'sender-key-',
-  'sender-key-memory-',
-  'session-',
-];
-
-// Verbose logger untuk melihat debug info dari Baileys
-const verboseLogger = {
-  level: 'debug',
-  trace: (msg, ...args) => console.log(`[BAILEYS TRACE] ${msg}`, ...args),
-  debug: (msg, ...args) => console.log(`[BAILEYS DEBUG] ${msg}`, ...args),
-  info: (msg, ...args) => console.log(`[BAILEYS INFO] ${msg}`, ...args),
-  warn: (msg, ...args) => console.log(`[BAILEYS WARN] ${msg}`, ...args),
-  error: (msg, ...args) => console.error(`[BAILEYS ERROR] ${msg}`, ...args),
-  fatal: (msg, ...args) => console.error(`[BAILEYS FATAL] ${msg}`, ...args),
-  child: () => verboseLogger,
-};
-
-// Silent logger untuk mematikan log dari Baileys
-const silentLogger = {
-  level: 'silent',
-  trace: () => {},
-  debug: () => {},
-  info: () => {},
-  warn: () => {},
-  error: () => {},
-  fatal: () => {},
-  child: () => silentLogger,
-};
+import axios from 'axios';
+import { logInfo } from '../../../common/helpers';
 
 @Injectable()
 export class WhatsappService implements OnModuleInit, OnModuleDestroy {
-  private client: ReturnType<typeof makeWASocket>;
-  private readonly sessionPath: string;
-  private readonly adminNumber: string;
   private readonly logger = new Logger(WhatsappService.name);
+  private readonly baseUrl: string;
+  private readonly session: string;
+  private readonly secretKey: string;
+  private token: string | null = null;
+  
   private isConnecting = false;
   private retryCount = 0;
   public maxRetries: number;
@@ -63,29 +24,24 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     | 'error'
     | 'reconnecting'
     | 'authenticated' = 'disconnected';
-  private qrCodeSent = false;
-  private lastQrTimestamp = 0;
-  private qrMinInterval = 30_000;
+  
   private lastQrCode: string | null = null;
-  private qrHistory: Set<string> = new Set();
-  private hasRegisteredListeners = false;
-  private authenticationInProgress = false;
+  private readonly adminNumber: string;
   private sendDebugMessages = false;
 
   constructor(private readonly configService: ConfigService) {
-    this.sessionPath = configService.get('WHATSAPP_SESSION_PATH') || './storage/whatsapp-session';
-
-    if (!fs.existsSync(this.sessionPath)) {
-      fs.mkdirSync(this.sessionPath, { recursive: true });
-    }
+    this.baseUrl = configService.get('WHATSAPP_API_URL') || 'https://wppconnect.rosantibikemotorent.com';
+    this.session = configService.get('WHATSAPP_SESSION') || 'rosantibikemotorent';
+    this.secretKey = configService.get('WHATSAPP_SECRET_KEY') || 'back231213';
 
     this.adminNumber = configService.get('ADMIN_WHATSAPP') || '';
-
     this.sendDebugMessages = configService.get('WHATSAPP_SEND_DEBUG') === 'true';
 
     this.retryDelay = parseInt(configService.get('WHATSAPP_RECONNECT_INTERVAL') || '60000', 10);
     this.maxRetries = parseInt(configService.get('WHATSAPP_MAX_RECONNECT_ATTEMPTS') || '10', 10);
 
+    this.logger.log(`WhatsApp API URL: ${this.baseUrl}`);
+    this.logger.log(`WhatsApp session: ${this.session}`);
     this.logger.log(`WhatsApp debug messages: ${this.sendDebugMessages ? 'enabled' : 'disabled'}`);
     this.logger.log(
       `WhatsApp reconnect interval: ${this.retryDelay}ms, max retries: ${this.maxRetries}`,
@@ -101,28 +57,26 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy() {
-    if (this.client) {
+    try {
       this.logger.log('Shutting down WhatsApp client');
-      this.client.end(new Error('Application shutting down'));
+      await this.closeSession();
+    } catch (error) {
+      this.logger.error(`Error closing WhatsApp session: ${error.message}`);
     }
   }
 
   async resetConnection() {
     this.logger.log('Resetting WhatsApp connection...');
     this.retryCount = 0;
-    this.qrCodeSent = false;
     this.lastQrCode = null;
     this.isConnecting = false;
     this.reconnectAttemptInProgress = false;
-    this.authenticationInProgress = false;
 
-    if (this.client) {
       try {
-        this.logger.log('Closing previous WhatsApp connection');
-        this.client.end(new Error('Connection reset'));
+      this.logger.log('Closing previous WhatsApp session');
+      await this.closeSession();
       } catch (error) {
-        this.logger.error(`Error closing connection: ${error.message}`);
-      }
+      this.logger.error(`Error closing session: ${error.message}`);
     }
 
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -138,7 +92,6 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       retryCount: this.retryCount,
       maxRetries: this.maxRetries,
       reconnectAttemptInProgress: this.reconnectAttemptInProgress,
-      authenticationInProgress: this.authenticationInProgress,
       hasQrCode: !!this.lastQrCode,
     };
   }
@@ -147,6 +100,291 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     return this.lastQrCode;
   }
 
+  /**
+   * Generate token untuk API WhatsApp
+   */
+  private async generateToken() {
+    try {
+      const response = await axios.post(
+        `${this.baseUrl}/api/${this.session}/${this.secretKey}/generate-token`,
+        {},
+        {
+          headers: {
+            accept: '*/*',
+            contentType: 'application/json',
+          },
+        }
+      );
+
+      if (response.data && response.data.status === 'success' && response.data.token) {
+        this.token = response.data.token;
+        this.logger.log('Successfully generated WhatsApp API token');
+        return response.data.token;
+      } else {
+        throw new Error('Failed to generate token: Invalid response format');
+      }
+    } catch (error) {
+      this.logger.error(`Error generating token: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Memeriksa status koneksi sesi WhatsApp
+   */
+  private async checkConnection() {
+    try {
+      if (!this.token) {
+        await this.generateToken();
+      }
+
+      const response = await axios.get(
+        `${this.baseUrl}/api/${this.session}/check-connection-session`,
+        {
+          headers: {
+            accept: '*/*',
+            authorization: `Bearer ${this.token}`,
+          },
+        }
+      );
+
+      if (response.data) {
+        if (response.data.status) {
+          this.connectionStatus = 'connected';
+          return true;
+        } else {
+          this.connectionStatus = 'disconnected';
+          return false;
+        }
+      }
+
+      return false;
+    } catch (error) {
+      this.logger.error(`Error checking connection: ${error.message}`);
+      this.connectionStatus = 'error';
+      return false;
+    }
+  }
+
+  /**
+   * Mendapatkan status sesi WhatsApp
+   */
+  async getSessionStatus() {
+    try {
+      if (!this.token) {
+        await this.generateToken();
+      }
+
+      const response = await axios.get(
+        `${this.baseUrl}/api/${this.session}/status-session`,
+        {
+          headers: {
+            accept: '*/*',
+            authorization: `Bearer ${this.token}`,
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Error getting session status: ${error.message}`);
+      return { status: 'ERROR', qrcode: null };
+    }
+  }
+
+  /**
+   * Memulai sesi WhatsApp
+   */
+  private async startSession() {
+    try {
+      if (!this.token) {
+        await this.generateToken();
+      }
+
+      const response = await axios.post(
+        `${this.baseUrl}/api/${this.session}/start-session`,
+        {
+          webhook: '',
+          waitQrCode: false
+        },
+        {
+          headers: {
+            accept: 'application/json',
+            contentType: 'application/json',
+            authorization: `Bearer ${this.token}`,
+          },
+        }
+      );
+
+      if (response.data) {
+        if (response.data.status === 'QRCODE' && response.data.qrcode) {
+          // QR code diterima, simpan untuk ditampilkan jika diperlukan
+          this.lastQrCode = response.data.qrcode;
+          this.connectionStatus = 'connecting';
+          this.logger.log('QR code received from WhatsApp API');
+          return { status: 'qrcode', qrCode: response.data.qrcode };
+        } else if (response.data.status === 'CONNECTED') {
+          this.connectionStatus = 'connected';
+          this.lastQrCode = null;
+          this.logger.log('Session started successfully');
+          return { status: 'connected' };
+        }
+      }
+
+      throw new Error('Failed to start session: Invalid response format');
+    } catch (error) {
+      this.logger.error(`Error starting session: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Memulai semua sesi WhatsApp
+   */
+  async startAllSessions() {
+    try {
+      if (!this.token) {
+        await this.generateToken();
+      }
+
+      const response = await axios.post(
+        `${this.baseUrl}/api/${this.secretKey}/start-all?session=${this.session}`,
+        {},
+        {
+          headers: {
+            accept: '*/*',
+            authorization: `Bearer ${this.token}`,
+          },
+        }
+      );
+
+      this.logger.log('Starting all WhatsApp sessions');
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Error starting all sessions: ${error.message}`);
+      return { status: 'error', message: error.message };
+    }
+  }
+
+  /**
+   * Mendapatkan daftar semua sesi WhatsApp
+   */
+  async getAllSessions() {
+    try {
+      if (!this.token) {
+        await this.generateToken();
+      }
+
+      const response = await axios.get(
+        `${this.baseUrl}/api/${this.secretKey}/show-all-sessions`,
+        {
+          headers: {
+            accept: '*/*',
+            authorization: `Bearer ${this.token}`,
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Error getting all sessions: ${error.message}`);
+      return { response: [] };
+    }
+  }
+
+  /**
+   * Menutup sesi WhatsApp
+   */
+  private async closeSession() {
+    try {
+      if (!this.token) {
+        return { status: 'error', message: 'No token available' };
+      }
+
+      const response = await axios.post(
+        `${this.baseUrl}/api/${this.session}/close-session`,
+        {},
+        {
+          headers: {
+            accept: 'application/json',
+            contentType: 'application/json',
+            authorization: `Bearer ${this.token}`,
+          },
+        }
+      );
+
+      this.connectionStatus = 'disconnected';
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Error closing session: ${error.message}`);
+      return { status: 'error', message: error.message };
+    }
+  }
+
+  /**
+   * Logout dari sesi WhatsApp
+   */
+  async logoutSession() {
+    try {
+      if (!this.token) {
+        await this.generateToken();
+      }
+
+      const response = await axios.post(
+        `${this.baseUrl}/api/${this.session}/logout-session`,
+        {},
+        {
+          headers: {
+            accept: 'application/json',
+            contentType: 'application/json',
+            authorization: `Bearer ${this.token}`,
+          },
+        }
+      );
+
+      this.connectionStatus = 'disconnected';
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Error logging out session: ${error.message}`);
+      return { status: 'error', message: error.message };
+    }
+  }
+
+  /**
+   * Mendapatkan QR code
+   */
+  private async getQrCode() {
+    try {
+      if (!this.token) {
+        await this.generateToken();
+      }
+
+      const response = await axios.get(
+        `${this.baseUrl}/api/${this.session}/qrcode-session`,
+        {
+          headers: {
+            accept: '*/*',
+            authorization: `Bearer ${this.token}`,
+          },
+        }
+      );
+
+      if (response.data && response.data.status === 'QRCODE' && response.data.qrcode) {
+        this.lastQrCode = response.data.qrcode;
+        this.logger.log('QR code fetched successfully');
+        return response.data.qrcode;
+      }
+
+      return null;
+    } catch (error) {
+      this.logger.error(`Error getting QR code: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Konek ke WhatsApp
+   */
   private async connect() {
     if (this.isConnecting) {
       this.logger.log('Connection attempt already in progress');
@@ -158,118 +396,20 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    if (this.authenticationInProgress) {
-      this.logger.log('Authentication in progress, ignoring connect request');
-      return;
-    }
-
     this.isConnecting = true;
     this.connectionStatus = 'connecting';
 
     try {
       this.logger.log(`Connecting to WhatsApp (Attempt ${this.retryCount + 1}/${this.maxRetries})`);
 
-      if (this.retryCount > 0) {
-        this.logger.log('Cleaning up session files before reconnecting');
-        await this.cleanupSessionFiles();
-        this.qrCodeSent = false;
-        this.qrHistory.clear();
-      }
-
-      const { state, saveCreds } = await useMultiFileAuthState(this.sessionPath);
-
-      if (this.client) {
-        try {
-          this.logger.log('Closing previous WhatsApp connection');
-          this.client.end(new Error('Creating new connection'));
-        } catch (error) {
-          this.logger.error(`Error closing previous connection: ${error.message}`);
-        }
-      }
-
-      this.client = makeWASocket({
-        auth: state,
-        printQRInTerminal: false,
-        qrTimeout: 90_000,
-        connectTimeoutMs: 180_000,
-        retryRequestDelayMs: 2000,
-        defaultQueryTimeoutMs: 180_000,
-        keepAliveIntervalMs: 60_000,
-        browser: ['Rental App', 'Chrome', '108.0.0'],
-        syncFullHistory: false,
-        logger: verboseLogger,
-        markOnlineOnConnect: true,
-        transactionOpts: {
-          maxCommitRetries: 10,
-          delayBetweenTriesMs: 3000,
-        },
-        patchMessageBeforeSending: msg => {
-          const anyMsg = msg as any;
-          if (anyMsg && anyMsg.buttonText) {
-            anyMsg.buttonText = anyMsg.buttonText || '';
-          }
-          return msg;
-        },
-      });
-
-      this.client.ev.on('connection.update', async (update: Partial<ConnectionState>) => {
-        const { connection, lastDisconnect, qr } = update;
-
-        this.logger.log(
-          `Connection update: ${JSON.stringify({
-            connection,
-            statusCode: (lastDisconnect?.error as Boom)?.output?.statusCode,
-            errorMessage: (lastDisconnect?.error as Boom)?.output?.payload?.message || '',
-            hasQr: !!qr,
-          })}`,
-        );
-
-        if (qr && !this.authenticationInProgress) {
-          const currentTime = Date.now();
-
-          const isDuplicateQr = this.qrHistory.has(qr);
-          const intervalPassed = currentTime - this.lastQrTimestamp > this.qrMinInterval;
-
-          this.logger.log(
-            `QR Update: isDuplicate=${isDuplicateQr}, qrSent=${this.qrCodeSent}, intervalPassed=${intervalPassed}, historySize=${this.qrHistory.size}`,
-          );
-
-          if ((!this.qrCodeSent || intervalPassed) && !isDuplicateQr) {
-            this.logger.log('New QR Code received, generating...');
-            qrcodeTerminal.generate(qr, { small: true });
-            this.qrCodeSent = true;
-            this.lastQrTimestamp = currentTime;
-            this.lastQrCode = qr;
-            this.qrHistory.add(qr);
-
-            if (this.qrHistory.size > 10) {
-              const oldestQrs = [...this.qrHistory].slice(0, 5);
-              oldestQrs.forEach(oldQr => this.qrHistory.delete(oldQr));
-            }
-          } else {
-            this.logger.log(
-              `Ignoring QR code - ${isDuplicateQr ? 'already shown before' : 'time interval not met'}`,
-            );
-          }
-        } else if (qr && this.authenticationInProgress) {
-          this.logger.log('QR code scan detected, authentication in progress');
-          this.connectionStatus = 'authenticated';
-        }
-
-        switch (connection) {
-          case 'connecting': {
-            this.logger.log('WhatsApp connecting...');
-
-            break;
-          }
-          case 'open': {
-            this.logger.log('WhatsApp connection established successfully');
+      // Pertama, cek apakah sudah terhubung
+      const isConnected = await this.checkConnection();
+      
+      if (isConnected) {
+        this.logger.log('Already connected to WhatsApp');
+        this.connectionStatus = 'connected';
+        this.isConnecting = false;
             this.retryCount = 0;
-            this.isConnecting = false;
-            this.connectionStatus = 'connected';
-            this.authenticationInProgress = false;
-            this.lastQrCode = null;
-            this.qrCodeSent = false;
 
             if (this.sendDebugMessages) {
               setTimeout(() => {
@@ -279,107 +419,72 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
               }, 5000);
             }
 
-            break;
-          }
-          case 'close': {
+        return;
+      }
+
+      // Jika belum terhubung, mulai sesi dan dapatkan QR code jika diperlukan
+      const sessionResult = await this.startSession();
+      
+      if (sessionResult.status === 'connected') {
+        this.logger.log('WhatsApp connection established successfully');
+        this.connectionStatus = 'connected';
             this.isConnecting = false;
-
-            const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
-            const errorMessage = (lastDisconnect?.error as Boom)?.output?.payload?.message || '';
-
-            if (statusCode === 515 && errorMessage.includes('Stream Errored')) {
-              this.logger.log(
-                'Stream error 515 terdeteksi setelah pairing. Ini perilaku normal WhatsApp, melakukan reconnect...',
-              );
-
-              this.authenticationInProgress = false;
-              this.connectionStatus = 'reconnecting';
-              this.reconnectAttemptInProgress = true;
-
-              setTimeout(async () => {
-                this.reconnectAttemptInProgress = false;
-                await this.connect();
-              }, 5000);
-              return;
-            }
-
-            if (this.authenticationInProgress && statusCode !== 515) {
-              this.logger.log(
-                'Connection close detected, but authentication in progress. Waiting...',
-              );
-              return;
-            }
-
-            this.connectionStatus = 'disconnected';
-            const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-
-            this.logger.error(
-              `WhatsApp connection closed. Status code: ${statusCode}, Message: ${errorMessage}`,
+        this.retryCount = 0;
+        
+        if (this.sendDebugMessages) {
+          setTimeout(() => {
+            this.sendToAdmin('WhatsApp berhasil terhubung').catch(error =>
+              this.logger.error(`Failed to send connection notification: ${error.message}`),
             );
-
-            if (statusCode === 401 || statusCode === 428) {
-              this.logger.log('Authentication issue detected (QR scan related)');
-              await this.cleanupSessionFiles();
-              this.qrCodeSent = false;
-              this.authenticationInProgress = false;
-
-              setTimeout(async () => {
-                await this.connect();
-              }, this.retryDelay);
-              return;
-            }
-
-            if (errorMessage.includes('conflict') || statusCode === 409 || statusCode === 440) {
-              this.logger.log('Detected conflict with another session, cleaning all session files');
-              await this.cleanupSessionFiles();
-              this.qrCodeSent = false;
-              this.authenticationInProgress = false;
-            }
-
-            if (shouldReconnect && this.retryCount < this.maxRetries) {
-              this.retryCount++;
-              this.connectionStatus = 'reconnecting';
-              this.logger.log(
-                `Akan mencoba menghubungkan kembali dalam ${this.retryDelay / 1000} detik... (Percobaan ${this.retryCount}/${this.maxRetries})`,
-              );
-
-              this.reconnectAttemptInProgress = true;
-
-              setTimeout(async () => {
-                this.reconnectAttemptInProgress = false;
-                this.authenticationInProgress = false;
-                await this.connect();
-              }, this.retryDelay);
-            } else if (shouldReconnect) {
-              this.logger.error(
-                'Maximum retry attempts reached. Giving up on WhatsApp connection.',
-              );
-              this.connectionStatus = 'error';
-            } else {
-              this.logger.error('User logged out from WhatsApp. Need to scan QR code again.');
-              await this.cleanupSessionFiles();
-              this.connectionStatus = 'disconnected';
-              this.retryCount = 0;
-              this.qrCodeSent = false;
-
-              setTimeout(async () => {
-                await this.connect();
-              }, this.retryDelay);
-            }
-
-            break;
-          }
-          // No default
+              }, 5000);
         }
-      });
+      } else if (sessionResult.status === 'qrcode') {
+        this.logger.log('QR code received, waiting for scan...');
+        // Set interval untuk terus memeriksa status koneksi setelah QR code diterima
+        const checkInterval = setInterval(async () => {
+          const checkResult = await this.checkConnection();
+          
+          if (checkResult) {
+            clearInterval(checkInterval);
+            this.logger.log('QR code scanned successfully, now connected');
+            this.connectionStatus = 'connected';
+            this.isConnecting = false;
+              this.retryCount = 0;
+            this.lastQrCode = null;
+            
+            if (this.sendDebugMessages) {
+              this.sendToAdmin('WhatsApp berhasil terhubung').catch(error =>
+                this.logger.error(`Failed to send connection notification: ${error.message}`),
+              );
+            }
+          }
+        }, 10_000); // Cek setiap 10 detik
+        
+        // Hentikan interval setelah 2 menit jika masih belum terhubung
+        setTimeout(() => {
+          clearInterval(checkInterval);
+          if (this.connectionStatus !== 'connected') {
+            this.isConnecting = false;
+            this.handleDisconnect('QR code scan timeout');
+          }
+        }, 120_000);
+      }
 
-      this.client.ev.on('creds.update', saveCreds);
     } catch (error) {
       this.isConnecting = false;
       this.logger.error(`Error connecting to WhatsApp: ${error.message}`);
+      await this.handleDisconnect(error.message);
+    }
+  }
+
+  private async handleDisconnect(reason: string) {
+    this.isConnecting = false;
+    this.connectionStatus = 'disconnected';
+    this.logger.log(`WhatsApp disconnected: ${reason}`);
 
       if (this.retryCount < this.maxRetries) {
         this.retryCount++;
+      this.connectionStatus = 'reconnecting';
         this.logger.log(
           `Akan mencoba menghubungkan kembali dalam ${this.retryDelay / 1000} detik... (Percobaan ${this.retryCount}/${this.maxRetries})`,
         );
@@ -393,36 +498,20 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       } else {
         this.logger.error('Maximum retry attempts reached. Giving up on WhatsApp connection.');
         this.connectionStatus = 'error';
-      }
     }
   }
 
-  private async cleanupSessionFiles() {
-    try {
-      if (!fs.existsSync(this.sessionPath)) {
-        this.logger.log(`Creating session directory: ${this.sessionPath}`);
-        fs.mkdirSync(this.sessionPath, { recursive: true });
-        return;
-      }
-
-      const files = fs.readdirSync(this.sessionPath);
-
-      for (const file of files) {
-        if (appStateFiles.some(pattern => file.startsWith(pattern)) || file.endsWith('.json')) {
-          const filePath = `${this.sessionPath}/${file}`;
-          this.logger.log(`Removing potentially corrupted file: ${file}`);
-          fs.unlinkSync(filePath);
-        }
-      }
-    } catch (error) {
-      this.logger.error(`Error cleaning up session files: ${error.message}`);
-    }
-  }
-
+  /**
+   * Mengirim pesan WhatsApp
+   */
   async sendMessage(to: string, message: string) {
-    if (!this.client) {
-      this.logger.error('WhatsApp client is not initialized');
-      throw new Error('WhatsApp client is not initialized');
+    if (this.connectionStatus !== 'connected') {
+      this.logger.error('WhatsApp is not connected');
+      throw new Error('WhatsApp is not connected');
+    }
+
+    if (!this.token) {
+      await this.generateToken();
     }
 
     try {
@@ -432,20 +521,35 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
         formattedNumber = formattedNumber.slice(1);
       }
 
-      if (!formattedNumber.includes('@')) {
-        formattedNumber = `${formattedNumber}@s.whatsapp.net`;
+      // Pastikan nomor tidak memiliki format @c.us atau @s.whatsapp.net
+      if (formattedNumber.includes('@')) {
+        formattedNumber = formattedNumber.split('@')[0];
       }
 
       this.logger.log(`Sending message to ${to} (formatted: ${formattedNumber})`);
-      const result = await Promise.race([
-        this.client.sendMessage(formattedNumber, { text: message }),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Send message timeout')), 30_000),
-        ),
-      ]);
+      
+      const response = await axios.post(
+        `${this.baseUrl}/api/${this.session}/send-message`,
+        {
+          phone: formattedNumber,
+          message: message,
+        },
+        {
+          headers: {
+            accept: 'application/json',
+            contentType: 'application/json',
+            authorization: `Bearer ${this.token}`,
+          },
+          timeout: 30_000,
+        }
+      );
 
-      this.logger.log(`Message sent successfully to ${to}`);
-      return result;
+      if (response.data && response.data.status === 'success') {
+        this.logger.log(`Message sent successfully to ${to}`);
+        return response.data;
+      } else {
+        throw new Error(`Failed to send message: ${JSON.stringify(response.data)}`);
+      }
     } catch (error) {
       this.logger.error(`Error sending WhatsApp message to ${to}: ${error.message}`);
 
@@ -453,11 +557,20 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
         error.message.includes('Connection Closed') ||
         error.message.includes('lost connection') ||
         error.message.includes('Timed Out') ||
-        error.message.includes('Send message timeout')
+        error.message.includes('timeout') ||
+        error.message.includes('ECONNREFUSED') ||
+        error.response?.status === 401 ||
+        error.response?.status === 403
       ) {
         this.logger.log('Connection issue detected, attempting to reconnect...');
 
-        if (error.message.includes('Timed Out') || error.message.includes('Send message timeout')) {
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          // Token mungkin kadaluarsa, coba generate ulang
+          this.token = null;
+          await this.generateToken();
+        }
+
+        if (error.message.includes('Timed Out') || error.message.includes('timeout')) {
           await this.resetConnection();
         } else {
           await this.connect();
@@ -468,6 +581,111 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * Mendapatkan daftar chat
+   */
+  async getChats() {
+    if (!this.token) {
+      await this.generateToken();
+    }
+
+    try {
+      const response = await axios.post(
+        `${this.baseUrl}/api/${this.session}/list-chats`,
+        {},
+        {
+          headers: {
+            accept: 'application/json',
+            contentType: 'application/json',
+            authorization: `Bearer ${this.token}`,
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Error getting chats: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Mendapatkan pesan dalam chat
+   */
+  async getMessagesInChat(phone: string) {
+    if (!this.token) {
+      await this.generateToken();
+    }
+
+    try {
+      let formattedNumber = phone;
+
+      if (formattedNumber.startsWith('+')) {
+        formattedNumber = formattedNumber.slice(1);
+      }
+
+      // Pastikan nomor tidak memiliki format @c.us atau @s.whatsapp.net
+      if (formattedNumber.includes('@')) {
+        formattedNumber = formattedNumber.split('@')[0];
+      }
+
+      const response = await axios.get(
+        `${this.baseUrl}/api/${this.session}/all-messages-in-chat/${formattedNumber}`,
+        {
+          headers: {
+            accept: 'application/json',
+            authorization: `Bearer ${this.token}`,
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Error getting messages from chat ${phone}: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Mendapatkan informasi kontak
+   */
+  async getContact(phone: string) {
+    if (!this.token) {
+      await this.generateToken();
+    }
+
+    try {
+      let formattedNumber = phone;
+
+      if (formattedNumber.startsWith('+')) {
+        formattedNumber = formattedNumber.slice(1);
+      }
+
+      // Pastikan nomor tidak memiliki format @c.us atau @s.whatsapp.net
+      if (formattedNumber.includes('@')) {
+        formattedNumber = formattedNumber.split('@')[0];
+      }
+
+      const response = await axios.get(
+        `${this.baseUrl}/api/${this.session}/contact/${formattedNumber}`,
+        {
+          headers: {
+            accept: 'application/json',
+            authorization: `Bearer ${this.token}`,
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Error getting contact ${phone}: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Mengirim pesan ke admin
+   */
   async sendToAdmin(message: string) {
     if (!this.sendDebugMessages) {
       this.logger.log('Debug messages disabled, not sending to admin');
@@ -485,8 +703,8 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       adminNumber = adminNumber.slice(1);
     }
 
-    if (!adminNumber.includes('@')) {
-      adminNumber = `${adminNumber}@s.whatsapp.net`;
+    if (adminNumber.includes('@')) {
+      adminNumber = adminNumber.split('@')[0];
     }
 
     this.logger.log(`Sending to admin: ${this.adminNumber} (formatted: ${adminNumber})`);

@@ -14,15 +14,15 @@ export class JenisMotorService {
     try {
       // Generate slug dari merk dan model
       const slug = this.generateSlug(data.merk, data.model);
-      
+
       // Cek apakah slug sudah ada
       const existingSlug = await this.prisma.jenisMotor.findFirst({
         where: { slug },
       });
-      
+
       // Jika slug sudah ada, tambahkan timestamp
       const finalSlug = existingSlug ? `${slug}-${Date.now().toString().slice(-6)}` : slug;
-      
+
       return await this.prisma.jenisMotor.create({
         data: {
           merk: data.merk,
@@ -83,26 +83,26 @@ export class JenisMotorService {
 
       // Jika merk atau model berubah, update slug
       let updateData = { ...data };
-      
+
       if (data.merk || data.model) {
         // Ambil data yang sudah ada
         const currentMerk = data.merk || jenisMotor.merk;
         const currentModel = data.model || jenisMotor.model;
-        
+
         // Generate slug baru
         const newSlug = this.generateSlug(currentMerk, currentModel);
-        
+
         // Cek apakah slug sudah ada (selain untuk jenis motor ini)
         const existingSlug = await this.prisma.jenisMotor.findFirst({
-          where: { 
+          where: {
             slug: newSlug,
-            id: { not: id }
+            id: { not: id },
           },
         });
-        
+
         // Jika slug sudah ada, tambahkan identifier unik
         const finalSlug = existingSlug ? `${newSlug}-${Date.now().toString().slice(-6)}` : newSlug;
-        
+
         // Tambahkan slug ke data update
         updateData.slug = finalSlug;
       }
@@ -135,9 +135,15 @@ export class JenisMotorService {
   // Fungsi untuk menghasilkan slug dari merk dan model
   private generateSlug(merk: string, model: string): string {
     // Hapus karakter khusus dan ganti spasi dengan dash
-    const merkSlug = merk.toLowerCase().replaceAll(/[^\w\s]/g, '').replaceAll(/\s+/g, '-');
-    const modelSlug = model.toLowerCase().replaceAll(/[^\w\s]/g, '').replaceAll(/\s+/g, '-');
-    
+    const merkSlug = merk
+      .toLowerCase()
+      .replaceAll(/[^\w\s]/g, '')
+      .replaceAll(/\s+/g, '-');
+    const modelSlug = model
+      .toLowerCase()
+      .replaceAll(/[^\w\s]/g, '')
+      .replaceAll(/\s+/g, '-');
+
     return `${merkSlug}-${modelSlug}`;
   }
 }

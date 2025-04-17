@@ -71,6 +71,62 @@ export class WhatsappQueue {
   }
 
   /**
+   * Menambahkan tugas untuk memulai semua sesi WhatsApp
+   */
+  async addStartAllSessionsJob() {
+    this.logger.debug('Adding start all WhatsApp sessions job to queue');
+
+    try {
+      return await this.whatsappQueue.add(
+        'start-all-sessions',
+        {
+          timestamp: new Date(),
+        },
+        {
+          attempts: 2,
+          backoff: {
+            type: 'exponential',
+            delay: 5000,
+          },
+          removeOnComplete: true,
+          removeOnFail: false,
+        },
+      );
+    } catch (error) {
+      this.logger.error(`Failed to add start all sessions job to queue: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Menambahkan tugas untuk mendapatkan daftar chat
+   */
+  async addGetChatsJob() {
+    this.logger.debug('Adding get chats job to queue');
+
+    try {
+      return await this.whatsappQueue.add(
+        'get-chats',
+        {
+          timestamp: new Date(),
+        },
+        {
+          attempts: 2,
+          backoff: {
+            type: 'exponential',
+            delay: 5000,
+          },
+          removeOnComplete: true,
+          removeOnFail: false,
+        },
+      );
+    } catch (error) {
+      this.logger.error(`Failed to add get chats job to queue: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
    * Menambahkan tugas untuk mengirim pesan broadcast
    */
   async addBroadcastJob(recipients: string[], message: string, options?: any) {
