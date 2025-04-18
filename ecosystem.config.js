@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: 'rental-backend',
-      script: 'dist/main.js',
+      script: 'dist/src/main.js',
       exec_mode: 'cluster',
       instances: 'max',
       max_memory_restart: process.env.PM2_MAX_MEMORY || '750M',
