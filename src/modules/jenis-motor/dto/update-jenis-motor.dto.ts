@@ -41,4 +41,13 @@ export class UpdateJenisMotorDto {
   @IsString()
   @IsOptional()
   gambar?: string;
+
+  @ApiProperty({
+    description: 'Slug untuk URL',
+    example: 'honda-vario-125',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  slug?: string;
 }

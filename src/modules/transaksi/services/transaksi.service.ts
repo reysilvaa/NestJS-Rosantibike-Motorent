@@ -59,8 +59,8 @@ export class TransaksiService {
       // Hapus filter yang undefined
       Object.keys(where).forEach(key => where[key] === undefined && delete where[key]);
 
-      const page = filter.page || 1;
-      const limit = filter.limit || 10;
+      const page = Number(filter.page) || 1;
+      const limit = Number(filter.limit) || 10;
       const skip = (page - 1) * limit;
 
       const [total, data] = await Promise.all([

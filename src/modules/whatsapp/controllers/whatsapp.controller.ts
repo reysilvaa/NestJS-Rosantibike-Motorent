@@ -1,13 +1,18 @@
-import { Controller, Post, Body, Get, HttpStatus, HttpException, Logger } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Res,
+  HttpStatus,
+  HttpException,
+  Logger,
+} from '@nestjs/common';
+import { Response } from 'express';
 import { WhatsappService } from '../services/whatsapp.service';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import logger from 'baileys/lib/Utils/logger';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { handleError, logInfo } from '../../../common/helpers';
-
-interface SendMessageDto {
-  to: string;
-  message: string;
-}
 
 @ApiTags('WhatsApp')
 @Controller('whatsapp')
@@ -16,33 +21,183 @@ export class WhatsappController {
 
   constructor(private readonly whatsappService: WhatsappService) {}
 
-  @Post('send')
-  @ApiOperation({ summary: 'Kirim pesan WhatsApp' })
-  @ApiResponse({ status: 200, description: 'Pesan berhasil dikirim' })
-  @ApiResponse({ status: 500, description: 'Gagal mengirim pesan' })
-  async sendMessage(@Body() sendMessageDto: SendMessageDto) {
+  @Get('status')
+  @ApiOperation({ summary: 'Mendapatkan status koneksi WhatsApp' })
+  @ApiResponse({ status: 200, description: 'Status koneksi berhasil ditemukan' })
+  getStatus() {
+    return this.whatsappService.getConnectionStatus();
+  }
+
+  @Get('session-status')
+  @ApiOperation({ summary: 'Mendapatkan status sesi WhatsApp dari API' })
+  @ApiResponse({ status: 200, description: 'Status sesi berhasil ditemukan' })
+  async getSessionStatus() {
+    const sessionStatus = await this.whatsappService.getSessionStatus();
+    return {
+      status: 'success',
+      data: sessionStatus,
+    };
+  }
+
+  @Get('qr-code')
+  @ApiOperation({ summary: 'Mendapatkan QR code untuk menghubungkan WhatsApp' })
+  @ApiResponse({ status: 200, description: 'QR code berhasil diperoleh' })
+  @ApiResponse({ status: 404, description: 'QR code tidak tersedia' })
+  async getQrCode(@Res() res: Response) {
+    const qrCode = this.whatsappService.getLastQrCode();
+    
+    if (!qrCode) {
+      throw new HttpException('QR code tidak tersedia. Mungkin sudah terhubung atau belum siap.', HttpStatus.NOT_FOUND);
+    }
+    
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      qrCode,
+    });
+  }
+
+  @Post('reset')
+  @ApiOperation({ summary: 'Reset koneksi WhatsApp' })
+  @ApiResponse({ status: 200, description: 'Koneksi berhasil di-reset' })
+  async resetConnection() {
+    await this.whatsappService.resetConnection();
+    return {
+      status: 'success',
+      message: 'Koneksi WhatsApp sedang di-reset',
+    };
+  }
+
+  @Post('logout')
+  @ApiOperation({ summary: 'Logout dari sesi WhatsApp' })
+  @ApiResponse({ status: 200, description: 'Berhasil logout dari WhatsApp' })
+  async logoutSession() {
+    const result = await this.whatsappService.logoutSession();
+    return {
+      status: 'success',
+      message: 'Berhasil logout dari WhatsApp',
+      data: result,
+    };
+  }
+
+  @Post('start-all')
+  @ApiOperation({ summary: 'Memulai semua sesi WhatsApp' })
+  @ApiResponse({ status: 200, description: 'Sesi WhatsApp berhasil dimulai' })
+  async startAllSessions() {
+    const result = await this.whatsappService.startAllSessions();
+    return {
+      status: 'success',
+      message: 'Sesi WhatsApp berhasil dimulai',
+      data: result,
+    };
+  }
+
+  @Get('all-sessions')
+  @ApiOperation({ summary: 'Mendapatkan daftar semua sesi WhatsApp' })
+  @ApiResponse({ status: 200, description: 'Daftar sesi berhasil ditemukan' })
+  async getAllSessions() {
+    const result = await this.whatsappService.getAllSessions();
+    return {
+      status: 'success',
+      data: result,
+    };
+  }
+
+  @Get('chats')
+  @ApiOperation({ summary: 'Mendapatkan daftar chat WhatsApp' })
+  @ApiResponse({ status: 200, description: 'Daftar chat berhasil ditemukan' })
+  @ApiResponse({ status: 400, description: 'Gagal mendapatkan daftar chat' })
+  async getChats() {
     try {
-      if (!sendMessageDto) {
-        throw new HttpException('Data yang diperlukan tidak lengkap', HttpStatus.BAD_REQUEST);
+      const result = await this.whatsappService.getChats();
+      
+      if (!result) {
+        throw new HttpException('Gagal mendapatkan daftar chat', HttpStatus.BAD_REQUEST);
       }
+      
+      return {
+        status: 'success',
+        data: result,
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Gagal mendapatkan daftar chat: ${error.message}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
 
-      const { to, message } = sendMessageDto;
-
-      if (!to || !message) {
-        throw new HttpException('Nomor tujuan dan pesan diperlukan', HttpStatus.BAD_REQUEST);
+  @Get('messages/:phone')
+  @ApiOperation({ summary: 'Mendapatkan pesan dalam chat' })
+  @ApiResponse({ status: 200, description: 'Pesan berhasil ditemukan' })
+  @ApiResponse({ status: 400, description: 'Gagal mendapatkan pesan' })
+  async getMessages(@Param('phone') phone: string) {
+    try {
+      const result = await this.whatsappService.getMessagesInChat(phone);
+      
+      if (!result) {
+        throw new HttpException('Gagal mendapatkan pesan', HttpStatus.BAD_REQUEST);
       }
+      
+      return {
+        status: 'success',
+        data: result,
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Gagal mendapatkan pesan: ${error.message}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
 
-      logInfo(this.logger, `Mengirim pesan ke nomor: ${to}`);
-      const result = await this.whatsappService.sendMessage(to, message);
+  @Get('contact/:phone')
+  @ApiOperation({ summary: 'Mendapatkan informasi kontak' })
+  @ApiResponse({ status: 200, description: 'Kontak berhasil ditemukan' })
+  @ApiResponse({ status: 400, description: 'Gagal mendapatkan kontak' })
+  async getContact(@Param('phone') phone: string) {
+    try {
+      const result = await this.whatsappService.getContact(phone);
 
       if (!result) {
-        throw new HttpException('Gagal mengirim pesan WhatsApp', HttpStatus.INTERNAL_SERVER_ERROR);
+        throw new HttpException('Gagal mendapatkan kontak', HttpStatus.BAD_REQUEST);
       }
-
-      logInfo(this.logger, 'Pesan berhasil dikirim');
-      return { success: true, message: 'Pesan berhasil dikirim' };
+      
+      return {
+        status: 'success',
+        data: result,
+      };
     } catch (error) {
-      return handleError(this.logger, error, 'Gagal mengirim pesan WhatsApp', 'sendMessage');
+      throw new HttpException(
+        `Gagal mendapatkan kontak: ${error.message}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Post('send')
+  @ApiOperation({ summary: 'Mengirim pesan WhatsApp' })
+  @ApiResponse({ status: 200, description: 'Pesan berhasil dikirim' })
+  @ApiResponse({ status: 400, description: 'Gagal mengirim pesan' })
+  async sendMessage(
+    @Body() body: { to: string; message: string },
+  ) {
+    try {
+      const result = await this.whatsappService.sendMessage(body.to, body.message);
+
+      if (!result) {
+        throw new HttpException('Gagal mengirim pesan', HttpStatus.BAD_REQUEST);
+      }
+      
+      return {
+        status: 'success',
+        message: 'Pesan berhasil dikirim',
+        data: result,
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Gagal mengirim pesan: ${error.message}`,
+        HttpStatus.BAD_REQUEST,
+      );
     }
   }
 
@@ -76,89 +231,6 @@ export class WhatsappController {
         'Gagal mengirim pesan ke admin WhatsApp',
         'sendToAdmin',
       );
-    }
-  }
-
-  @Post('reset-connection')
-  @ApiOperation({ summary: 'Reset koneksi WhatsApp' })
-  @ApiResponse({ status: 200, description: 'Koneksi WhatsApp berhasil di-reset' })
-  async resetConnection() {
-    try {
-      logInfo(this.logger, 'Melakukan reset koneksi WhatsApp');
-      await this.whatsappService.resetConnection();
-      logInfo(this.logger, 'Koneksi WhatsApp berhasil di-reset');
-      return { success: true, message: 'Koneksi WhatsApp berhasil di-reset' };
-    } catch (error) {
-      return handleError(this.logger, error, 'Gagal reset koneksi WhatsApp', 'resetConnection');
-    }
-  }
-
-  @Get('status')
-  @ApiOperation({ summary: 'Cek status koneksi WhatsApp' })
-  @ApiResponse({ status: 200, description: 'Status koneksi WhatsApp' })
-  async getStatus() {
-    try {
-      logInfo(this.logger, 'Mengecek status koneksi WhatsApp');
-      const status = await this.whatsappService.getConnectionStatus();
-      const reconnecting = status.status === 'reconnecting';
-      const connected = status.status === 'connected';
-      const authenticating = status.status === 'authenticated';
-
-      let statusMessage = '';
-
-      if (reconnecting) {
-        statusMessage = `Sedang mencoba menyambungkan kembali (Percobaan ${status.retryCount}/${this.whatsappService.maxRetries})`;
-      } else if (connected) {
-        statusMessage = 'WhatsApp terhubung';
-      } else if (authenticating) {
-        statusMessage = 'Proses autentikasi sedang berlangsung, harap tunggu...';
-      } else if (status.status === 'connecting') {
-        statusMessage = 'Sedang mencoba terhubung ke WhatsApp...';
-      } else if (status.status === 'error') {
-        statusMessage = 'Terjadi kesalahan koneksi WhatsApp, silakan reset koneksi';
-      } else {
-        statusMessage = 'WhatsApp tidak terhubung, silakan scan QR code';
-      }
-
-      logInfo(this.logger, `Status koneksi WhatsApp: ${status.status}`);
-
-      return {
-        status,
-        isReconnecting: reconnecting,
-        isConnected: connected,
-        isAuthenticating: authenticating,
-        message: statusMessage,
-      };
-    } catch (error) {
-      return handleError(
-        this.logger,
-        error,
-        'Gagal mendapatkan status koneksi WhatsApp',
-        'getStatus',
-      );
-    }
-  }
-
-  @Get('qrcode')
-  @ApiOperation({ summary: 'Dapatkan QR code terakhir untuk koneksi WhatsApp' })
-  @ApiResponse({ status: 200, description: 'QR code terakhir' })
-  @ApiResponse({ status: 404, description: 'QR code tidak tersedia' })
-  async getQrCode() {
-    try {
-      logInfo(this.logger, 'Mengambil QR code WhatsApp terakhir');
-      const qrCode = await this.whatsappService.getLastQrCode();
-
-      if (!qrCode) {
-        throw new HttpException(
-          'QR code belum tersedia, silakan reset koneksi',
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      logInfo(this.logger, 'QR code berhasil diambil');
-      return { qrCode };
-    } catch (error) {
-      return handleError(this.logger, error, 'Gagal mendapatkan QR code WhatsApp', 'getQrCode');
     }
   }
 }

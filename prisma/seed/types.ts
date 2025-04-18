@@ -36,25 +36,29 @@ export type AdminType = {
 };
 
 // Interface untuk Jenis Motor
-export type JenisMotorType = {
+export interface JenisMotorType {
   id: string;
   merk: string;
   model: string;
   cc: number;
-  createdAt?: Date;
-  updatedAt?: Date;
-};
+  slug: string;
+  gambar?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 // Interface untuk Unit Motor
-export type UnitMotorType = {
+export interface UnitMotorType {
   id: string;
   jenisId: string;
   platNomor: string;
-  hargaSewa: Decimal;
+  slug: string;
   status: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-};
+  hargaSewa: any; // Using 'any' for Decimal type
+  tahunPembuatan?: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 // Interface untuk Transaksi
 export type TransaksiType = {

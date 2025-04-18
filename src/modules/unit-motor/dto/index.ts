@@ -1,4 +1,4 @@
-export { CreateUnitMotorDto } from './create-unit-motor.dto';
-export { UpdateUnitMotorDto } from './update-unit-motor.dto';
-export { FilterUnitMotorDto } from './filter-unit-motor.dto';
-export { CheckAvailabilityDto } from './check-availability.dto';
+export * from './create-unit-motor.dto';
+export * from './update-unit-motor.dto';
+export * from './filter-unit-motor.dto';
+export * from './check-availability.dto';

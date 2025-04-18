@@ -11,12 +11,14 @@ model JenisMotor {
   id        String      @id @default(uuid())
   merk      String      @db.VarChar(50)
   model     String      @db.VarChar(50)
+  slug      String      @unique @db.VarChar(255)
   cc        Int
   gambar    String?     @db.VarChar(255)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
   unitMotor UnitMotor[]
 
+  @@index([slug])
   @@map("jenis_motor")
 }
 
@@ -24,6 +26,7 @@ model UnitMotor {
   id             String          @id @default(uuid())
   jenisId        String
   platNomor      String          @unique @db.VarChar(20)
+  slug           String          @unique @db.VarChar(255)
   status         StatusMotor     @default(TERSEDIA)
   hargaSewa      Decimal         @db.Decimal(10, 2)
   tahunPembuatan Int             @default(2020)
@@ -34,6 +37,7 @@ model UnitMotor {
 
   @@index([platNomor])
   @@index([status])
+  @@index([slug])
   @@map("unit_motor")
 }
 
