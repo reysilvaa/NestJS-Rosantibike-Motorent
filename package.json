@@ -61,7 +61,6 @@
     "@prisma/client": "^6.5.0",
     "@types/multer": "^1.4.12",
     "@types/passport-jwt": "^4.0.1",
-    "@wppconnect-team/wppconnect": "^1.37.0",
     "axios": "^1.8.4",
     "baileys": "^6.7.16",
     "bcrypt": "^5.1.1",
