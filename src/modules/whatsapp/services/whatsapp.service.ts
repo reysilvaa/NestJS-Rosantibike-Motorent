@@ -201,10 +201,14 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
         await this.generateToken();
       }
 
+      // Get webhook URL from config
+      const webhookUrl = this.configService.get('WEBHOOK_URL') || `${this.configService.get('APP_URL')}/api/whatsapp/webhook`;
+      this.logger.log(`Setting webhook URL to: ${webhookUrl}`);
+
       const response = await axios.post(
         `${this.baseUrl}/api/${this.session}/start-session`,
         {
-          webhook: '',
+          webhook: webhookUrl,
           waitQrCode: false
         },
         {
@@ -687,28 +691,24 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
    * Mengirim pesan ke admin
    */
   async sendToAdmin(message: string) {
-    if (!this.sendDebugMessages) {
-      this.logger.log('Debug messages disabled, not sending to admin');
-      return null;
-    }
-
+    try {
     if (!this.adminNumber) {
-      this.logger.error('Admin WhatsApp number not configured');
-      return null;
+        this.logger.warn('Admin WhatsApp number is not configured');
+        return false;
+      }
+
+      // Format admin number
+      const adminWhatsapp = this.adminNumber.startsWith('+')
+        ? this.adminNumber.slice(1)
+        : this.adminNumber;
+      const whatsappId = `${adminWhatsapp}@s.whatsapp.net`;
+
+      // Send message to admin
+      return await this.sendMessage(whatsappId, message);
+    } catch (error) {
+      this.logger.error(`Error sending message to admin: ${error.message}`);
+      return false;
     }
-
-    let adminNumber = this.adminNumber;
-
-    if (adminNumber.startsWith('+')) {
-      adminNumber = adminNumber.slice(1);
-    }
-
-    if (adminNumber.includes('@')) {
-      adminNumber = adminNumber.split('@')[0];
-    }
-
-    this.logger.log(`Sending to admin: ${this.adminNumber} (formatted: ${adminNumber})`);
-    return this.sendMessage(adminNumber, message);
   }
 
   /**
@@ -716,7 +716,268 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
    * Method ini digunakan oleh processor untuk menginisialisasi ulang koneksi WhatsApp
    */
   async initialize() {
-    this.logger.log('Initializing WhatsApp connection from queue processor');
-    return this.connect();
+    try {
+      this.logger.log('Initializing WhatsApp');
+      return await this.connect();
+    } catch (error) {
+      this.logger.error(`Error initializing WhatsApp: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Memproses pesan masuk dari pengguna WhatsApp
+   */
+  async processIncomingMessage(from: string, message: string, messageData: any) {
+    try {
+      this.logger.log(`Processing incoming message from ${from}: ${message}`);
+      
+      // Format nomor pengirim (hapus @s.whatsapp.net atau @g.us)
+      const senderNumber = from.split('@')[0];
+      
+      // Cari transaksi terkait dengan nomor pengirim
+      const PrismaService = (await import('../../../common/prisma/prisma.service')).PrismaService;
+      const prisma = new PrismaService();
+      
+      // Cari transaksi aktif untuk nomor ini
+      const activeTransactions = await prisma.transaksiSewa.findMany({
+        where: {
+          noWhatsapp: {
+            contains: senderNumber,
+          },
+          status: {
+            in: ['AKTIF', 'OVERDUE'],
+          },
+        },
+        include: {
+          unitMotor: {
+            include: {
+              jenis: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: 1,
+      });
+
+      // Jika ada transaksi aktif
+      if (activeTransactions.length > 0) {
+        const transaction = activeTransactions[0];
+        
+        // Periksa konten pesan untuk menentukan aksi
+        await this.processUserMenuRequest(transaction, message, senderNumber);
+      } else {
+        // Tidak ada transaksi aktif, kirim pesan informasi umum
+        await this.sendDefaultMessage(senderNumber);
+      }
+      
+      return true;
+    } catch (error) {
+      this.logger.error(`Error processing incoming message: ${error.message}`, error.stack);
+      return false;
+    }
+  }
+
+  /**
+   * Memproses permintaan menu dari pengguna
+   */
+  private async processUserMenuRequest(transaction: any, message: string, senderNumber: string) {
+    try {
+      const normalizedMessage = message.trim().toLowerCase();
+      
+      // Jika menu diidentifikasi dengan angka
+      if (normalizedMessage === '1' || normalizedMessage.includes('lunasi dp') || normalizedMessage.includes('bayar dp')) {
+        await this.sendPaymentInstructions(transaction, senderNumber);
+      } else if (normalizedMessage === '2' || normalizedMessage.includes('cek info') || normalizedMessage.includes('info saya')) {
+        await this.sendTransactionInfo(transaction, senderNumber);
+      } else if (normalizedMessage === '3' || normalizedMessage.includes('perpanjang')) {
+        await this.sendExtensionInstructions(transaction, senderNumber);
+      } else if (normalizedMessage === '4' || normalizedMessage.includes('bantuan') || normalizedMessage.includes('help')) {
+        await this.sendHelpMenu(senderNumber);
+      } else {
+        // Jika pesan tidak cocok dengan menu yang tersedia
+        await this.sendMenuOptions(transaction, senderNumber);
+      }
+    } catch (error) {
+      this.logger.error(`Error processing user menu request: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Kirim informasi pembayaran DP
+   */
+  private async sendPaymentInstructions(transaction: any, senderNumber: string) {
+    try {
+      const message = `*INSTRUKSI PEMBAYARAN DP*\n\n`
+        + `Untuk melunasi DP motor ${transaction.unitMotor.jenis.nama || transaction.unitMotor.jenis.model} ${transaction.unitMotor.platNomor}, silahkan transfer ke:\n\n`
+        + `Bank: BCA\n`
+        + `No. Rekening: 1234567890\n`
+        + `Atas Nama: Rosanti Bike Motorent\n`
+        + `Jumlah: Rp ${this.formatCurrency(transaction.totalBiaya * 0.3)}\n\n`
+        + `Setelah transfer, mohon kirimkan bukti pembayaran ke nomor ini.\n\n`
+        + `Kode Booking: ${transaction.id}\n\n`
+        + `*MENU LAYANAN WHATSAPP*:\n`
+        + `1. *Lunasi DP* - Instruksi pembayaran DP\n`
+        + `2. *Cek Info Saya* - Detail booking Anda\n`
+        + `3. *Perpanjang Sewa* - Perpanjang masa sewa\n`
+        + `4. *Bantuan* - Menu bantuan tambahan\n\n`
+        + `Terima kasih.`;
+      
+      await this.sendMessage(`${senderNumber}@s.whatsapp.net`, message);
+    } catch (error) {
+      this.logger.error(`Error sending payment instructions: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Kirim informasi transaksi
+   */
+  private async sendTransactionInfo(transaction: any, senderNumber: string) {
+    try {
+      const startDate = new Date(transaction.tanggalMulai).toLocaleDateString('id-ID', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+      
+      const endDate = new Date(transaction.tanggalSelesai).toLocaleDateString('id-ID', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+      
+      const message = `*INFORMASI BOOKING ANDA*\n\n`
+        + `Nama: ${transaction.namaPenyewa}\n`
+        + `Motor: ${transaction.unitMotor.jenis.nama || transaction.unitMotor.jenis.model} (${transaction.unitMotor.platNomor})\n`
+        + `Tanggal Mulai: ${startDate} ${transaction.jamMulai}\n`
+        + `Tanggal Selesai: ${endDate} ${transaction.jamSelesai}\n`
+        + `Total Biaya: Rp ${this.formatCurrency(transaction.totalBiaya)}\n`
+        + `Status: ${this.getStatusLabel(transaction.status)}\n\n`
+        + `Kode Booking: ${transaction.id}\n\n`
+        + `*MENU LAYANAN WHATSAPP*:\n`
+        + `1. *Lunasi DP* - Instruksi pembayaran DP\n`
+        + `2. *Cek Info Saya* - Detail booking Anda\n`
+        + `3. *Perpanjang Sewa* - Perpanjang masa sewa\n`
+        + `4. *Bantuan* - Menu bantuan tambahan`;
+      
+      await this.sendMessage(`${senderNumber}@s.whatsapp.net`, message);
+    } catch (error) {
+      this.logger.error(`Error sending transaction info: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Kirim instruksi perpanjangan
+   */
+  private async sendExtensionInstructions(transaction: any, senderNumber: string) {
+    try {
+      const message = `*PERPANJANGAN SEWA*\n\n`
+        + `Untuk perpanjang sewa motor ${transaction.unitMotor.jenis.nama || transaction.unitMotor.jenis.model} ${transaction.unitMotor.platNomor}, silahkan kunjungi link berikut:\n\n`
+        + `https://rosantibikemotorent.com/perpanjang/${transaction.id}\n\n`
+        + `Atau hubungi admin di nomor berikut untuk bantuan:\n`
+        + `Admin: ${this.adminNumber}\n\n`
+        + `*MENU LAYANAN WHATSAPP*:\n`
+        + `1. *Lunasi DP* - Instruksi pembayaran DP\n`
+        + `2. *Cek Info Saya* - Detail booking Anda\n`
+        + `3. *Perpanjang Sewa* - Perpanjang masa sewa\n`
+        + `4. *Bantuan* - Menu bantuan tambahan\n\n`
+        + `Terima kasih.`;
+      
+      await this.sendMessage(`${senderNumber}@s.whatsapp.net`, message);
+    } catch (error) {
+      this.logger.error(`Error sending extension instructions: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Kirim menu bantuan
+   */
+  private async sendHelpMenu(senderNumber: string) {
+    try {
+      const message = `*MENU BANTUAN*\n\n`
+        + `1. *Lunasi DP* - Instruksi pembayaran DP\n`
+        + `2. *Cek Info* - Lihat informasi booking Anda\n`
+        + `3. *Perpanjang* - Perpanjang masa sewa\n`
+        + `4. *Bantuan* - Tampilkan menu bantuan\n\n`
+        + `Ketik sesuai nomor menu atau ketik nama menu untuk melanjutkan.\n\n`
+        + `Jika Anda membutuhkan bantuan lebih lanjut, silahkan hubungi admin kami di:\n`
+        + `Admin: ${this.adminNumber}`;
+      
+      await this.sendMessage(`${senderNumber}@s.whatsapp.net`, message);
+    } catch (error) {
+      this.logger.error(`Error sending help menu: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Kirim menu opsi
+   */
+  private async sendMenuOptions(transaction: any, senderNumber: string) {
+    try {
+      const message = `*MENU ROSANTI BIKE MOTORENT*\n\n`
+        + `Halo ${transaction.namaPenyewa},\n`
+        + `Silahkan pilih menu yang tersedia:\n\n`
+        + `1. *Lunasi DP*\n`
+        + `2. *Cek Info Saya*\n`
+        + `3. *Perpanjang Sewa*\n`
+        + `4. *Bantuan*\n\n`
+        + `Ketik sesuai nomor menu atau ketik nama menu untuk melanjutkan.`;
+      
+      await this.sendMessage(`${senderNumber}@s.whatsapp.net`, message);
+    } catch (error) {
+      this.logger.error(`Error sending menu options: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Kirim pesan default untuk nomor yang tidak memiliki transaksi aktif
+   */
+  private async sendDefaultMessage(senderNumber: string) {
+    try {
+      const message = `*ROSANTI BIKE MOTORENT*\n\n`
+        + `Halo! Terima kasih telah menghubungi Rosanti Bike Motorent.\n\n`
+        + `Sepertinya Anda tidak memiliki transaksi aktif saat ini.\n`
+        + `Untuk menyewa motor, silahkan kunjungi website kami di:\n`
+        + `https://rosantibikemotorent.com\n\n`
+        + `Atau hubungi admin kami di:\n`
+        + `Admin: ${this.adminNumber}\n\n`
+        + `Terima kasih.`;
+      
+      await this.sendMessage(`${senderNumber}@s.whatsapp.net`, message);
+    } catch (error) {
+      this.logger.error(`Error sending default message: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Format currency
+   */
+  private formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('id-ID').format(amount);
+  }
+
+  /**
+   * Get status label
+   */
+  private getStatusLabel(status: string): string {
+    const statusMap = {
+      'AKTIF': 'Aktif',
+      'SELESAI': 'Selesai',
+      'DIBATALKAN': 'Dibatalkan',
+      'OVERDUE': 'Terlambat',
+    };
+    
+    return statusMap[status] || status;
   }
 }

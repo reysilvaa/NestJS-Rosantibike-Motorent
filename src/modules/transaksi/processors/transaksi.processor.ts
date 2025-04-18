@@ -44,17 +44,29 @@ export class TransaksiProcessor {
     try {
       const { transaksiId } = job.data;
 
-      // Mock data untuk testing
-      const transaksi = (await this.prisma.transaksiSewa.findUnique({
+      // Get full transaction data including relationships
+      const transaksi = await this.prisma.transaksiSewa.findUnique({
         where: { id: transaksiId },
-      })) as unknown as TransaksiWithRelations;
+        include: {
+          unitMotor: {
+            include: {
+              jenis: true,
+            },
+          },
+        },
+      });
 
       if (!transaksi) {
         this.logger.error(`Transaksi ${transaksiId} tidak ditemukan`);
         return;
       }
 
-      const message = this.generateBookingMessage(transaksi);
+      if (!transaksi.unitMotor || !transaksi.unitMotor.jenis) {
+        this.logger.error(`Data unit motor atau jenis tidak ditemukan untuk transaksi ${transaksiId}`);
+        return;
+      }
+
+      const message = this.generateBookingMessage(transaksi as any);
 
       this.logger.log(`Mengirim WhatsApp ke ${transaksi.noWhatsapp}: ${message}`);
 
@@ -74,13 +86,25 @@ export class TransaksiProcessor {
     try {
       const { transaksiId } = job.data;
 
-      // Mock data untuk testing
-      const transaksi = (await this.prisma.transaksiSewa.findUnique({
+      // Get full transaction data including relationships
+      const transaksi = await this.prisma.transaksiSewa.findUnique({
         where: { id: transaksiId },
-      })) as unknown as TransaksiWithRelations;
+        include: {
+          unitMotor: {
+            include: {
+              jenis: true,
+            },
+          },
+        },
+      });
 
       if (!transaksi) {
         this.logger.error(`Transaksi ${transaksiId} tidak ditemukan`);
+        return;
+      }
+
+      if (!transaksi.unitMotor || !transaksi.unitMotor.jenis) {
+        this.logger.error(`Data unit motor atau jenis tidak ditemukan untuk transaksi ${transaksiId}`);
         return;
       }
 
@@ -90,7 +114,7 @@ export class TransaksiProcessor {
         return;
       }
 
-      const message = this.generateReminderMessage(transaksi);
+      const message = this.generateReminderMessage(transaksi as any);
 
       this.logger.log(`Mengirim pengingat WhatsApp ke ${transaksi.noWhatsapp}: ${message}`);
 
@@ -110,13 +134,25 @@ export class TransaksiProcessor {
     try {
       const { transaksiId } = job.data;
 
-      // Mock data untuk testing
-      const transaksi = (await this.prisma.transaksiSewa.findUnique({
+      // Get full transaction data including relationships
+      const transaksi = await this.prisma.transaksiSewa.findUnique({
         where: { id: transaksiId },
-      })) as unknown as TransaksiWithRelations;
+        include: {
+          unitMotor: {
+            include: {
+              jenis: true,
+            },
+          },
+        },
+      });
 
       if (!transaksi) {
         this.logger.error(`Transaksi ${transaksiId} tidak ditemukan`);
+        return;
+      }
+
+      if (!transaksi.unitMotor || !transaksi.unitMotor.jenis) {
+        this.logger.error(`Data unit motor atau jenis tidak ditemukan untuk transaksi ${transaksiId}`);
         return;
       }
 
@@ -148,7 +184,7 @@ export class TransaksiProcessor {
         });
 
         // Kirim notifikasi WhatsApp
-        const message = this.generateOverdueMessage(transaksi);
+        const message = this.generateOverdueMessage(transaksi as any);
         await this.sendWhatsAppMessage(transaksi.noWhatsapp, message);
 
         // Kirim notifikasi real-time ke admin
@@ -177,17 +213,29 @@ export class TransaksiProcessor {
     try {
       const { transaksiId } = job.data;
 
-      // Mock data untuk testing
-      const transaksi = (await this.prisma.transaksiSewa.findUnique({
+      // Get full transaction data including relationships
+      const transaksi = await this.prisma.transaksiSewa.findUnique({
         where: { id: transaksiId },
-      })) as unknown as TransaksiWithRelations;
+        include: {
+          unitMotor: {
+            include: {
+              jenis: true,
+            },
+          },
+        },
+      });
 
       if (!transaksi) {
         this.logger.error(`Transaksi ${transaksiId} tidak ditemukan`);
         return;
       }
 
-      const message = this.generateCompletionMessage(transaksi);
+      if (!transaksi.unitMotor || !transaksi.unitMotor.jenis) {
+        this.logger.error(`Data unit motor atau jenis tidak ditemukan untuk transaksi ${transaksiId}`);
+        return;
+      }
+
+      const message = this.generateCompletionMessage(transaksi as any);
 
       this.logger.log(
         `Mengirim notifikasi selesai WhatsApp ke ${transaksi.noWhatsapp}: ${message}`,
@@ -221,6 +269,13 @@ Detail Pemesanan:
 
 Silakan ambil motor pada tanggal yang sudah ditentukan. Jangan lupa bawa KTP dan SIM yang masih berlaku.
 
+*MENU LAYANAN WHATSAPP*:
+Ketik salah satu opsi berikut:
+1️⃣ *Lunasi DP* - Informasi pembayaran DP
+2️⃣ *Cek Info Saya* - Detail booking Anda
+3️⃣ *Perpanjang Sewa* - Perpanjang waktu sewa
+4️⃣ *Bantuan* - Menu bantuan tambahan
+
 Terima kasih!`;
   }
 
@@ -237,6 +292,13 @@ Pengingat bahwa masa sewa motor:
 Akan berakhir hari ini pada pukul ${tanggalSelesai.getHours()}:${String(tanggalSelesai.getMinutes()).padStart(2, '0')}.
 
 Harap kembalikan tepat waktu untuk menghindari biaya keterlambatan.
+
+*MENU LAYANAN WHATSAPP*:
+Ketik salah satu opsi berikut:
+1️⃣ *Lunasi DP* - Informasi pembayaran DP
+2️⃣ *Cek Info Saya* - Detail booking Anda
+3️⃣ *Perpanjang Sewa* - Perpanjang waktu sewa
+4️⃣ *Bantuan* - Menu bantuan tambahan
 
 Terima kasih!`;
   }
@@ -255,6 +317,12 @@ Motor ${jenis.merk} ${jenis.model} (${unitMotor.platNomor}) yang Anda sewa telah
 Status sewa Anda sekarang adalah *TERLAMBAT (OVERDUE)*.
 
 Mohon segera kembalikan motor tersebut untuk menghindari biaya keterlambatan yang lebih tinggi. Biaya keterlambatan akan dihitung per jam.
+
+*MENU LAYANAN WHATSAPP*:
+Ketik salah satu opsi berikut:
+2️⃣ *Cek Info Saya* - Detail booking dan denda Anda
+3️⃣ *Perpanjang Sewa* - Perpanjang waktu sewa
+4️⃣ *Bantuan* - Hubungi admin
 
 Terima kasih atas pengertian dan kerjasamanya.`;
   }
@@ -285,6 +353,11 @@ Terima kasih telah mengembalikan motor *${jenis.merk} ${jenis.model}* (${unitMot
 Status sewa Anda telah diubah menjadi *SELESAI*.
 
 Kami harap Anda puas dengan layanan kami. Jangan ragu untuk menyewa kembali di lain waktu.
+
+*MENU LAYANAN WHATSAPP*:
+Ketik salah satu opsi berikut:
+2️⃣ *Cek Info Saya* - Detail booking terakhir Anda
+4️⃣ *Bantuan* - Bantuan lebih lanjut
 
 Terima kasih!`;
   }

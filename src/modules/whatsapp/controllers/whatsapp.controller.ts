@@ -233,4 +233,70 @@ export class WhatsappController {
       );
     }
   }
+
+  @Post('webhook')
+  @ApiOperation({ summary: 'Menerima webhook dari WPPConnect untuk pesan masuk' })
+  @ApiResponse({ status: 200, description: 'Webhook berhasil diproses' })
+  async receiveWebhook(@Body() webhookData: any) {
+    try {
+      this.logger.log(`Menerima webhook data: ${JSON.stringify(webhookData)}`);
+      
+      // Validasi data webhook
+      if (!webhookData || !webhookData.event) {
+        return { status: 'error', message: 'Invalid webhook data' };
+      }
+      
+      // Proses pesan masuk
+      if (webhookData.event === 'onmessage') {
+        const messageData = webhookData.data;
+        
+        // Pastikan ini adalah pesan chat teks (bukan status, dll)
+        if (messageData && messageData.type === 'chat' && !messageData.fromMe) {
+          await this.whatsappService.processIncomingMessage(
+            messageData.from,
+            messageData.body || '',
+            messageData
+          );
+        }
+      }
+      
+      return { status: 'success', message: 'Webhook processed' };
+    } catch (error) {
+      this.logger.error(`Error processing webhook: ${error.message}`, error.stack);
+      return { status: 'error', message: error.message };
+    }
+  }
+
+  @Post('test-menu')
+  @ApiOperation({ summary: 'Tes menu WhatsApp bot' })
+  @ApiResponse({ status: 200, description: 'Tes pesan berhasil diproses' })
+  async testMenu(@Body() body: { phone: string; message: string }) {
+    try {
+      if (!body.phone || !body.message) {
+        throw new HttpException('Nomor telepon dan pesan diperlukan', HttpStatus.BAD_REQUEST);
+      }
+      
+      // Format nomor WhatsApp
+      const phoneNumber = body.phone.startsWith('+') 
+        ? body.phone.slice(1) 
+        : body.phone;
+      
+      const from = `${phoneNumber}@s.whatsapp.net`;
+      
+      // Proses pesan
+      await this.whatsappService.processIncomingMessage(
+        from,
+        body.message,
+        { type: 'chat', fromMe: false, body: body.message }
+      );
+      
+      return {
+        status: 'success',
+        message: 'Pesan berhasil diproses',
+      };
+    } catch (error) {
+      this.logger.error(`Error testing menu: ${error.message}`, error.stack);
+      throw new HttpException(`Gagal memproses tes menu: ${error.message}`, HttpStatus.BAD_REQUEST);
+    }
+  }
 }
