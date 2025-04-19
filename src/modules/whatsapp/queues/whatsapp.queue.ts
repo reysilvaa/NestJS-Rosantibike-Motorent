@@ -93,7 +93,10 @@ export class WhatsappQueue {
         },
       );
     } catch (error) {
-      this.logger.error(`Failed to add start all sessions job to queue: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to add start all sessions job to queue: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }

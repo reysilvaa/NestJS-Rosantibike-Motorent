@@ -1,4 +1,4 @@
-/* eslint-disable */
+/* eslint-disable @typescript-eslint/naming-convention */
 export default async () => {
   const t = {
     ['./common/enums/status.enum']: await import('./common/enums/status.enum'),

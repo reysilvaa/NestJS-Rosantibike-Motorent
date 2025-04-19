@@ -5,6 +5,9 @@ import { ConfigModule } from '@nestjs/config';
 import { BullModule } from '@nestjs/bull';
 import { WhatsappQueue } from './queues/whatsapp.queue';
 import { WhatsappProcessor } from './processors/whatsapp.processor';
+import { WhatsappConnectionService } from './services/whatsapp-connection.service';
+import { WhatsappMessagingService } from './services/whatsapp-messaging.service';
+import { WhatsappHandlerService } from './services/whatsapp-handler.service';
 
 @Module({
   imports: [
@@ -14,7 +17,14 @@ import { WhatsappProcessor } from './processors/whatsapp.processor';
     }),
   ],
   controllers: [WhatsappController],
-  providers: [WhatsappService, WhatsappQueue, WhatsappProcessor],
+  providers: [
+    WhatsappService,
+    WhatsappConnectionService,
+    WhatsappMessagingService,
+    WhatsappHandlerService,
+    WhatsappQueue,
+    WhatsappProcessor,
+  ],
   exports: [WhatsappService, WhatsappQueue],
 })
 export class WhatsappModule {}

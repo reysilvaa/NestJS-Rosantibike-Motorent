@@ -62,7 +62,9 @@ export class TransaksiProcessor {
       }
 
       if (!transaksi.unitMotor || !transaksi.unitMotor.jenis) {
-        this.logger.error(`Data unit motor atau jenis tidak ditemukan untuk transaksi ${transaksiId}`);
+        this.logger.error(
+          `Data unit motor atau jenis tidak ditemukan untuk transaksi ${transaksiId}`,
+        );
         return;
       }
 
@@ -104,7 +106,9 @@ export class TransaksiProcessor {
       }
 
       if (!transaksi.unitMotor || !transaksi.unitMotor.jenis) {
-        this.logger.error(`Data unit motor atau jenis tidak ditemukan untuk transaksi ${transaksiId}`);
+        this.logger.error(
+          `Data unit motor atau jenis tidak ditemukan untuk transaksi ${transaksiId}`,
+        );
         return;
       }
 
@@ -152,7 +156,9 @@ export class TransaksiProcessor {
       }
 
       if (!transaksi.unitMotor || !transaksi.unitMotor.jenis) {
-        this.logger.error(`Data unit motor atau jenis tidak ditemukan untuk transaksi ${transaksiId}`);
+        this.logger.error(
+          `Data unit motor atau jenis tidak ditemukan untuk transaksi ${transaksiId}`,
+        );
         return;
       }
 
@@ -231,7 +237,9 @@ export class TransaksiProcessor {
       }
 
       if (!transaksi.unitMotor || !transaksi.unitMotor.jenis) {
-        this.logger.error(`Data unit motor atau jenis tidak ditemukan untuk transaksi ${transaksiId}`);
+        this.logger.error(
+          `Data unit motor atau jenis tidak ditemukan untuk transaksi ${transaksiId}`,
+        );
         return;
       }
 

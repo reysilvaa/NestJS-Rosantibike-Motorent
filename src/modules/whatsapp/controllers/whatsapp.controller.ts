@@ -11,8 +11,61 @@ import {
 } from '@nestjs/common';
 import { Response } from 'express';
 import { WhatsappService } from '../services/whatsapp.service';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags, ApiBody } from '@nestjs/swagger';
 import { handleError, logInfo } from '../../../common/helpers';
+import { WhatsappMessageData } from '../../../common/interfaces/whatsapp.interface';
+
+// DTO untuk test-menu
+class TestMenuDto {
+  phone: string;
+  message?: string;
+}
+
+// Contoh request untuk webhook
+const webhookExample = {
+  event: 'onmessage',
+  data: {
+    from: '6285258725454@c.us',
+    body: 'menu',
+    fromMe: false,
+    type: 'chat',
+  },
+};
+
+// Contoh request alternatif untuk webhook
+const webhookAlternativeExample = {
+  data: {
+    sender: {
+      id: {
+        serialized: '6285258725454@c.us',
+      },
+    },
+    body: 'menu',
+    fromMe: false,
+  },
+};
+
+// Contoh request untuk format webhook WPPConnect dengan balasan
+const webhookReplyExample = {
+  event: 'onmessage',
+  data: {
+    from: '6285258725454@c.us',
+    body: 'Terima kasih infonya',
+    fromMe: false,
+    type: 'chat',
+    quotedMsg: {
+      type: 'chat',
+      body: 'Ini pesan sebelumnya',
+      from: '628123456789@c.us',
+    },
+  },
+};
+
+// Contoh request untuk test-menu
+const testMenuExample = {
+  phone: '6285258725454@c.us',
+  message: 'menu',
+};
 
 @ApiTags('WhatsApp')
 @Controller('whatsapp')
@@ -47,7 +100,10 @@ export class WhatsappController {
     const qrCode = this.whatsappService.getLastQrCode();
     
     if (!qrCode) {
-      throw new HttpException('QR code tidak tersedia. Mungkin sudah terhubung atau belum siap.', HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        'QR code tidak tersedia. Mungkin sudah terhubung atau belum siap.',
+        HttpStatus.NOT_FOUND,
+      );
     }
     
     return res.status(HttpStatus.OK).json({
@@ -143,10 +199,7 @@ export class WhatsappController {
         data: result,
       };
     } catch (error) {
-      throw new HttpException(
-        `Gagal mendapatkan pesan: ${error.message}`,
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException(`Gagal mendapatkan pesan: ${error.message}`, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -167,10 +220,7 @@ export class WhatsappController {
         data: result,
       };
     } catch (error) {
-      throw new HttpException(
-        `Gagal mendapatkan kontak: ${error.message}`,
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException(`Gagal mendapatkan kontak: ${error.message}`, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -178,9 +228,7 @@ export class WhatsappController {
   @ApiOperation({ summary: 'Mengirim pesan WhatsApp' })
   @ApiResponse({ status: 200, description: 'Pesan berhasil dikirim' })
   @ApiResponse({ status: 400, description: 'Gagal mengirim pesan' })
-  async sendMessage(
-    @Body() body: { to: string; message: string },
-  ) {
+  async sendMessage(@Body() body: { to: string; message: string }) {
     try {
       const result = await this.whatsappService.sendMessage(body.to, body.message);
 
@@ -194,10 +242,7 @@ export class WhatsappController {
         data: result,
       };
     } catch (error) {
-      throw new HttpException(
-        `Gagal mengirim pesan: ${error.message}`,
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException(`Gagal mengirim pesan: ${error.message}`, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -237,66 +282,258 @@ export class WhatsappController {
   @Post('webhook')
   @ApiOperation({ summary: 'Menerima webhook dari WPPConnect untuk pesan masuk' })
   @ApiResponse({ status: 200, description: 'Webhook berhasil diproses' })
+  @ApiBody({ 
+    description: 'Format webhook yang didukung',
+    schema: {
+      oneOf: [
+        {
+          type: 'object',
+          example: webhookExample,
+          description: 'Format WPPConnect',
+        },
+        {
+          type: 'object',
+          example: webhookReplyExample,
+          description: 'Format WPPConnect dengan balasan',
+        },
+        {
+          type: 'object',
+          example: webhookAlternativeExample,
+          description: 'Format Alternatif',
+        },
+      ],
+    },
+  })
   async receiveWebhook(@Body() webhookData: any) {
     try {
       this.logger.log(`Menerima webhook data: ${JSON.stringify(webhookData)}`);
       
       // Validasi data webhook
-      if (!webhookData || !webhookData.event) {
+      if (!webhookData) {
         return { status: 'error', message: 'Invalid webhook data' };
       }
+
+      let from = '';
+      let body = '';
+      let messageData = {};
+      let isReply = false;
+      let quotedMessage: any = null;
       
-      // Proses pesan masuk
+      // Format data untuk WPPConnect
       if (webhookData.event === 'onmessage') {
-        const messageData = webhookData.data;
+        // Format untuk pesan dari WPPConnect
+        from = webhookData.data?.from || '';
+        body = webhookData.data?.body || '';
+        messageData = webhookData.data || {};
         
-        // Pastikan ini adalah pesan chat teks (bukan status, dll)
-        if (messageData && messageData.type === 'chat' && !messageData.fromMe) {
-          await this.whatsappService.processIncomingMessage(
-            messageData.from,
-            messageData.body || '',
-            messageData
+        // Periksa apakah ini balasan dari pesan sebelumnya
+        if (webhookData.data?.quotedMsg) {
+          isReply = true;
+          quotedMessage = webhookData.data.quotedMsg as any;
+          this.logger.log(
+            `Pesan merupakan balasan dari: ${typeof quotedMessage === 'object' && quotedMessage ? quotedMessage.body || 'Tidak ada isi pesan' : 'Tidak ada isi pesan'}`,
           );
         }
+      } else if (webhookData.data && webhookData.data.sender) {
+        // Format alternatif (untuk API lain)
+        from = webhookData.data.sender?.id?.serialized || '';
+        body = webhookData.data.body || webhookData.data.content || '';
+        messageData = webhookData.data;
+        
+        // Periksa apakah ini balasan (format alternatif)
+        if (webhookData.data.quotedMessageId || webhookData.data.quotedMessage) {
+          isReply = true;
+          quotedMessage = webhookData.data.quotedMessage || { id: webhookData.data.quotedMessageId };
+          this.logger.log(`Pesan merupakan balasan (format alternatif)`);
+        }
+      } else {
+        // Format tidak dikenali
+        this.logger.warn(`Format webhook tidak dikenali: ${JSON.stringify(webhookData)}`);
+        return { status: 'warning', message: 'Webhook format not recognized' };
       }
-      
-      return { status: 'success', message: 'Webhook processed' };
+
+      // Tambahkan informasi balasan ke data pesan
+      if (isReply) {
+        messageData = {
+          ...messageData,
+          isReply,
+          quotedMessage,
+        };
+      }
+
+      // Proses pesan masuk
+      const messageDataObj: WhatsappMessageData = {
+        from,
+        message: body,
+        messageData,
+      };
+
+      await this.whatsappService.processIncomingMessage(messageDataObj);
+      return { 
+        status: 'success', 
+        message: 'Webhook processed successfully',
+        isReply: isReply
+      };
     } catch (error) {
-      this.logger.error(`Error processing webhook: ${error.message}`, error.stack);
-      return { status: 'error', message: error.message };
+      this.logger.error(`Error processing webhook: ${error.message}`);
+      return { status: 'error', message: `Failed to process webhook: ${error.message}` };
     }
   }
 
   @Post('test-menu')
   @ApiOperation({ summary: 'Tes menu WhatsApp bot' })
-  @ApiResponse({ status: 200, description: 'Tes pesan berhasil diproses' })
-  async testMenu(@Body() body: { phone: string; message: string }) {
+  @ApiResponse({ status: 200, description: 'Menu tes berhasil dikirim' })
+  @ApiResponse({ status: 400, description: 'Error: Bad Request' })
+  @ApiBody({ 
+    type: TestMenuDto,
+    description: 'Data tes menu',
+    examples: {
+      testMenuExample: {
+        value: testMenuExample,
+        summary: 'Contoh permintaan tes menu',
+      },
+    },
+  })
+  async testMenu(@Body() body: TestMenuDto) {
     try {
-      if (!body.phone || !body.message) {
-        throw new HttpException('Nomor telepon dan pesan diperlukan', HttpStatus.BAD_REQUEST);
+      if (!body || !body.phone) {
+        throw new HttpException('Nomor telepon diperlukan untuk tes menu', HttpStatus.BAD_REQUEST);
       }
       
-      // Format nomor WhatsApp
-      const phoneNumber = body.phone.startsWith('+') 
-        ? body.phone.slice(1) 
-        : body.phone;
+      const phone = body.phone;
+      const message = body.message || 'menu';
       
-      const from = `${phoneNumber}@s.whatsapp.net`;
+      // Buat data dummy untuk diproses
+      const dummyData = {
+        fromMe: false,
+        sender: {
+          id: {
+            serialized: phone,
+          },
+        },
+        body: message,
+      };
       
-      // Proses pesan
-      await this.whatsappService.processIncomingMessage(
-        from,
-        body.message,
-        { type: 'chat', fromMe: false, body: body.message }
-      );
+      // Proses pesan seperti pesan masuk biasa
+      const messageDataObj: WhatsappMessageData = {
+        from: phone,
+        message,
+        messageData: dummyData,
+      };
+
+      await this.whatsappService.processIncomingMessage(messageDataObj);
       
       return {
         status: 'success',
-        message: 'Pesan berhasil diproses',
+        message: `Pesan tes "${message}" berhasil diproses untuk nomor ${phone}`,
       };
     } catch (error) {
-      this.logger.error(`Error testing menu: ${error.message}`, error.stack);
       throw new HttpException(`Gagal memproses tes menu: ${error.message}`, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Post('test-conversation')
+  @ApiOperation({ summary: 'Tes percakapan menu WhatsApp bot dan balasan' })
+  @ApiResponse({ status: 200, description: 'Simulasi percakapan berhasil diproses' })
+  @ApiResponse({ status: 400, description: 'Error: Bad Request' })
+  async testConversation() {
+    try {
+      // Nomor tujuan (menggunakan nomor yang diminta)
+      const phone = '6285232152313@c.us';
+      this.logger.log(`Memulai tes percakapan dengan nomor ${phone}`);
+
+      // Langkah 1: Mengirim menu ke nomor tersebut
+      const menuResult = await this.whatsappService.sendMessage(phone, 'menu');
+      if (!menuResult) {
+        throw new HttpException('Gagal mengirim menu', HttpStatus.BAD_REQUEST);
+      }
+      this.logger.log(`Menu berhasil dikirim ke ${phone}`);
+
+      // Mendapatkan ID pesan menu yang dikirim untuk referensi balasan
+      const menuMessageId = menuResult.id || Date.now().toString();
+
+      // Langkah 2: Tunggu sebentar untuk simulasi jeda
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Langkah 3: Simulasi balasan dengan opsi 1
+      // Membuat data dummy untuk balasan dari pengguna
+      const replyData = {
+        event: 'onmessage',
+        data: {
+          from: phone,
+          body: '1',
+          fromMe: true, // Menandakan ini dari nomor yang sama (simulasi self-reply)
+          type: 'chat',
+          quotedMsg: {
+            type: 'chat',
+            body: 'menu',
+            from: phone,
+            id: menuMessageId,
+          },
+        },
+      };
+
+      // Proses simulasi balasan
+      await this.receiveWebhook(replyData);
+
+      return {
+        status: 'success',
+        message: `Simulasi percakapan berhasil diproses untuk nomor ${phone}`,
+        steps: [
+          'Mengirim menu ke nomor target',
+          'Simulasi pengguna membalas dengan opsi 1',
+          'Melihat respons dari sistem terhadap balasan'
+        ]
+      };
+    } catch (error) {
+      this.logger.error(`Gagal mengeksekusi tes percakapan: ${error.message}`);
+      throw new HttpException(`Gagal mengeksekusi tes percakapan: ${error.message}`, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Get('send-direct-menu/:phone')
+  @ApiOperation({ summary: 'Kirim menu langsung ke nomor tertentu' })
+  @ApiResponse({ status: 200, description: 'Menu berhasil dikirim' })
+  @ApiResponse({ status: 400, description: 'Error: Bad Request' })
+  async sendDirectMenu(@Param('phone') phone: string) {
+    try {
+      if (!phone) {
+        throw new HttpException('Nomor telepon diperlukan', HttpStatus.BAD_REQUEST);
+      }
+
+      // Format nomor telepon
+      let formattedPhone = phone;
+      if (!phone.includes('@c.us')) {
+        formattedPhone = `${phone.replace(/^0/, '62')}@c.us`;
+      }
+
+      this.logger.log(`Mengirim menu langsung ke ${formattedPhone}`);
+
+      // Dapatkan template menu dari helper
+      const menuText = `🏍️ *ROSANTIBIKE MOTORRENT* 🏍️\n\n` +
+        `Silakan pilih menu berikut:\n` +
+        `1️⃣ Cek Daftar Motor\n` +
+        `2️⃣ Cek Harga Sewa\n` +
+        `3️⃣ Info Pemesanan\n` +
+        `4️⃣ Status Transaksi\n` +
+        `5️⃣ Bantuan\n\n` +
+        `Balas dengan nomor menu yang diinginkan.`;
+      
+      // Kirim menu langsung
+      const result = await this.whatsappService.sendMessage(formattedPhone, menuText);
+
+      if (!result) {
+        throw new HttpException('Gagal mengirim menu', HttpStatus.BAD_REQUEST);
+      }
+
+      return {
+        status: 'success',
+        message: `Menu berhasil dikirim ke ${formattedPhone}`,
+        data: result
+      };
+    } catch (error) {
+      this.logger.error(`Gagal mengirim menu langsung: ${error.message}`);
+      throw new HttpException(`Gagal mengirim menu langsung: ${error.message}`, HttpStatus.BAD_REQUEST);
     }
   }
 }
