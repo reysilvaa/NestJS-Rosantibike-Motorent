@@ -16,8 +16,11 @@ export function formatWhatsappNumber(phoneNumber: string): string {
     const numberParts = phoneNumber.trim().split('@');
     const baseNumber = numberParts[0];
 
+    // Jika nomor memiliki awalan false_ (dari webhook baru), hapus awalan tersebut
+    const cleanBase = baseNumber.startsWith('false_') ? baseNumber.slice(6) : baseNumber;
+
     // Hapus semua karakter non-digit
-    const cleanNumber = baseNumber.replaceAll(/[^\d+]/g, '');
+    const cleanNumber = cleanBase.replaceAll(/[^\d+]/g, '');
 
     // Hapus + di awal jika ada
     const noPlus = cleanNumber.startsWith('+') ? cleanNumber.slice(1) : cleanNumber;

@@ -280,28 +280,24 @@ export class WhatsappController {
   }
 
   @Post('webhook')
-  @ApiOperation({ summary: 'Menerima webhook dari WPPConnect untuk pesan masuk' })
+  @ApiOperation({ summary: 'Webhook untuk menerima notifikasi dari WPPConnect' })
   @ApiResponse({ status: 200, description: 'Webhook berhasil diproses' })
   @ApiBody({
-    description: 'Format webhook yang didukung',
-    schema: {
-      oneOf: [
-        {
-          type: 'object',
-          example: webhookExample,
-          description: 'Format WPPConnect',
-        },
-        {
-          type: 'object',
-          example: webhookReplyExample,
-          description: 'Format WPPConnect dengan balasan',
-        },
-        {
-          type: 'object',
-          example: webhookAlternativeExample,
-          description: 'Format Alternatif',
-        },
-      ],
+    description: 'Data webhook dari WPPConnect',
+    schema: {},
+    examples: {
+      standard: {
+        value: webhookExample,
+        summary: 'Format WPPConnect',
+      },
+      withReply: {
+        value: webhookReplyExample,
+        summary: 'Format WPPConnect dengan balasan',
+      },
+      alternative: {
+        value: webhookAlternativeExample,
+        summary: 'Format Alternatif',
+      },
     },
   })
   async receiveWebhook(@Body() webhookData: any) {
@@ -310,6 +306,7 @@ export class WhatsappController {
 
       // Validasi data webhook
       if (!webhookData) {
+        this.logger.warn('Invalid webhook data: null or undefined');
         return { status: 'error', message: 'Invalid webhook data' };
       }
 
@@ -328,22 +325,26 @@ export class WhatsappController {
 
           // Format data untuk WPPConnect
           if (webhookData.event === 'onmessage') {
-            // Format untuk pesan dari WPPConnect
-            from = webhookData.data?.from || '';
-            body = webhookData.data?.body || '';
-            messageData = webhookData.data || {};
+            // Format baru WPPConnect - periksa berbagai format yang mungkin
+            from = webhookData.data?.from || webhookData.from || webhookData.sender?.id || '';
+            body = webhookData.data?.body || webhookData.body || webhookData.content || '';
+            
+            // Format data JSON untuk pemrosesan - gunakan struktur asli sebagai fallback
+            messageData = webhookData.data || webhookData;
+            
+            this.logger.log(`Extracted message info: from=${from}, body=${body}`);
 
             // Periksa apakah ini balasan dari pesan sebelumnya
-            if (webhookData.data?.quotedMsg) {
+            if (webhookData.data?.quotedMsg || webhookData.quotedMsg) {
               isReply = true;
-              quotedMessage = webhookData.data.quotedMsg as any;
+              quotedMessage = webhookData.data?.quotedMsg || webhookData.quotedMsg;
               this.logger.log(
                 `Pesan merupakan balasan dari: ${typeof quotedMessage === 'object' && quotedMessage ? quotedMessage.body || 'Tidak ada isi pesan' : 'Tidak ada isi pesan'}`,
               );
             }
           } else if (webhookData.data && webhookData.data.sender) {
             // Format alternatif (untuk API lain)
-            from = webhookData.data.sender?.id?.serialized || '';
+            from = webhookData.data.sender?.id?.serialized || webhookData.data.sender?.id || '';
             body = webhookData.data.body || webhookData.data.content || '';
             messageData = webhookData.data;
 
@@ -356,9 +357,18 @@ export class WhatsappController {
               this.logger.log(`Pesan merupakan balasan (format alternatif)`);
             }
           } else {
-            // Format tidak dikenali
-            this.logger.warn(`Format webhook tidak dikenali: ${JSON.stringify(webhookData)}`);
-            return { status: 'warning', message: 'Webhook format not recognized' };
+            // Format tidak dikenali - coba format standar WPP Connect versi terbaru
+            from = webhookData.from || '';
+            body = webhookData.body || '';
+            messageData = webhookData;
+            
+            if (from && body) {
+              this.logger.log(`Detected possible WPP Connect v2 format. Using from=${from}, body=${body}`);
+            } else {
+              // Format tidak dikenali
+              this.logger.warn(`Format webhook tidak dikenali: ${JSON.stringify(webhookData)}`);
+              return { status: 'warning', message: 'Webhook format not recognized' };
+            }
           }
 
           // Tambahkan informasi balasan ke data pesan
@@ -377,7 +387,25 @@ export class WhatsappController {
             messageData,
           };
 
-          await this.whatsappService.processIncomingMessage(messageDataObj);
+          // Tambahan validasi untuk memastikan data valid
+          if (!from || !body) {
+            this.logger.warn('Invalid message data: missing from or body');
+            return { 
+              status: 'error', 
+              message: 'Missing required message data (from or body field)' 
+            };
+          }
+
+          // Tambahkan debug log untuk melihat data yang akan diproses
+          this.logger.log(`Processing incoming message: from=${from}, body=${body}`);
+
+          // Beri respons webhook segera untuk mencegah timeout
+          // Kemudian proses pesan secara asinkron
+          this.whatsappService.processIncomingMessage(messageDataObj)
+            .catch(error => {
+              this.logger.error(`Error processing message asynchronously: ${error.message}`);
+            });
+            
           return {
             status: 'success',
             message: 'Webhook processed successfully',
@@ -393,7 +421,8 @@ export class WhatsappController {
           
         case 'onpresencechanged': {
           // Perubahan status online/offline
-          this.logger.log(`Presence changed: ${JSON.stringify(webhookData.data)}`);
+          this.logger.log(`Presence changed: ${JSON.stringify(webhookData.data || webhookData)}`);
+          // Jangan proses notifikasi presence sebagai pesan
           return { status: 'success', message: 'Presence change notification received' };
         }
           

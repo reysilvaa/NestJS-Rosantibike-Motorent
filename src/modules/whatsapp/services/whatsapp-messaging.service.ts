@@ -21,40 +21,77 @@ export class WhatsappMessagingService {
       const token = await this.connectionService.getToken();
       const config = this.connectionService.getConfig();
 
-      // Cek apakah nomor sudah berisi @s.whatsapp.net atau @c.us
+      // Cek apakah nomor sudah berisi @s@c.us.net atau @c.us
       let whatsappId;
+      if (!to) {
+        this.logger.error('Invalid phone number: empty');
+        throw new Error('Invalid phone number: empty');
+      }
+      
       if (to.includes('@')) {
         whatsappId = to; // Sudah berformat lengkap untuk WPP Connect
       } else {
-        // Jika nomor belum berformat lengkap, tambahkan suffix @s.whatsapp.net
-        // Tidak perlu memformat ulang karena sudah diformat saat disimpan ke database
-        whatsappId = `${to}@s.whatsapp.net`;
+        // Format nomor dengan benar untuk WPPConnect
+        whatsappId = `${to}@c.us`;
+      }
+
+      // Validasi nomor untuk mencegah format yang tidak valid
+      if (whatsappId === '@c.us') {
+        this.logger.error(`Invalid phone number format: ${to}`);
+        throw new Error('Invalid phone number format');
       }
 
       this.logger.log(`Sending message to ${whatsappId}`);
 
-      const response = await axios.post(
-        `${config.baseUrl}/api/${config.session}/send-message`,
-        {
-          phone: whatsappId,
-          message: message,
-        },
-        {
-          headers: {
-            accept: 'application/json',
-            contentType: 'application/json',
-            authorization: `Bearer ${token}`,
-          },
-          timeout: 30_000,
-        },
-      );
+      // Implementasi retry untuk pengiriman pesan
+      let attempts = 0;
+      const maxAttempts = 3;
+      let lastError: Error | null = null;
 
-      if (response.data && response.data.status === 'success') {
-        this.logger.log(`Message sent successfully to ${whatsappId}`);
-        return response.data;
-      } else {
-        throw new Error(`Failed to send message: ${JSON.stringify(response.data)}`);
+      while (attempts < maxAttempts) {
+        try {
+          const response = await axios.post(
+            `${config.baseUrl}/api/${config.session}/send-message`,
+            {
+              phone: whatsappId,
+              message: message,
+              // Tambahkan parameter untuk memastikan pesan terkirim
+              waitForAck: true,
+            },
+            {
+              headers: {
+                accept: 'application/json',
+                contentType: 'application/json',
+                authorization: `Bearer ${token}`,
+              },
+              timeout: 60_000, // Timeout 60 detik
+            },
+          );
+
+          if (response.data && response.data.status === 'success') {
+            this.logger.log(`Message sent successfully to ${whatsappId}`);
+            return response.data;
+          } else {
+            lastError = new Error(`Failed to send message: ${JSON.stringify(response.data)}`);
+            attempts++;
+            this.logger.warn(`Send attempt ${attempts} failed: non-success response`);
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retry
+          }
+        } catch (error) {
+          lastError = error;
+          attempts++;
+          this.logger.warn(`Send attempt ${attempts} failed: ${error.message}`);
+          
+          if (attempts < maxAttempts) {
+            this.logger.log(`Retrying in 2 seconds...`);
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retry
+          }
+        }
       }
+
+      // Jika semua percobaan gagal
+      this.logger.error(`Failed to send after ${maxAttempts} attempts to ${to}`);
+      throw lastError || new Error('Failed to send message after multiple attempts');
     } catch (error) {
       this.logger.error(`Error sending WhatsApp message to ${to}: ${error.message}`);
 
@@ -145,7 +182,7 @@ export class WhatsappMessagingService {
       const config = this.connectionService.getConfig();
 
       // Gunakan nomor langsung, karena sudah diformat saat disimpan
-      // Tetapi perlu cek apakah perlu tambahkan suffix @s.whatsapp.net
+      // Tetapi perlu cek apakah perlu tambahkan suffix @s@c.us.net
       const formattedId = phone.includes('@') ? phone : `${phone}`;
 
       const response = await axios.get(
@@ -174,7 +211,7 @@ export class WhatsappMessagingService {
       const config = this.connectionService.getConfig();
 
       // Gunakan nomor langsung, karena sudah diformat saat disimpan
-      // Tetapi perlu cek apakah perlu tambahkan suffix @s.whatsapp.net
+      // Tetapi perlu cek apakah perlu tambahkan suffix @s@c.us.net
       const formattedId = phone.includes('@') ? phone : `${phone}`;
 
       const response = await axios.get(

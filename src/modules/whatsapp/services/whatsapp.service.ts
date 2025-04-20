@@ -90,6 +90,40 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
 
   // Message handler methods
   async processIncomingMessage(messageData: WhatsappMessageData) {
+    // Validasi input sebelum meneruskan ke handler
+    if (!messageData) {
+      this.logger.warn('Received empty message data, ignoring');
+      return;
+    }
+
+    // Validasi event khusus yang tidak perlu diproses sebagai pesan
+    const eventType = messageData.messageData?.event || '';
+    const nonMessageEvents = [
+      'onpresencechanged', 
+      'onack', 
+      'onreactionmessage', 
+      'onstate',
+      'onstatusmsg',
+      'onlivelocationsharestop',
+    ];
+    
+    if (nonMessageEvents.includes(eventType)) {
+      this.logger.log(`Ignoring non-message event: ${eventType}`);
+      return;
+    }
+
+    // Pastikan ada pengirim dan pesan sebelum meneruskan
+    if (!messageData.from || !messageData.message) {
+      this.logger.warn(`Invalid message data, missing from or message: ${JSON.stringify(messageData)}`);
+      return;
+    }
+
+    // Validasi format pengirim
+    if (messageData.from === '@c.us') {
+      this.logger.warn(`Invalid sender format: ${messageData.from}`);
+      return;
+    }
+
     return this.handlerService.processIncomingMessage(
       messageData.from,
       messageData.message,

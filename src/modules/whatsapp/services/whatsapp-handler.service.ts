@@ -18,9 +18,21 @@ export class WhatsappHandlerService {
    */
   async processIncomingMessage(from: string, message: string, messageData: any) {
     try {
+      // Abaikan pesan kosong, dari diri sendiri, atau data yang tidak valid
+      if (!from || !message || !messageData) {
+        this.logger.log(`[INCOMING] Mengabaikan pesan dengan data tidak lengkap`);
+        return;
+      }
+      
       // Abaikan semua pesan dari diri sendiri (fromMe=true)
       if (messageData && messageData.fromMe === true) {
         this.logger.log(`[INCOMING] Mengabaikan pesan dari diri sendiri: ${from}`);
+        return;
+      }
+
+      // Abaikan event presence atau event lain yang bukan pesan teks
+      if (from === '@c.us' || !from.includes('@')) {
+        this.logger.log(`[INCOMING] Mengabaikan event dengan format penerima tidak valid: ${from}`);
         return;
       }
 
@@ -216,33 +228,61 @@ export class WhatsappHandlerService {
    * Memproses pilihan menu dari pengguna
    */
   private async processMenuSelection(senderNumber: string, menuOption: number, prisma: any) {
-    switch (menuOption) {
-      case 1: {
-        await this.sendMotorList(senderNumber, prisma);
-        break;
+    try {
+      this.logger.log(`Mulai memproses pilihan menu ${menuOption} dari ${senderNumber}`);
+      
+      switch (menuOption) {
+        case 1: {
+          this.logger.log(`Mengirim daftar motor ke ${senderNumber}`);
+          await this.sendMotorList(senderNumber, prisma);
+          break;
+        }
+        case 2: {
+          this.logger.log(`Mengirim daftar harga ke ${senderNumber}`);
+          await this.sendRentalPrices(senderNumber, prisma);
+          break;
+        }
+        case 3: {
+          this.logger.log(`[OPSI 3] Mengirim info pemesanan ke ${senderNumber} - MULAI`);
+          try {
+            await this.sendBookingInfo(senderNumber);
+            this.logger.log(`[OPSI 3] Info pemesanan berhasil dikirim ke ${senderNumber} - SELESAI`);
+          } catch (error) {
+            this.logger.error(`[OPSI 3] GAGAL mengirim info pemesanan: ${error.message}`);
+            // Kirim pesan alternatif dengan format sederhana
+            await this.messagingService.sendMessage(
+              senderNumber,
+              "📝 *INFO PEMESANAN* 📝\n\nUntuk melakukan pemesanan motor, silakan hubungi admin kami melalui WhatsApp."
+            );
+          }
+          break;
+        }
+        case 4: {
+          this.logger.log(`Mengirim info status transaksi ke ${senderNumber}`);
+          await this.sendTransactionStatusInfo(senderNumber);
+          break;
+        }
+        case 5: {
+          this.logger.log(`Mengirim menu bantuan ke ${senderNumber}`);
+          await this.sendCustomHelpMenu(senderNumber);
+          break;
+        }
+        default: {
+          this.logger.log(`Pilihan menu tidak valid: ${menuOption}`);
+          await this.messagingService.sendMessage(
+            senderNumber,
+            'Maaf, pilihan menu tidak valid. Silakan pilih menu 1-5.',
+          );
+        }
       }
-      case 2: {
-        await this.sendRentalPrices(senderNumber, prisma);
-        break;
-      }
-      case 3: {
-        await this.sendBookingInfo(senderNumber);
-        break;
-      }
-      case 4: {
-        await this.sendTransactionStatusInfo(senderNumber);
-        break;
-      }
-      case 5: {
-        await this.sendCustomHelpMenu(senderNumber);
-        break;
-      }
-      default: {
-        await this.messagingService.sendMessage(
-          senderNumber,
-          'Maaf, pilihan menu tidak valid. Silakan pilih menu 1-5.',
-        );
-      }
+      this.logger.log(`Selesai memproses pilihan menu ${menuOption} dari ${senderNumber}`);
+    } catch (error) {
+      this.logger.error(`Error memproses pilihan menu: ${error.message}`);
+      // Kirim pesan error ke pengguna
+      await this.messagingService.sendMessage(
+        senderNumber,
+        'Maaf, terjadi kesalahan saat memproses permintaan Anda. Silakan coba lagi nanti.'
+      );
     }
   }
 
@@ -251,6 +291,8 @@ export class WhatsappHandlerService {
    */
   private async sendMotorList(senderNumber: string, prisma: any) {
     try {
+      this.logger.log(`[MOTOR LIST] Mengambil data motor dari database untuk ${senderNumber}`);
+      
       // Dapatkan semua jenis motor dari database
       const jenisMotor = await prisma.jenisMotor.findMany({
         include: {
@@ -265,13 +307,32 @@ export class WhatsappHandlerService {
         },
       });
 
+      this.logger.log(`[MOTOR LIST] Ditemukan ${jenisMotor.length} jenis motor`);
+      
+      // Tambahkan delay kecil untuk memastikan pesan sebelumnya telah diproses
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       const motorListText = whatsappMenu.getMotorListTemplate(jenisMotor);
-      await this.messagingService.sendMessage(senderNumber, motorListText);
+      this.logger.log(`[MOTOR LIST] Mengirim daftar motor ke ${senderNumber}`);
+      
+      // Kirim pesan dengan prioritas tinggi
+      const result = await this.messagingService.sendMessage(senderNumber, motorListText);
+      
+      if (result) {
+        this.logger.log(`[MOTOR LIST] Daftar motor berhasil dikirim ke ${senderNumber}`);
+      } else {
+        this.logger.error(`[MOTOR LIST] Gagal mengirim daftar motor ke ${senderNumber}`);
+        // Coba kirim ulang dengan pesan lebih sederhana
+        await this.messagingService.sendMessage(
+          senderNumber,
+          '🏍️ Silakan kunjungi website kami untuk melihat daftar motor yang tersedia: https://rosantibikemotorent.com/motors'
+        );
+      }
     } catch (error) {
-      this.logger.error(`Error mendapatkan daftar motor: ${error.message}`);
+      this.logger.error(`[MOTOR LIST] Error mendapatkan daftar motor: ${error.message}`);
       await this.messagingService.sendMessage(
         senderNumber,
-        'Maaf, terjadi kesalahan saat mengambil data motor. Silakan coba lagi nanti.',
+        'Maaf, terjadi kesalahan saat mengambil data motor. Silakan coba lagi nanti atau kunjungi website kami: https://rosantibikemotorent.com/motors',
       );
     }
   }
@@ -363,9 +424,58 @@ export class WhatsappHandlerService {
    * Mengirim informasi pemesanan
    */
   private async sendBookingInfo(senderNumber: string) {
-    const config = this.connectionService.getConfig();
-    const bookingText = whatsappMenu.getBookingInfoTemplate(config.adminNumber);
-    await this.messagingService.sendMessage(senderNumber, bookingText);
+    try {
+      this.logger.log(`[BOOKING INFO] Mengirim informasi pemesanan ke ${senderNumber}`);
+      
+      const config = this.connectionService.getConfig();
+      const adminNumber = config.adminNumber || '+6285232152313'; // Gunakan default jika tidak ada
+      
+      this.logger.log(`[BOOKING INFO] Menggunakan nomor admin: ${adminNumber}`);
+      
+      // Tambahkan delay kecil untuk memastikan pesan sebelumnya sudah diproses
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const bookingText = whatsappMenu.getBookingInfoTemplate(adminNumber);
+      
+      // Kirim pesan dengan retry jika gagal
+      let attempts = 0;
+      const maxAttempts = 3;
+      
+      while (attempts < maxAttempts) {
+        try {
+          const result = await this.messagingService.sendMessage(senderNumber, bookingText);
+          if (result) {
+            this.logger.log(`[BOOKING INFO] Informasi pemesanan berhasil dikirim ke ${senderNumber}`);
+            return;
+          }
+          
+          attempts++;
+          this.logger.warn(`[BOOKING INFO] Percobaan ${attempts} gagal mengirim informasi pemesanan`);
+          await new Promise(resolve => setTimeout(resolve, 2000)); // Tunggu 2 detik sebelum mencoba lagi
+        } catch (error) {
+          attempts++;
+          this.logger.error(`[BOOKING INFO] Error saat mengirim (percobaan ${attempts}): ${error.message}`);
+          await new Promise(resolve => setTimeout(resolve, 2000)); // Tunggu 2 detik sebelum mencoba lagi
+        }
+      }
+      
+      // Jika semua percobaan gagal, kirim pesan alternatif yang lebih sederhana
+      this.logger.error(`[BOOKING INFO] Gagal mengirim informasi pemesanan setelah ${maxAttempts} percobaan`);
+      await this.messagingService.sendMessage(
+        senderNumber,
+        '📝 *INFO PEMESANAN* 📝\n\nUntuk melakukan pemesanan, silakan hubungi admin kami di nomor berikut:\nAdmin: ' + adminNumber
+      );
+    } catch (error) {
+      this.logger.error(`[BOOKING INFO] Error: ${error.message}`);
+      try {
+        await this.messagingService.sendMessage(
+          senderNumber,
+          'Maaf, terjadi kesalahan saat mengambil informasi pemesanan. Silakan hubungi admin kami.'
+        );
+      } catch (innerError) {
+        this.logger.error(`[BOOKING INFO] Error saat mengirim pesan error: ${innerError.message}`);
+      }
+    }
   }
 
   /**

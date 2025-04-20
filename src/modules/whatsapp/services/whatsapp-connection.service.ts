@@ -158,11 +158,18 @@ export class WhatsappConnectionService {
       // Log webhook URL yang digunakan
       this.logger.log(`Setting webhook URL to: ${webhookUrl}`);
 
+      // Periksa webhook URL - jika tidak berisi http, itu tidak valid
+      if (!webhookUrl.startsWith('http')) {
+        this.logger.warn(`Webhook URL tidak valid: ${webhookUrl}. URL harus dimulai dengan http:// or https://`);
+      }
+
       const response = await axios.post(
         `${this.config.baseUrl}/api/${this.config.session}/start-session`,
         {
           webhook: webhookUrl,
           waitQrCode: false,
+          // Pastikan webhook callback aktif
+          webhookEnabled: true
         },
         {
           headers: {
