@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import {
+import type {
   WhatsappConfig,
   WhatsappConnectionStatus,
   WhatsappStatus,
@@ -153,7 +153,9 @@ export class WhatsappConnectionService {
       // Get webhook URL from config
       const webhookUrl =
         this.configService.get('WEBHOOK_URL') ||
-        `${this.configService.get('APP_URL')}/api/whatsapp/webhook`;
+        `${this.configService.get('APP_URL')}/whatsapp/webhook`;
+      
+      // Log webhook URL yang digunakan
       this.logger.log(`Setting webhook URL to: ${webhookUrl}`);
 
       const response = await axios.post(

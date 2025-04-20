@@ -313,69 +313,138 @@ export class WhatsappController {
         return { status: 'error', message: 'Invalid webhook data' };
       }
 
-      let from = '';
-      let body = '';
-      let messageData = {};
-      let isReply = false;
-      let quotedMessage: any = null;
+      // Tangani berbagai event yang mungkin dikirim oleh WPPConnect
+      const event = webhookData.event || 'unknown';
+      this.logger.log(`Jenis event webhook: ${event}`);
 
-      // Format data untuk WPPConnect
-      if (webhookData.event === 'onmessage') {
-        // Format untuk pesan dari WPPConnect
-        from = webhookData.data?.from || '';
-        body = webhookData.data?.body || '';
-        messageData = webhookData.data || {};
+      // Tangani event berdasarkan jenisnya
+      switch (event) {
+        case 'onmessage': {
+          let from = '';
+          let body = '';
+          let messageData = {};
+          let isReply = false;
+          let quotedMessage: any = null;
 
-        // Periksa apakah ini balasan dari pesan sebelumnya
-        if (webhookData.data?.quotedMsg) {
-          isReply = true;
-          quotedMessage = webhookData.data.quotedMsg as any;
-          this.logger.log(
-            `Pesan merupakan balasan dari: ${typeof quotedMessage === 'object' && quotedMessage ? quotedMessage.body || 'Tidak ada isi pesan' : 'Tidak ada isi pesan'}`,
-          );
-        }
-      } else if (webhookData.data && webhookData.data.sender) {
-        // Format alternatif (untuk API lain)
-        from = webhookData.data.sender?.id?.serialized || '';
-        body = webhookData.data.body || webhookData.data.content || '';
-        messageData = webhookData.data;
+          // Format data untuk WPPConnect
+          if (webhookData.event === 'onmessage') {
+            // Format untuk pesan dari WPPConnect
+            from = webhookData.data?.from || '';
+            body = webhookData.data?.body || '';
+            messageData = webhookData.data || {};
 
-        // Periksa apakah ini balasan (format alternatif)
-        if (webhookData.data.quotedMessageId || webhookData.data.quotedMessage) {
-          isReply = true;
-          quotedMessage = webhookData.data.quotedMessage || {
-            id: webhookData.data.quotedMessageId,
+            // Periksa apakah ini balasan dari pesan sebelumnya
+            if (webhookData.data?.quotedMsg) {
+              isReply = true;
+              quotedMessage = webhookData.data.quotedMsg as any;
+              this.logger.log(
+                `Pesan merupakan balasan dari: ${typeof quotedMessage === 'object' && quotedMessage ? quotedMessage.body || 'Tidak ada isi pesan' : 'Tidak ada isi pesan'}`,
+              );
+            }
+          } else if (webhookData.data && webhookData.data.sender) {
+            // Format alternatif (untuk API lain)
+            from = webhookData.data.sender?.id?.serialized || '';
+            body = webhookData.data.body || webhookData.data.content || '';
+            messageData = webhookData.data;
+
+            // Periksa apakah ini balasan (format alternatif)
+            if (webhookData.data.quotedMessageId || webhookData.data.quotedMessage) {
+              isReply = true;
+              quotedMessage = webhookData.data.quotedMessage || {
+                id: webhookData.data.quotedMessageId,
+              };
+              this.logger.log(`Pesan merupakan balasan (format alternatif)`);
+            }
+          } else {
+            // Format tidak dikenali
+            this.logger.warn(`Format webhook tidak dikenali: ${JSON.stringify(webhookData)}`);
+            return { status: 'warning', message: 'Webhook format not recognized' };
+          }
+
+          // Tambahkan informasi balasan ke data pesan
+          if (isReply) {
+            messageData = {
+              ...messageData,
+              isReply,
+              quotedMessage,
+            };
+          }
+
+          // Proses pesan masuk
+          const messageDataObj: WhatsappMessageData = {
+            from,
+            message: body,
+            messageData,
           };
-          this.logger.log(`Pesan merupakan balasan (format alternatif)`);
+
+          await this.whatsappService.processIncomingMessage(messageDataObj);
+          return {
+            status: 'success',
+            message: 'Webhook processed successfully',
+            isReply: isReply,
+          };
         }
-      } else {
-        // Format tidak dikenali
-        this.logger.warn(`Format webhook tidak dikenali: ${JSON.stringify(webhookData)}`);
-        return { status: 'warning', message: 'Webhook format not recognized' };
+          
+        case 'onack': {
+          // Acknowledgement terhadap pesan yang dikirim
+          this.logger.log(`Received ACK notification: ${JSON.stringify(webhookData.data)}`);
+          return { status: 'success', message: 'ACK notification received' };
+        }
+          
+        case 'onpresencechanged': {
+          // Perubahan status online/offline
+          this.logger.log(`Presence changed: ${JSON.stringify(webhookData.data)}`);
+          return { status: 'success', message: 'Presence change notification received' };
+        }
+          
+        case 'onparticipantschanged': {
+          // Perubahan peserta dalam grup
+          this.logger.log(`Group participants changed: ${JSON.stringify(webhookData.data)}`);
+          return { status: 'success', message: 'Group participants change notification received' };
+        }
+          
+        case 'onreactionmessage': {
+          // Reaksi terhadap pesan
+          this.logger.log(`Message reaction: ${JSON.stringify(webhookData.data)}`);
+          return { status: 'success', message: 'Message reaction notification received' };
+        }
+          
+        case 'onpollresponse': {
+          // Tanggapan terhadap polling
+          this.logger.log(`Poll response: ${JSON.stringify(webhookData.data)}`);
+          return { status: 'success', message: 'Poll response notification received' };
+        }
+          
+        case 'onrevokedmessage': {
+          // Pesan yang ditarik kembali
+          this.logger.log(`Message revoked: ${JSON.stringify(webhookData.data)}`);
+          return { status: 'success', message: 'Message revoke notification received' };
+        }
+          
+        case 'onlabelupdated': {
+          // Label yang diperbarui
+          this.logger.log(`Label updated: ${JSON.stringify(webhookData.data)}`);
+          return { status: 'success', message: 'Label update notification received' };
+        }
+          
+        case 'onselfmessage': {
+          // Pesan dari diri sendiri
+          this.logger.log(`Self message: ${JSON.stringify(webhookData.data)}`);
+          return { status: 'success', message: 'Self message notification received' };
+        }
+          
+        case 'incomingcall': {
+          // Panggilan masuk
+          this.logger.log(`Incoming call: ${JSON.stringify(webhookData.data)}`);
+          return { status: 'success', message: 'Incoming call notification received' };
+        }
+          
+        default: {
+          // Event lain yang belum ditangani khusus
+          this.logger.log(`Received other event type: ${event}`);
+          return { status: 'success', message: `Received ${event} event` };
+        }
       }
-
-      // Tambahkan informasi balasan ke data pesan
-      if (isReply) {
-        messageData = {
-          ...messageData,
-          isReply,
-          quotedMessage,
-        };
-      }
-
-      // Proses pesan masuk
-      const messageDataObj: WhatsappMessageData = {
-        from,
-        message: body,
-        messageData,
-      };
-
-      await this.whatsappService.processIncomingMessage(messageDataObj);
-      return {
-        status: 'success',
-        message: 'Webhook processed successfully',
-        isReply: isReply,
-      };
     } catch (error) {
       this.logger.error(`Error processing webhook: ${error.message}`);
       return { status: 'error', message: `Failed to process webhook: ${error.message}` };
