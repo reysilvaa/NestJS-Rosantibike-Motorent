@@ -14,7 +14,7 @@ import { HttpRequestProcessor } from './processors/http-request.processor';
         connection: {
           host: configService.get('REDIS_HOST', 'localhost'),
           port: parseInt(configService.get('REDIS_PORT', '6379')),
-          maxRetriesPerRequest: 3,
+          maxRetriesPerRequest: null,
           enableReadyCheck: false,
           enableOfflineQueue: false,
           connectTimeout: 5000,
