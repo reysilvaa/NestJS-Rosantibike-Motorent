@@ -1,12 +1,8 @@
-import {
-  WebSocketGateway,
-  WebSocketServer,
-  OnGatewayInit,
-  OnGatewayConnection,
-  OnGatewayDisconnect,
-} from '@nestjs/websockets';
+import type { OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
+import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Logger } from '@nestjs/common';
-import { Server, Socket } from 'socket.io';
+import type { Socket } from 'socket.io';
+import { Server } from 'socket.io';
 
 @WebSocketGateway({
   cors: {
@@ -15,17 +11,15 @@ import { Server, Socket } from 'socket.io';
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   },
-  namespace: '/notifications',
+  namespace: '/realtime',
   transports: ['websocket', 'polling'],
   pingInterval: 25_000,
   pingTimeout: 60_000,
   allowUpgrades: true,
   upgradeTimeout: 10_000,
 })
-export class NotificationGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
-{
-  private readonly logger = new Logger(NotificationGateway.name);
+export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+  private readonly logger = new Logger(RealtimeGateway.name);
 
   @WebSocketServer() server: Server;
 

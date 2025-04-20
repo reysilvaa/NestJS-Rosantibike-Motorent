@@ -2,19 +2,28 @@ module.exports = {
   apps: [
     {
       name: 'rental-backend',
-      script: 'dist/src/main.js',
+      script: 'dist/main.js',
       exec_mode: 'cluster',
       instances: 'max',
       max_memory_restart: process.env.PM2_MAX_MEMORY || '750M',
       node_args: process.env.PM2_NODE_ARGS || '--max-old-space-size=700',
-      env: {
+      
+      // Konfigurasi lingkungan pengembangan
+      env_development: {
         NODE_ENV: 'development',
+        PORT: 3030,
+        watch: ['dist'],
+        watch_delay: 1000,
+        ignore_watch: ['node_modules', 'logs', '.git', 'uploaded'],
       },
+      
+      // Konfigurasi lingkungan produksi
       env_production: {
         NODE_ENV: 'production',
-        PORT: 3000,
+        PORT: 3030,
+        watch: false,
       },
-      watch: false,
+      
       source_map_support: false,
       error_file: 'logs/error.log',
       out_file: 'logs/output.log',

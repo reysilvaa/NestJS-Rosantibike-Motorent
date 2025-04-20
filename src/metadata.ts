@@ -293,7 +293,6 @@ export default async () => {
         [import('./modules/whatsapp/dto/update-whatsapp.dto'), { UpdateWhatsappDto: {} }],
       ],
       controllers: [
-        [import('./app.controller'), { AppController: { getHello: { type: String } } }],
         [import('./modules/auth/controllers/auth.controller'), { AuthController: { login: {} } }],
         [
           import('./modules/admin/controllers/admin.controller'),

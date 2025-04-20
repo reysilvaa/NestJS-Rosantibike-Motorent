@@ -2,10 +2,8 @@ import { Process, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bull';
 import type { TransaksiWithRelations } from '../../../common';
-import { PrismaService, StatusMotor, StatusTransaksi } from '../../../common';
-import { NotificationGateway } from '../../../common/gateway/notification.gateway';
+import { PrismaService, StatusMotor, StatusTransaksi, RealtimeGateway } from '../../../common';
 import { WhatsappService } from '../../whatsapp/services/whatsapp.service';
-import { formatWhatsappNumber } from '../../../common/helpers/whatsapp-formatter.helper';
 
 @Processor('transaksi')
 export class TransaksiProcessor {
@@ -13,7 +11,7 @@ export class TransaksiProcessor {
 
   constructor(
     private prisma: PrismaService,
-    private notificationGateway: NotificationGateway,
+    private realtimeGateway: RealtimeGateway,
     private whatsappService: WhatsappService,
   ) {
     this.logger.log('TransaksiProcessor initialized');
@@ -23,7 +21,7 @@ export class TransaksiProcessor {
     try {
       // Gunakan nomor WhatsApp langsung karena sudah diformat saat disimpan ke database
       // whatsapp-messaging.service.ts akan menambahkan @s.whatsapp.net jika belum ada
-      
+
       // Kirim pesan menggunakan WhatsappService
       const result = await this.whatsappService.sendMessage(to, message);
 
@@ -192,7 +190,7 @@ export class TransaksiProcessor {
         await this.sendWhatsAppMessage(transaksi.noWhatsapp, message);
 
         // Kirim notifikasi real-time ke admin
-        this.notificationGateway.sendToAll('overdue-transaction', {
+        this.realtimeGateway.sendToAll('overdue-transaction', {
           id: transaksiId,
           unitMotor: {
             id: transaksi.unitMotor.id,

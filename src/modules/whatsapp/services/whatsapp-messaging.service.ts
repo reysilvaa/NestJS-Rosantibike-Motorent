@@ -20,7 +20,7 @@ export class WhatsappMessagingService {
     try {
       const token = await this.connectionService.getToken();
       const config = this.connectionService.getConfig();
-      
+
       // Cek apakah nomor sudah berisi @s.whatsapp.net atau @c.us
       let whatsappId;
       if (to.includes('@')) {
@@ -143,7 +143,7 @@ export class WhatsappMessagingService {
     try {
       const token = await this.connectionService.getToken();
       const config = this.connectionService.getConfig();
-      
+
       // Gunakan nomor langsung, karena sudah diformat saat disimpan
       // Tetapi perlu cek apakah perlu tambahkan suffix @s.whatsapp.net
       const formattedId = phone.includes('@') ? phone : `${phone}`;
@@ -172,7 +172,7 @@ export class WhatsappMessagingService {
     try {
       const token = await this.connectionService.getToken();
       const config = this.connectionService.getConfig();
-      
+
       // Gunakan nomor langsung, karena sudah diformat saat disimpan
       // Tetapi perlu cek apakah perlu tambahkan suffix @s.whatsapp.net
       const formattedId = phone.includes('@') ? phone : `${phone}`;
