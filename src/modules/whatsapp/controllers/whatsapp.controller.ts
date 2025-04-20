@@ -98,14 +98,14 @@ export class WhatsappController {
   @ApiResponse({ status: 404, description: 'QR code tidak tersedia' })
   async getQrCode(@Res() res: Response) {
     const qrCode = this.whatsappService.getLastQrCode();
-    
+
     if (!qrCode) {
       throw new HttpException(
         'QR code tidak tersedia. Mungkin sudah terhubung atau belum siap.',
         HttpStatus.NOT_FOUND,
       );
     }
-    
+
     return res.status(HttpStatus.OK).json({
       status: 'success',
       qrCode,
@@ -165,11 +165,11 @@ export class WhatsappController {
   async getChats() {
     try {
       const result = await this.whatsappService.getChats();
-      
+
       if (!result) {
         throw new HttpException('Gagal mendapatkan daftar chat', HttpStatus.BAD_REQUEST);
       }
-      
+
       return {
         status: 'success',
         data: result,
@@ -189,11 +189,11 @@ export class WhatsappController {
   async getMessages(@Param('phone') phone: string) {
     try {
       const result = await this.whatsappService.getMessagesInChat(phone);
-      
+
       if (!result) {
         throw new HttpException('Gagal mendapatkan pesan', HttpStatus.BAD_REQUEST);
       }
-      
+
       return {
         status: 'success',
         data: result,
@@ -214,7 +214,7 @@ export class WhatsappController {
       if (!result) {
         throw new HttpException('Gagal mendapatkan kontak', HttpStatus.BAD_REQUEST);
       }
-      
+
       return {
         status: 'success',
         data: result,
@@ -235,7 +235,7 @@ export class WhatsappController {
       if (!result) {
         throw new HttpException('Gagal mengirim pesan', HttpStatus.BAD_REQUEST);
       }
-      
+
       return {
         status: 'success',
         message: 'Pesan berhasil dikirim',
@@ -282,7 +282,7 @@ export class WhatsappController {
   @Post('webhook')
   @ApiOperation({ summary: 'Menerima webhook dari WPPConnect untuk pesan masuk' })
   @ApiResponse({ status: 200, description: 'Webhook berhasil diproses' })
-  @ApiBody({ 
+  @ApiBody({
     description: 'Format webhook yang didukung',
     schema: {
       oneOf: [
@@ -307,7 +307,7 @@ export class WhatsappController {
   async receiveWebhook(@Body() webhookData: any) {
     try {
       this.logger.log(`Menerima webhook data: ${JSON.stringify(webhookData)}`);
-      
+
       // Validasi data webhook
       if (!webhookData) {
         return { status: 'error', message: 'Invalid webhook data' };
@@ -318,14 +318,14 @@ export class WhatsappController {
       let messageData = {};
       let isReply = false;
       let quotedMessage: any = null;
-      
+
       // Format data untuk WPPConnect
       if (webhookData.event === 'onmessage') {
         // Format untuk pesan dari WPPConnect
         from = webhookData.data?.from || '';
         body = webhookData.data?.body || '';
         messageData = webhookData.data || {};
-        
+
         // Periksa apakah ini balasan dari pesan sebelumnya
         if (webhookData.data?.quotedMsg) {
           isReply = true;
@@ -339,11 +339,13 @@ export class WhatsappController {
         from = webhookData.data.sender?.id?.serialized || '';
         body = webhookData.data.body || webhookData.data.content || '';
         messageData = webhookData.data;
-        
+
         // Periksa apakah ini balasan (format alternatif)
         if (webhookData.data.quotedMessageId || webhookData.data.quotedMessage) {
           isReply = true;
-          quotedMessage = webhookData.data.quotedMessage || { id: webhookData.data.quotedMessageId };
+          quotedMessage = webhookData.data.quotedMessage || {
+            id: webhookData.data.quotedMessageId,
+          };
           this.logger.log(`Pesan merupakan balasan (format alternatif)`);
         }
       } else {
@@ -369,10 +371,10 @@ export class WhatsappController {
       };
 
       await this.whatsappService.processIncomingMessage(messageDataObj);
-      return { 
-        status: 'success', 
+      return {
+        status: 'success',
         message: 'Webhook processed successfully',
-        isReply: isReply
+        isReply: isReply,
       };
     } catch (error) {
       this.logger.error(`Error processing webhook: ${error.message}`);
@@ -384,7 +386,7 @@ export class WhatsappController {
   @ApiOperation({ summary: 'Tes menu WhatsApp bot' })
   @ApiResponse({ status: 200, description: 'Menu tes berhasil dikirim' })
   @ApiResponse({ status: 400, description: 'Error: Bad Request' })
-  @ApiBody({ 
+  @ApiBody({
     type: TestMenuDto,
     description: 'Data tes menu',
     examples: {
@@ -399,10 +401,10 @@ export class WhatsappController {
       if (!body || !body.phone) {
         throw new HttpException('Nomor telepon diperlukan untuk tes menu', HttpStatus.BAD_REQUEST);
       }
-      
+
       const phone = body.phone;
       const message = body.message || 'menu';
-      
+
       // Buat data dummy untuk diproses
       const dummyData = {
         fromMe: false,
@@ -413,7 +415,7 @@ export class WhatsappController {
         },
         body: message,
       };
-      
+
       // Proses pesan seperti pesan masuk biasa
       const messageDataObj: WhatsappMessageData = {
         from: phone,
@@ -422,7 +424,7 @@ export class WhatsappController {
       };
 
       await this.whatsappService.processIncomingMessage(messageDataObj);
-      
+
       return {
         status: 'success',
         message: `Pesan tes "${message}" berhasil diproses untuk nomor ${phone}`,
@@ -482,12 +484,15 @@ export class WhatsappController {
         steps: [
           'Mengirim menu ke nomor target',
           'Simulasi pengguna membalas dengan opsi 1',
-          'Melihat respons dari sistem terhadap balasan'
-        ]
+          'Melihat respons dari sistem terhadap balasan',
+        ],
       };
     } catch (error) {
       this.logger.error(`Gagal mengeksekusi tes percakapan: ${error.message}`);
-      throw new HttpException(`Gagal mengeksekusi tes percakapan: ${error.message}`, HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        `Gagal mengeksekusi tes percakapan: ${error.message}`,
+        HttpStatus.BAD_REQUEST,
+      );
     }
   }
 
@@ -510,7 +515,8 @@ export class WhatsappController {
       this.logger.log(`Mengirim menu langsung ke ${formattedPhone}`);
 
       // Dapatkan template menu dari helper
-      const menuText = `🏍️ *ROSANTIBIKE MOTORRENT* 🏍️\n\n` +
+      const menuText =
+        `🏍️ *ROSANTIBIKE MOTORRENT* 🏍️\n\n` +
         `Silakan pilih menu berikut:\n` +
         `1️⃣ Cek Daftar Motor\n` +
         `2️⃣ Cek Harga Sewa\n` +
@@ -518,7 +524,7 @@ export class WhatsappController {
         `4️⃣ Status Transaksi\n` +
         `5️⃣ Bantuan\n\n` +
         `Balas dengan nomor menu yang diinginkan.`;
-      
+
       // Kirim menu langsung
       const result = await this.whatsappService.sendMessage(formattedPhone, menuText);
 
@@ -529,11 +535,14 @@ export class WhatsappController {
       return {
         status: 'success',
         message: `Menu berhasil dikirim ke ${formattedPhone}`,
-        data: result
+        data: result,
       };
     } catch (error) {
       this.logger.error(`Gagal mengirim menu langsung: ${error.message}`);
-      throw new HttpException(`Gagal mengirim menu langsung: ${error.message}`, HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        `Gagal mengirim menu langsung: ${error.message}`,
+        HttpStatus.BAD_REQUEST,
+      );
     }
   }
 }

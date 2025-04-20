@@ -3,10 +3,9 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bull';
 import type { TransaksiWithRelations } from '../../../common';
 import { PrismaService, StatusMotor, StatusTransaksi } from '../../../common';
-import * as fs from 'node:fs';
-import { delay } from 'baileys';
 import { NotificationGateway } from '../../../common/gateway/notification.gateway';
 import { WhatsappService } from '../../whatsapp/services/whatsapp.service';
+import { formatWhatsappNumber } from '../../../common/helpers/whatsapp-formatter.helper';
 
 @Processor('transaksi')
 export class TransaksiProcessor {
@@ -22,12 +21,11 @@ export class TransaksiProcessor {
 
   private async sendWhatsAppMessage(to: string, message: string) {
     try {
-      // Format nomor WhatsApp (pastikan pakai kode negara)
-      const formattedNumber = to.startsWith('+') ? to.slice(1) : to;
-      const whatsappId = `${formattedNumber}@s.whatsapp.net`;
-
+      // Gunakan nomor WhatsApp langsung karena sudah diformat saat disimpan ke database
+      // whatsapp-messaging.service.ts akan menambahkan @s.whatsapp.net jika belum ada
+      
       // Kirim pesan menggunakan WhatsappService
-      const result = await this.whatsappService.sendMessage(whatsappId, message);
+      const result = await this.whatsappService.sendMessage(to, message);
 
       this.logger.log(`Pesan WhatsApp berhasil dikirim ke ${to}`);
       return result;

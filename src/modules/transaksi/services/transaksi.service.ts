@@ -16,6 +16,7 @@ import type {
 import { StatusMotor, StatusTransaksi } from '../../../common/enums/status.enum';
 import { NotificationGateway } from '../../../common/gateway/notification.gateway';
 import { handleError } from '../../../common/helpers';
+import { formatWhatsappNumber } from '../../../common/helpers/whatsapp-formatter.helper';
 import {
   hitungDenda,
   hitungTotalBiaya,
@@ -38,20 +39,30 @@ export class TransaksiService {
 
   async findAll(filter: FilterTransaksiDto) {
     try {
+      // Cek apakah search query mungkin nomor WhatsApp
+      let searchCondition;
+      if (filter.search) {
+        // Coba format nomor WhatsApp jika terlihat seperti nomor telepon
+        const isPhoneNumber = /^\+?\d{8,15}$/.test(filter.search.replaceAll(/[\s()-]/g, ''));
+        if (isPhoneNumber) {
+          const formattedNumber = formatWhatsappNumber(filter.search);
+          searchCondition = [
+            { namaPenyewa: { contains: filter.search, mode: 'insensitive' as const } },
+            { noWhatsapp: { contains: formattedNumber, mode: 'insensitive' as const } },
+          ];
+        } else {
+          searchCondition = [
+            { namaPenyewa: { contains: filter.search, mode: 'insensitive' as const } },
+            { noWhatsapp: { contains: filter.search, mode: 'insensitive' as const } },
+          ];
+        }
+      }
+
       const where = {
         ...(filter.unitId && { unitId: filter.unitId }),
         ...(filter.startDate && { tanggalMulai: { gte: new Date(filter.startDate) } }),
         ...(filter.endDate && { tanggalSelesai: { lte: new Date(filter.endDate) } }),
-        OR: filter.search
-          ? [
-              {
-                namaPenyewa: { contains: filter.search, mode: 'insensitive' as const },
-              },
-              {
-                noWhatsapp: { contains: filter.search, mode: 'insensitive' as const },
-              },
-            ]
-          : undefined,
+        OR: filter.search ? searchCondition : undefined,
         ...(filter.status && !Array.isArray(filter.status) && { status: filter.status }),
         ...(filter.status && Array.isArray(filter.status) && { status: { in: filter.status } }),
       };
@@ -602,11 +613,12 @@ export class TransaksiService {
         throw new BadRequestException('Nomor telepon harus diisi');
       }
 
-      this.logger.log(`Mencari transaksi dengan nomor HP: ${noHP}`);
+      const formattedNumber = formatWhatsappNumber(noHP);
+      this.logger.log(`Mencari transaksi dengan nomor HP: ${noHP} (diformat: ${formattedNumber})`);
 
       const transaksi = await this.prisma.transaksiSewa.findMany({
         where: {
-          noWhatsapp: noHP,
+          noWhatsapp: formattedNumber,
         },
         include: {
           unitMotor: {
@@ -620,7 +632,7 @@ export class TransaksiService {
         },
       });
 
-      this.logger.log(`Ditemukan ${transaksi.length} transaksi dengan nomor HP ${noHP}`);
+      this.logger.log(`Ditemukan ${transaksi.length} transaksi dengan nomor HP ${formattedNumber}`);
       return transaksi;
     } catch (error) {
       return handleError(this.logger, error, `Gagal mencari transaksi dengan nomor HP ${noHP}`);

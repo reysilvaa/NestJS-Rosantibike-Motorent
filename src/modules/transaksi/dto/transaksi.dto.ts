@@ -11,6 +11,7 @@ import {
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { StatusTransaksi } from '../../../common/enums/status.enum';
+import { formatWhatsappNumber } from '../../../common/helpers/whatsapp-formatter.helper';
 
 export class CreateTransaksiDto {
   @IsString()
@@ -19,6 +20,7 @@ export class CreateTransaksiDto {
 
   @IsString()
   @IsNotEmpty({ message: 'Nomor WhatsApp tidak boleh kosong' })
+  @Transform(({ value }) => formatWhatsappNumber(value))
   noWhatsapp: string;
 
   @IsUUID()

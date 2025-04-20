@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { WhatsappMessagingService } from './whatsapp-messaging.service';
 import { WhatsappConnectionService } from './whatsapp-connection.service';
 import * as whatsappMenu from '../../../common/helpers/whatsapp-menu.helper';
+import { formatWhatsappNumber } from '../../../common/helpers/whatsapp-formatter.helper';
 
 @Injectable()
 export class WhatsappHandlerService {
@@ -26,10 +27,10 @@ export class WhatsappHandlerService {
       this.logger.log(`[INCOMING] Menerima pesan dari ${from}: "${message}"`);
       this.logger.log(`[INCOMING] Data pesan: ${JSON.stringify(messageData)}`);
 
-      // Format nomor pengirim untuk penyimpanan di database (hapus @c.us atau @g.us)
-      const formattedNumber = from.split('@')[0];
+      // Format nomor pengirim untuk penyimpanan di database
+      const formattedNumber = formatWhatsappNumber(from);
       this.logger.log(`[INCOMING] Nomor diformat menjadi: ${formattedNumber}`);
-      
+
       // Gunakan nomor pengirim asli untuk pengiriman pesan
       const senderNumber = from;
 
@@ -38,12 +39,10 @@ export class WhatsappHandlerService {
       const prismaService = new prismaModule.PrismaService();
       this.logger.log(`[INCOMING] Mencari transaksi aktif untuk nomor: ${formattedNumber}`);
 
-      // Cari transaksi aktif untuk nomor ini (menggunakan format nomor untuk database)
+      // Cari transaksi aktif untuk nomor ini (menggunakan nomor yang sudah diformat)
       const activeTransactions = await prismaService.transaksiSewa.findMany({
         where: {
-          noWhatsapp: {
-            contains: formattedNumber, // Gunakan nomor yang telah diformat untuk pencarian
-          },
+          noWhatsapp: formattedNumber,
           status: {
             in: ['AKTIF', 'OVERDUE'],
           },
@@ -61,27 +60,31 @@ export class WhatsappHandlerService {
         take: 1,
       });
 
-      this.logger.log(`[INCOMING] Transaksi aktif ditemukan: ${activeTransactions.length > 0 ? 'Ya' : 'Tidak'}`);
+      this.logger.log(
+        `[INCOMING] Transaksi aktif ditemukan: ${activeTransactions.length > 0 ? 'Ya' : 'Tidak'}`,
+      );
       if (activeTransactions.length > 0) {
         this.logger.log(
           `[INCOMING] Detail transaksi aktif: ID=${activeTransactions[0].id}, ` +
-          `Motor=${activeTransactions[0].unitMotor?.jenis?.model || 'N/A'}, ` +
-          `Status=${activeTransactions[0].status}, ` +
-          `Penyewa=${activeTransactions[0].namaPenyewa}`
+            `Motor=${activeTransactions[0].unitMotor?.jenis?.model || 'N/A'}, ` +
+            `Status=${activeTransactions[0].status}, ` +
+            `Penyewa=${activeTransactions[0].namaPenyewa}`,
         );
       }
 
       // Cek apakah pesan berisi kata kunci "menu"
       const isMenuRequest = message.toLowerCase().includes('menu');
-      
+
       // Cek untuk kata kunci booking
       if (message && message.toLowerCase().includes('booking-')) {
         // Cek status booking berdasarkan kode
-        this.logger.log(`[INCOMING] Menerima permintaan cek booking dengan kode: ${message.trim()}`);
+        this.logger.log(
+          `[INCOMING] Menerima permintaan cek booking dengan kode: ${message.trim()}`,
+        );
         await this.checkBookingStatus(senderNumber, message.trim(), prismaService);
         return;
       }
-      
+
       // Cek apakah pesan mengandung pilihan menu bernomor
       if (message && /^[1-9]\d*$/.test(message.trim())) {
         const menuOption = parseInt(message.trim(), 10);
@@ -90,7 +93,9 @@ export class WhatsappHandlerService {
         // Proses pilihan menu - Selalu tanggapi pesan angka sebagai pilihan menu
         if (activeTransactions.length > 0) {
           // Jika ada transaksi aktif, gunakan menu transaksi aktif
-          this.logger.log(`[INCOMING] Memproses menu transaksi aktif dengan pilihan: ${menuOption}`);
+          this.logger.log(
+            `[INCOMING] Memproses menu transaksi aktif dengan pilihan: ${menuOption}`,
+          );
           await this.processActiveTransactionMenu(activeTransactions[0], menuOption, senderNumber);
         } else {
           // Jika tidak ada transaksi aktif, tampilkan menu umum
@@ -99,7 +104,7 @@ export class WhatsappHandlerService {
         }
         return; // Kembali setelah memproses pilihan menu
       }
-      
+
       // Jika pesan berisi kata kunci "menu", tampilkan menu sesuai status
       if (isMenuRequest) {
         this.logger.log(`[INCOMING] Klien meminta menu`);
@@ -114,7 +119,7 @@ export class WhatsappHandlerService {
         }
         return; // Kembali setelah menampilkan menu
       }
-      
+
       // Untuk pesan lain yang tidak dikenali (bukan menu dan bukan pilihan angka)
       this.logger.log(`[INCOMING] Pesan tidak mengandung kata kunci yang dikenali`);
       if (activeTransactions.length > 0) {
@@ -369,18 +374,16 @@ export class WhatsappHandlerService {
   private async sendTransactionStatusInfo(senderNumber: string) {
     try {
       // Format nomor pengirim untuk pencarian di database
-      const formattedNumber = senderNumber.split('@')[0];
+      const formattedNumber = formatWhatsappNumber(senderNumber);
       this.logger.log(`[STATUS TRANSAKSI] Mencari transaksi untuk nomor: ${formattedNumber}`);
-      
+
       const prismaModule = await import('../../../common/prisma/prisma.service');
       const prismaService = new prismaModule.PrismaService();
-      
+
       // Cari semua transaksi untuk nomor ini
       const transactions = await prismaService.transaksiSewa.findMany({
         where: {
-          noWhatsapp: {
-            contains: formattedNumber,
-          },
+          noWhatsapp: formattedNumber,
         },
         include: {
           unitMotor: {
@@ -394,14 +397,18 @@ export class WhatsappHandlerService {
         },
       });
 
-      this.logger.log(`[STATUS TRANSAKSI] Menemukan ${transactions.length} transaksi untuk nomor ${formattedNumber}`);
+      this.logger.log(
+        `[STATUS TRANSAKSI] Menemukan ${transactions.length} transaksi untuk nomor ${formattedNumber}`,
+      );
 
       if (transactions.length === 0) {
         // Tidak ada transaksi yang ditemukan
-        this.logger.log(`[STATUS TRANSAKSI] Tidak ada transaksi ditemukan untuk nomor ${formattedNumber}`);
+        this.logger.log(
+          `[STATUS TRANSAKSI] Tidak ada transaksi ditemukan untuk nomor ${formattedNumber}`,
+        );
         await this.messagingService.sendMessage(
           senderNumber,
-          'Tidak ditemukan transaksi terkait dengan nomor WhatsApp Anda. Silakan hubungi admin untuk informasi lebih lanjut.'
+          'Tidak ditemukan transaksi terkait dengan nomor WhatsApp Anda. Silakan hubungi admin untuk informasi lebih lanjut.',
         );
         return;
       }
@@ -410,19 +417,21 @@ export class WhatsappHandlerService {
       const latestTransaction = transactions[0];
       this.logger.log(
         `[STATUS TRANSAKSI] Menampilkan transaksi terbaru: ID=${latestTransaction.id}, ` +
-        `Motor=${latestTransaction.unitMotor?.jenis?.model || 'N/A'}, ` +
-        `Status=${latestTransaction.status}, ` +
-        `Penyewa=${latestTransaction.namaPenyewa}`
+          `Motor=${latestTransaction.unitMotor?.jenis?.model || 'N/A'}, ` +
+          `Status=${latestTransaction.status}, ` +
+          `Penyewa=${latestTransaction.namaPenyewa}`,
       );
-      
+
       await this.sendActiveTransactionInfo(latestTransaction, senderNumber);
-      
+
       // Jika ada lebih dari 1 transaksi, beri info bahwa ada transaksi lain
       if (transactions.length > 1) {
-        this.logger.log(`[STATUS TRANSAKSI] Mengirim info tambahan tentang ${transactions.length - 1} transaksi lainnya`);
+        this.logger.log(
+          `[STATUS TRANSAKSI] Mengirim info tambahan tentang ${transactions.length - 1} transaksi lainnya`,
+        );
         await this.messagingService.sendMessage(
           senderNumber,
-          `Anda memiliki ${transactions.length} transaksi. Info di atas adalah transaksi terbaru Anda. Untuk melihat riwayat lengkap, silakan hubungi admin.`
+          `Anda memiliki ${transactions.length} transaksi. Info di atas adalah transaksi terbaru Anda. Untuk melihat riwayat lengkap, silakan hubungi admin.`,
         );
       }
     } catch (error) {
@@ -430,7 +439,7 @@ export class WhatsappHandlerService {
       this.logger.error(`[STATUS TRANSAKSI] Stack trace: ${error.stack}`);
       await this.messagingService.sendMessage(
         senderNumber,
-        'Maaf, terjadi kesalahan saat memeriksa status transaksi. Silakan coba lagi nanti.'
+        'Maaf, terjadi kesalahan saat memeriksa status transaksi. Silakan coba lagi nanti.',
       );
     }
   }

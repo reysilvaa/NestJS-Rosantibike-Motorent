@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { WhatsappConnectionService } from './whatsapp-connection.service';
-import { formatWhatsappNumber } from '../../../common/helpers/whatsapp-formatter.helper';
 
 @Injectable()
 export class WhatsappMessagingService {
@@ -21,14 +20,23 @@ export class WhatsappMessagingService {
     try {
       const token = await this.connectionService.getToken();
       const config = this.connectionService.getConfig();
-      const formattedNumber = formatWhatsappNumber(to);
+      
+      // Cek apakah nomor sudah berisi @s.whatsapp.net atau @c.us
+      let whatsappId;
+      if (to.includes('@')) {
+        whatsappId = to; // Sudah berformat lengkap untuk WPP Connect
+      } else {
+        // Jika nomor belum berformat lengkap, tambahkan suffix @s.whatsapp.net
+        // Tidak perlu memformat ulang karena sudah diformat saat disimpan ke database
+        whatsappId = `${to}@s.whatsapp.net`;
+      }
 
-      this.logger.log(`Sending message to ${to} (formatted: ${formattedNumber})`);
+      this.logger.log(`Sending message to ${whatsappId}`);
 
       const response = await axios.post(
         `${config.baseUrl}/api/${config.session}/send-message`,
         {
-          phone: formattedNumber,
+          phone: whatsappId,
           message: message,
         },
         {
@@ -42,7 +50,7 @@ export class WhatsappMessagingService {
       );
 
       if (response.data && response.data.status === 'success') {
-        this.logger.log(`Message sent successfully to ${to}`);
+        this.logger.log(`Message sent successfully to ${whatsappId}`);
         return response.data;
       } else {
         throw new Error(`Failed to send message: ${JSON.stringify(response.data)}`);
@@ -90,13 +98,11 @@ export class WhatsappMessagingService {
       }
 
       // Format admin number
-      const adminWhatsapp = config.adminNumber.startsWith('+')
-        ? config.adminNumber.slice(1)
-        : config.adminNumber;
-      const whatsappId = `${adminWhatsapp}@s.whatsapp.net`;
+      // Gunakan nomor admin langsung dan serahkan formatting ke sendMessage
+      const adminNumber = config.adminNumber;
 
       // Send message to admin
-      return await this.sendMessage(whatsappId, message);
+      return await this.sendMessage(adminNumber, message);
     } catch (error) {
       this.logger.error(`Error sending message to admin: ${error.message}`);
       return false;
@@ -137,10 +143,13 @@ export class WhatsappMessagingService {
     try {
       const token = await this.connectionService.getToken();
       const config = this.connectionService.getConfig();
-      const formattedNumber = formatWhatsappNumber(phone);
+      
+      // Gunakan nomor langsung, karena sudah diformat saat disimpan
+      // Tetapi perlu cek apakah perlu tambahkan suffix @s.whatsapp.net
+      const formattedId = phone.includes('@') ? phone : `${phone}`;
 
       const response = await axios.get(
-        `${config.baseUrl}/api/${config.session}/all-messages-in-chat/${formattedNumber}`,
+        `${config.baseUrl}/api/${config.session}/all-messages-in-chat/${formattedId}`,
         {
           headers: {
             accept: 'application/json',
@@ -163,10 +172,13 @@ export class WhatsappMessagingService {
     try {
       const token = await this.connectionService.getToken();
       const config = this.connectionService.getConfig();
-      const formattedNumber = formatWhatsappNumber(phone);
+      
+      // Gunakan nomor langsung, karena sudah diformat saat disimpan
+      // Tetapi perlu cek apakah perlu tambahkan suffix @s.whatsapp.net
+      const formattedId = phone.includes('@') ? phone : `${phone}`;
 
       const response = await axios.get(
-        `${config.baseUrl}/api/${config.session}/contact/${formattedNumber}`,
+        `${config.baseUrl}/api/${config.session}/contact/${formattedId}`,
         {
           headers: {
             accept: 'application/json',
