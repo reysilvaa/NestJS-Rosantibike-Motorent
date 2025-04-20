@@ -1,12 +1,12 @@
-import { Process, Processor } from '@nestjs/bull';
+import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
-import { Job } from 'bull';
+import type { Job } from 'bullmq';
 import type { TransaksiWithRelations } from '../../../common';
 import { PrismaService, StatusMotor, StatusTransaksi, RealtimeGateway } from '../../../common';
 import { WhatsappService } from '../../whatsapp/services/whatsapp.service';
 
 @Processor('transaksi')
-export class TransaksiProcessor {
+export class TransaksiProcessor extends WorkerHost {
   private readonly logger = new Logger(TransaksiProcessor.name);
 
   constructor(
@@ -14,7 +14,30 @@ export class TransaksiProcessor {
     private realtimeGateway: RealtimeGateway,
     private whatsappService: WhatsappService,
   ) {
+    super();
     this.logger.log('TransaksiProcessor initialized');
+  }
+
+  async process(job: Job): Promise<any> {
+    this.logger.debug(`Processing job: ${job.id}, name: ${job.name}`);
+
+    switch (job.name) {
+      case 'notifikasi-booking': {
+        return this.handleNotifikasiBooking(job);
+      }
+      case 'kirim-pengingat-pengembalian': {
+        return this.handlePengingatPengembalian(job);
+      }
+      case 'cek-overdue': {
+        return this.handleCekOverdue(job);
+      }
+      case 'kirim-notifikasi-selesai': {
+        return this.handleNotifikasiSelesai(job);
+      }
+      default: {
+        throw new Error(`Unknown job name: ${job.name}`);
+      }
+    }
   }
 
   private async sendWhatsAppMessage(to: string, message: string) {
@@ -33,8 +56,7 @@ export class TransaksiProcessor {
     }
   }
 
-  @Process('notifikasi-booking')
-  async handleNotifikasiBooking(job: Job<{ transaksiId: string }>) {
+  private async handleNotifikasiBooking(job: Job<{ transaksiId: string }>) {
     this.logger.debug(`Memproses notifikasi booking: ${job.data.transaksiId}`);
 
     try {
@@ -77,8 +99,7 @@ export class TransaksiProcessor {
     }
   }
 
-  @Process('kirim-pengingat-pengembalian')
-  async handlePengingatPengembalian(job: Job<{ transaksiId: string }>) {
+  private async handlePengingatPengembalian(job: Job<{ transaksiId: string }>) {
     this.logger.debug(`Memproses pengingat pengembalian: ${job.data.transaksiId}`);
 
     try {
@@ -127,8 +148,7 @@ export class TransaksiProcessor {
     }
   }
 
-  @Process('cek-overdue')
-  async handleCekOverdue(job: Job<{ transaksiId: string }>) {
+  private async handleCekOverdue(job: Job<{ transaksiId: string }>) {
     this.logger.debug(`Memproses cek overdue: ${job.data.transaksiId}`);
 
     try {
@@ -208,8 +228,7 @@ export class TransaksiProcessor {
     }
   }
 
-  @Process('kirim-notifikasi-selesai')
-  async handleNotifikasiSelesai(job: Job<{ transaksiId: string }>) {
+  private async handleNotifikasiSelesai(job: Job<{ transaksiId: string }>) {
     this.logger.debug(`Memproses notifikasi selesai: ${job.data.transaksiId}`);
 
     try {

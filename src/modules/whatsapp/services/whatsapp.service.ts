@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { WhatsappConnectionService } from './whatsapp-connection.service';
 import { WhatsappMessagingService } from './whatsapp-messaging.service';
 import { WhatsappHandlerService } from './whatsapp-handler.service';
-import { WhatsappMessageData } from '../../../common/interfaces/whatsapp.interface';
+import type { WhatsappMessageData } from '../../../common/interfaces/whatsapp.interface';
 
 @Injectable()
 export class WhatsappService implements OnModuleInit, OnModuleDestroy {

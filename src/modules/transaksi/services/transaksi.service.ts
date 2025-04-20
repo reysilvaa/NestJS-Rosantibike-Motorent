@@ -1,11 +1,5 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  InternalServerErrorException,
-  Logger,
-} from '@nestjs/common';
-import { PrismaService } from '../../../common/prisma/prisma.service';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { PrismaService, StatusMotor, StatusTransaksi, RealtimeGateway } from '../../../common';
 import { UnitMotorService } from '../../unit-motor/services/unit-motor.service';
 import type {
   CreateTransaksiDto,
@@ -13,8 +7,6 @@ import type {
   FilterTransaksiDto,
   CalculatePriceDto,
 } from '../dto/index';
-import { StatusMotor, StatusTransaksi } from '../../../common/enums/status.enum';
-import { NotificationGateway } from '../../../common/gateway/notification.gateway';
 import { handleError } from '../../../common/helpers';
 import { formatWhatsappNumber } from '../../../common/helpers/whatsapp-formatter.helper';
 import {
@@ -26,6 +18,7 @@ import {
   verifyCanCompleteTransaksi,
 } from '../helpers';
 import { TransaksiQueue } from '../queues/transaksi.queue';
+import { WhatsappQueue } from '../../whatsapp/queues/whatsapp.queue';
 
 @Injectable()
 export class TransaksiService {
@@ -34,7 +27,8 @@ export class TransaksiService {
     private prisma: PrismaService,
     private unitMotorService: UnitMotorService,
     private transaksiQueue: TransaksiQueue,
-    private notificationGateway: NotificationGateway,
+    private whatsappQueue: WhatsappQueue,
+    private realtimeGateway: RealtimeGateway,
   ) {}
 
   async findAll(filter: FilterTransaksiDto) {
@@ -230,7 +224,7 @@ export class TransaksiService {
 
         // Kirim notifikasi melalui WebSocket
         try {
-          this.notificationGateway.sendToAll('motor-status-update', {
+          this.realtimeGateway.sendToAll('motor-status-update', {
             id: transaksi.unitId,
             status: StatusMotor.DISEWA,
             platNomor: transaksi.unitMotor.platNomor,
@@ -485,7 +479,7 @@ export class TransaksiService {
       await this.transaksiQueue.addNotifikasiSelesaiJob(result.id);
 
       // Kirim notifikasi motor status update
-      this.notificationGateway.sendToAll('motor-status-update', {
+      this.realtimeGateway.sendToAll('motor-status-update', {
         id: result.unitMotor.id,
         status: StatusMotor.TERSEDIA,
         platNomor: result.unitMotor.platNomor,
@@ -494,7 +488,7 @@ export class TransaksiService {
 
       // Jika ada denda, kirim notifikasi denda
       if (biayaDenda > 0) {
-        this.notificationGateway.sendToAll('denda-notification', {
+        this.realtimeGateway.sendToAll('denda-notification', {
           id: result.id,
           namaPenyewa: result.namaPenyewa,
           noWhatsapp: result.noWhatsapp,

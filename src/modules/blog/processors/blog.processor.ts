@@ -1,22 +1,41 @@
-import { Process, Processor } from '@nestjs/bull';
+import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { WhatsappQueue } from '../../whatsapp/queues/whatsapp.queue';
 
 @Processor('blog')
-export class BlogProcessor {
+export class BlogProcessor extends WorkerHost {
   private readonly logger = new Logger(BlogProcessor.name);
 
   constructor(
     private prisma: PrismaService,
     private whatsappQueue: WhatsappQueue,
   ) {
+    super();
     this.logger.log('BlogProcessor initialized');
   }
 
-  @Process('create-blog')
-  async handleCreateBlog(job: Job<{ blogData: any }>) {
+  async process(job: Job): Promise<any> {
+    this.logger.debug(`Processing job: ${job.id}, name: ${job.name}`);
+
+    switch (job.name) {
+      case 'create-blog': {
+        return this.handleCreateBlog(job);
+      }
+      case 'process-image': {
+        return this.handleProcessImage(job);
+      }
+      case 'broadcast-blog': {
+        return this.handleBroadcastBlog(job);
+      }
+      default: {
+        throw new Error(`Unknown job name: ${job.name}`);
+      }
+    }
+  }
+
+  private async handleCreateBlog(job: Job<{ blogData: any }>) {
     this.logger.debug(`Processing create blog job: ${job.id}`);
 
     try {
@@ -47,8 +66,7 @@ export class BlogProcessor {
     }
   }
 
-  @Process('process-image')
-  async handleProcessImage(job: Job<{ blogId: string; imageData: any }>) {
+  private async handleProcessImage(job: Job<{ blogId: string; imageData: any }>) {
     this.logger.debug(`Processing image for blog: ${job.data.blogId}`);
 
     try {
@@ -75,8 +93,7 @@ export class BlogProcessor {
     }
   }
 
-  @Process('broadcast-blog')
-  async handleBroadcastBlog(job: Job<{ blogId: string }>) {
+  private async handleBroadcastBlog(job: Job<{ blogId: string }>) {
     this.logger.debug(`Processing broadcast blog job: ${job.id}`);
 
     try {

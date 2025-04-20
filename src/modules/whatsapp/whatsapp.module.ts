@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { WhatsappService } from './services/whatsapp.service';
 import { WhatsappController } from './controllers/whatsapp.controller';
 import { ConfigModule } from '@nestjs/config';
-import { BullModule } from '@nestjs/bull';
+import { BullModule } from '@nestjs/bullmq';
 import { WhatsappQueue } from './queues/whatsapp.queue';
 import { WhatsappProcessor } from './processors/whatsapp.processor';
 import { WhatsappConnectionService } from './services/whatsapp-connection.service';

@@ -8,6 +8,8 @@ import {
   UnitMotorModule,
   TransaksiModule,
   BlogModule,
+  QueueModule,
+  RedisModule,
 } from './modules';
 
 @Module({
@@ -29,6 +31,12 @@ import {
 
     // Realtime Websocket
     WebsocketModule,
+
+    // Redis Cache & Connections
+    RedisModule,
+
+    // Queue Management
+    QueueModule,
 
     // Core Feature Modules
     AuthModule,

@@ -1,20 +1,9 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Param,
-  Delete,
-  Query,
-  Logger,
-  ParseIntPipe,
-  Body,
-} from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiQuery } from '@nestjs/swagger';
-import { InjectQueue } from '@nestjs/bull';
+import { Controller, Get, Post, Param, Delete, Query, Logger, Body } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiParam, ApiBody, ApiQuery } from '@nestjs/swagger';
+import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { successResponse } from '../../common/helpers';
 import { QueueService } from './queue.service';
-import { Job } from 'bullmq';
+import type { Job } from 'bullmq';
 
 @ApiTags('Queue Debug')
 @Controller('debug/queue')
