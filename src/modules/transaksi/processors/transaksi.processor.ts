@@ -1,9 +1,9 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
-import type { TransaksiWithRelations } from '../../../common';
 import { PrismaService, StatusMotor, StatusTransaksi, RealtimeGateway } from '../../../common';
 import { WhatsappService } from '../../whatsapp/services/whatsapp.service';
+import * as whatsappMenu from '../../../common/helpers/whatsapp-menu.helper';
 
 @Processor('transaksi')
 export class TransaksiProcessor extends WorkerHost {
@@ -86,7 +86,7 @@ export class TransaksiProcessor extends WorkerHost {
         return;
       }
 
-      const message = this.generateBookingMessage(transaksi as any);
+      const message = whatsappMenu.getBookingNotificationTemplate(transaksi);
 
       this.logger.log(`Mengirim WhatsApp ke ${transaksi.noWhatsapp}: ${message}`);
 
@@ -135,7 +135,7 @@ export class TransaksiProcessor extends WorkerHost {
         return;
       }
 
-      const message = this.generateReminderMessage(transaksi as any);
+      const message = whatsappMenu.getReminderNotificationTemplate(transaksi);
 
       this.logger.log(`Mengirim pengingat WhatsApp ke ${transaksi.noWhatsapp}: ${message}`);
 
@@ -206,7 +206,7 @@ export class TransaksiProcessor extends WorkerHost {
         });
 
         // Kirim notifikasi WhatsApp
-        const message = this.generateOverdueMessage(transaksi as any);
+        const message = whatsappMenu.getOverdueNotificationTemplate(transaksi);
         await this.sendWhatsAppMessage(transaksi.noWhatsapp, message);
 
         // Kirim notifikasi real-time ke admin
@@ -258,7 +258,7 @@ export class TransaksiProcessor extends WorkerHost {
         return;
       }
 
-      const message = this.generateCompletionMessage(transaksi as any);
+      const message = whatsappMenu.getCompletionNotificationTemplate(transaksi);
 
       this.logger.log(
         `Mengirim notifikasi selesai WhatsApp ke ${transaksi.noWhatsapp}: ${message}`,
@@ -271,117 +271,5 @@ export class TransaksiProcessor extends WorkerHost {
     } catch (error) {
       this.logger.error('Gagal mengirim notifikasi selesai', error);
     }
-  }
-
-  // Helper methods untuk format pesan
-  private generateBookingMessage(transaksi: TransaksiWithRelations): string {
-    const unitMotor = transaksi.unitMotor;
-    const jenis = unitMotor.jenis;
-    const tanggalMulai = new Date(transaksi.tanggalMulai);
-    const tanggalSelesai = new Date(transaksi.tanggalSelesai);
-
-    return `Halo *${transaksi.namaPenyewa}*!
-
-Terima kasih telah melakukan pemesanan di Rental Motor kami.
-
-Detail Pemesanan:
-🏍️ Motor: ${jenis.merk} ${jenis.model} (${unitMotor.platNomor})
-📆 Tanggal Sewa: ${tanggalMulai.toLocaleDateString('id-ID')}
-📆 Tanggal Kembali: ${tanggalSelesai.toLocaleDateString('id-ID')}
-💰 Total Biaya: Rp ${Number(transaksi.totalBiaya).toLocaleString('id-ID')}
-
-Silakan ambil motor pada tanggal yang sudah ditentukan. Jangan lupa bawa KTP dan SIM yang masih berlaku.
-
-*MENU LAYANAN WHATSAPP*:
-Ketik salah satu opsi berikut:
-1️⃣ *Lunasi DP* - Informasi pembayaran DP
-2️⃣ *Cek Info Saya* - Detail booking Anda
-3️⃣ *Perpanjang Sewa* - Perpanjang waktu sewa
-4️⃣ *Bantuan* - Menu bantuan tambahan
-
-Terima kasih!`;
-  }
-
-  private generateReminderMessage(transaksi: TransaksiWithRelations): string {
-    const unitMotor = transaksi.unitMotor;
-    const jenis = unitMotor.jenis;
-    const tanggalSelesai = new Date(transaksi.tanggalSelesai);
-
-    return `Halo *${transaksi.namaPenyewa}*!
-
-Pengingat bahwa masa sewa motor:
-🏍️ ${jenis.merk} ${jenis.model} (${unitMotor.platNomor})
-
-Akan berakhir hari ini pada pukul ${tanggalSelesai.getHours()}:${String(tanggalSelesai.getMinutes()).padStart(2, '0')}.
-
-Harap kembalikan tepat waktu untuk menghindari biaya keterlambatan.
-
-*MENU LAYANAN WHATSAPP*:
-Ketik salah satu opsi berikut:
-1️⃣ *Lunasi DP* - Informasi pembayaran DP
-2️⃣ *Cek Info Saya* - Detail booking Anda
-3️⃣ *Perpanjang Sewa* - Perpanjang waktu sewa
-4️⃣ *Bantuan* - Menu bantuan tambahan
-
-Terima kasih!`;
-  }
-
-  private generateOverdueMessage(transaksi: TransaksiWithRelations): string {
-    const unitMotor = transaksi.unitMotor;
-    const jenis = unitMotor.jenis;
-    const tanggalSelesai = new Date(transaksi.tanggalSelesai);
-
-    return `*PEMBERITAHUAN PENTING*
-
-Halo *${transaksi.namaPenyewa}*,
-
-Motor ${jenis.merk} ${jenis.model} (${unitMotor.platNomor}) yang Anda sewa telah melewati batas waktu pengembalian (${tanggalSelesai.toLocaleString('id-ID')}).
-
-Status sewa Anda sekarang adalah *TERLAMBAT (OVERDUE)*.
-
-Mohon segera kembalikan motor tersebut untuk menghindari biaya keterlambatan yang lebih tinggi. Biaya keterlambatan akan dihitung per jam.
-
-*MENU LAYANAN WHATSAPP*:
-Ketik salah satu opsi berikut:
-2️⃣ *Cek Info Saya* - Detail booking dan denda Anda
-3️⃣ *Perpanjang Sewa* - Perpanjang waktu sewa
-4️⃣ *Bantuan* - Hubungi admin
-
-Terima kasih atas pengertian dan kerjasamanya.`;
-  }
-
-  private generateAdminOverdueMessage(transaksi: TransaksiWithRelations): string {
-    const unitMotor = transaksi.unitMotor;
-    const jenis = unitMotor.jenis;
-    const tanggalSelesai = new Date(transaksi.tanggalSelesai);
-
-    return `*NOTIFIKASI OVERDUE*
-
-Penyewa: ${transaksi.namaPenyewa} (${transaksi.noWhatsapp})
-Motor: ${jenis.merk} ${jenis.model} (${unitMotor.platNomor})
-Batas Waktu: ${tanggalSelesai.toLocaleString('id-ID')}
-Status: OVERDUE
-
-Motor belum dikembalikan lebih dari 1 jam dari batas waktu. Status otomatis diubah menjadi OVERDUE.`;
-  }
-
-  private generateCompletionMessage(transaksi: TransaksiWithRelations): string {
-    const unitMotor = transaksi.unitMotor;
-    const jenis = unitMotor.jenis;
-
-    return `Halo *${transaksi.namaPenyewa}*!
-
-Terima kasih telah mengembalikan motor *${jenis.merk} ${jenis.model}* (${unitMotor.platNomor}) dengan baik.
-
-Status sewa Anda telah diubah menjadi *SELESAI*.
-
-Kami harap Anda puas dengan layanan kami. Jangan ragu untuk menyewa kembali di lain waktu.
-
-*MENU LAYANAN WHATSAPP*:
-Ketik salah satu opsi berikut:
-2️⃣ *Cek Info Saya* - Detail booking terakhir Anda
-4️⃣ *Bantuan* - Bantuan lebih lanjut
-
-Terima kasih!`;
   }
 }

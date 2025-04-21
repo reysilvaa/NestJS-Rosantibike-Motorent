@@ -2,10 +2,14 @@ import { formatCurrency, getStatusLabel } from './whatsapp-formatter.helper';
 
 /**
  * Template menu utama untuk pengguna
+ * @param nama Nama pengguna yang akan disapa (opsional)
  * @returns Text menu utama
  */
-export function getMainMenuTemplate(): string {
+export function getMainMenuTemplate(nama?: string): string {
+  const greeting = nama ? `Halo *${nama}*!` : 'Halo!';
+
   return (
+    `👋 ${greeting}\n\n` +
     '🏍️ *ROSANTIBIKE MOTORRENT* 🏍️\n\n' +
     '✨ *MENU UTAMA* ✨\n\n' +
     '1️⃣ Cek Daftar Motor\n' +
@@ -91,19 +95,19 @@ export function getActiveTransactionInfoTemplate(transaction: any): string {
  * @returns Text instruksi pembayaran DP
  */
 export function getPaymentInstructionsTemplate(
-  transaction: any, 
-  paymentInfo: { 
-    bank?: string; 
-    accountNumber?: string; 
-    accountName?: string; 
+  transaction: any,
+  paymentInfo: {
+    bank?: string;
+    accountNumber?: string;
+    accountName?: string;
     dpPercentage?: number;
-  } = {}
+  } = {},
 ): string {
-  const { 
-    bank = 'BCA', 
-    accountNumber = '1234567890', 
-    accountName = 'Rosanti Bike Motorent', 
-    dpPercentage = 0.3 
+  const {
+    bank = 'BCA',
+    accountNumber = '1234567890',
+    accountName = 'ROSANTIBIKE Motorent',
+    dpPercentage = 0.3,
   } = paymentInfo;
 
   return (
@@ -126,9 +130,9 @@ export function getPaymentInstructionsTemplate(
  * @returns Text instruksi perpanjangan
  */
 export function getExtensionInstructionsTemplate(
-  transaction: any, 
-  adminNumber: string, 
-  websiteUrl = 'https://rosantibikemotorent.com'
+  transaction: any,
+  adminNumber: string,
+  websiteUrl = 'https://rosantibikemotorent.com',
 ): string {
   return (
     `⏳ *PERPANJANGAN SEWA* ⏳\n\n` +
@@ -196,8 +200,8 @@ export function getRentalPricesTemplate(jenisMotor: any[]): string {
  * @returns Text informasi pemesanan
  */
 export function getBookingInfoTemplate(
-  adminNumber: string, 
-  websiteUrl = 'https://rosantibikemotorent.com'
+  adminNumber: string,
+  websiteUrl = 'https://rosantibikemotorent.com',
 ): string {
   return (
     '📝 *INFO PEMESANAN* 📝\n\n' +
@@ -286,13 +290,13 @@ export function getPaymentInfoTemplate(
     accountNumber?: string;
     accountName?: string;
     dpPercentage?: number;
-  } = {}
+  } = {},
 ): string {
   const {
     bank = 'BCA',
     accountNumber = '1234567890',
-    accountName = 'Rosanti Bike Motorent',
-    dpPercentage = 30
+    accountName = 'ROSANTIBIKE Motorent',
+    dpPercentage = 30,
   } = paymentInfo;
 
   return (
@@ -328,17 +332,17 @@ export function getAdminContactTemplate(
       instagram?: string;
       facebook?: string;
     };
-  } = {}
+  } = {},
 ): string {
   const {
-    name = 'Rosanti Bike Motorent',
+    name = 'ROSANTIBIKE Motorent',
     phone = '+628123456789',
     address = 'Jl. Raya No.123, Kota',
     operationalHours = '08:00 - 20:00 WIB',
     socialMedia = {
       instagram: '@rosantibike',
-      facebook: 'Rosanti Bike Motorent'
-    }
+      facebook: 'ROSANTIBIKE Motorent',
+    },
   } = adminInfo;
 
   return (
@@ -373,4 +377,339 @@ export function getFAQTemplate(): string {
     'Kerusakan akibat penggunaan normal ditanggung kami. Kerusakan akibat kecelakaan/kelalaian ditanggung penyewa.\n\n' +
     '🔙 Ketik *MENU* untuk kembali ke menu utama'
   );
+}
+
+/**
+ * Template notifikasi pemesanan
+ * @param transaction Data transaksi
+ * @returns Text notifikasi pemesanan
+ */
+export function getBookingNotificationTemplate(transaction: any): string {
+  const tanggalMulai = new Date(transaction.tanggalMulai);
+  const tanggalSelesai = new Date(transaction.tanggalSelesai);
+  const jenis = transaction.unitMotor.jenis;
+  const unitMotor = transaction.unitMotor;
+
+  // Hitung durasi sewa dalam hari
+  const diffTime = Math.abs(tanggalSelesai.getTime() - tanggalMulai.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  // Informasi tambahan seperti helm dan jas hujan
+  const additionalItems: string[] = [];
+  if (transaction.helm > 0) {
+    additionalItems.push(`🪖 *Helm*: ${transaction.helm} buah`);
+  }
+  if (transaction.jasHujan > 0) {
+    additionalItems.push(`🧥 *Jas Hujan*: ${transaction.jasHujan} buah`);
+  }
+
+  const jamMulai = transaction.jamMulai || '08:00';
+  const jamSelesai = transaction.jamSelesai || '08:00';
+
+  return `👋 Halo *${transaction.namaPenyewa}*!
+
+✅ *PEMESANAN BERHASIL* ✅
+
+Terima kasih telah melakukan pemesanan di ROSANTIBIKE Motorent.
+
+📋 *DETAIL PEMESANAN*:
+🏍️ *Motor*: ${jenis.merk} ${jenis.model}
+🔢 *Plat Nomor*: ${unitMotor.platNomor}
+📆 *Mulai*: ${tanggalMulai.toLocaleDateString('id-ID')} ${jamMulai}
+📆 *Selesai*: ${tanggalSelesai.toLocaleDateString('id-ID')} ${jamSelesai}
+⏱️ *Durasi*: ${diffDays} hari
+${additionalItems.length > 0 ? additionalItems.join('\n') + '\n' : ''}💰 *Total Biaya*: Rp ${formatCurrency(transaction.totalBiaya)}
+
+Silakan ambil motor pada tanggal yang sudah ditentukan. Jangan lupa bawa KTP dan SIM yang masih berlaku.
+
+✨ *MENU LAYANAN WHATSAPP* ✨
+Ketik salah satu opsi berikut:
+1️⃣ *Lunasi DP* - Informasi pembayaran
+2️⃣ *Cek Info Sewa* - Detail pemesanan Anda
+3️⃣ *Perpanjang Sewa* - Perpanjang waktu sewa
+4️⃣ *Bantuan* - Menu bantuan tambahan
+
+Terima kasih! 🙏`;
+}
+
+/**
+ * Template notifikasi pengingat pengembalian
+ * @param transaction Data transaksi
+ * @returns Text pengingat pengembalian
+ */
+export function getReminderNotificationTemplate(transaction: any): string {
+  const unitMotor = transaction.unitMotor;
+  const jenis = unitMotor.jenis;
+  const tanggalSelesai = new Date(transaction.tanggalSelesai);
+
+  // Format jam dengan padding nol di depan jika perlu
+  const jam =
+    transaction.jamSelesai ||
+    `${tanggalSelesai.getHours()}:${String(tanggalSelesai.getMinutes()).padStart(2, '0')}`;
+
+  return `👋 Halo *${transaction.namaPenyewa}*!
+
+⏰ *PENGINGAT PENGEMBALIAN* ⏰
+
+Pengingat bahwa masa sewa motor:
+🏍️ *${jenis.merk} ${jenis.model}* (${unitMotor.platNomor})
+
+Akan berakhir hari ini pada pukul *${jam}*.
+
+⚠️ Harap kembalikan tepat waktu untuk menghindari biaya keterlambatan.
+
+✨ *MENU LAYANAN WHATSAPP* ✨
+Ketik salah satu opsi berikut:
+1️⃣ *Lunasi DP* - Informasi pembayaran
+2️⃣ *Cek Info Sewa* - Detail booking Anda
+3️⃣ *Perpanjang Sewa* - Perpanjang waktu sewa
+4️⃣ *Bantuan* - Menu bantuan tambahan
+
+Terima kasih! 🙏`;
+}
+
+/**
+ * Template notifikasi overdue (keterlambatan)
+ * @param transaction Data transaksi
+ * @returns Text notifikasi overdue
+ */
+export function getOverdueNotificationTemplate(transaction: any): string {
+  const unitMotor = transaction.unitMotor;
+  const jenis = unitMotor.jenis;
+  const tanggalSelesai = new Date(transaction.tanggalSelesai);
+
+  // Format tanggal dan jam yang lebih user-friendly
+  const tanggalFormat = tanggalSelesai.toLocaleDateString('id-ID', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
+  // Hitung keterlambatan dalam jam
+  const now = new Date();
+  const diffTime = Math.abs(now.getTime() - tanggalSelesai.getTime());
+  const diffHours = Math.ceil(diffTime / (1000 * 60 * 60));
+
+  const jamSelesai =
+    transaction.jamSelesai ||
+    `${tanggalSelesai.getHours()}:${String(tanggalSelesai.getMinutes()).padStart(2, '0')}`;
+
+  return `⚠️ *PEMBERITAHUAN PENTING* ⚠️
+
+Halo *${transaction.namaPenyewa}*,
+
+Motor *${jenis.merk} ${jenis.model}* (${unitMotor.platNomor}) yang Anda sewa telah melewati batas waktu pengembalian:
+
+📆 *Waktu Seharusnya*: ${tanggalFormat} ${jamSelesai}
+⏱️ *Keterlambatan*: ${diffHours} jam
+
+🚨 Status sewa Anda sekarang adalah *TERLAMBAT (OVERDUE)*.
+
+Mohon segera kembalikan motor tersebut untuk menghindari biaya keterlambatan yang lebih tinggi. Biaya keterlambatan akan dihitung per jam.
+
+✨ *MENU LAYANAN WHATSAPP* ✨
+Ketik salah satu opsi berikut:
+2️⃣ *Cek Info Sewa* - Detail booking dan denda
+3️⃣ *Perpanjang Sewa* - Perpanjang waktu sewa
+4️⃣ *Bantuan* - Hubungi admin
+
+Terima kasih atas pengertian dan kerjasamanya. 🙏`;
+}
+
+/**
+ * Template notifikasi overdue untuk admin
+ * @param transaction Data transaksi
+ * @returns Text notifikasi overdue untuk admin
+ */
+export function getAdminOverdueNotificationTemplate(transaction: any): string {
+  const unitMotor = transaction.unitMotor;
+  const jenis = unitMotor.jenis;
+  const tanggalSelesai = new Date(transaction.tanggalSelesai);
+
+  // Hitung keterlambatan dalam jam
+  const now = new Date();
+  const diffTime = Math.abs(now.getTime() - tanggalSelesai.getTime());
+  const diffHours = Math.ceil(diffTime / (1000 * 60 * 60));
+
+  const jamSelesai =
+    transaction.jamSelesai ||
+    `${tanggalSelesai.getHours()}:${String(tanggalSelesai.getMinutes()).padStart(2, '0')}`;
+
+  return `🚨 *NOTIFIKASI OVERDUE* 🚨
+
+👤 *Penyewa*: ${transaction.namaPenyewa}
+📱 *WhatsApp*: ${transaction.noWhatsapp}
+🏍️ *Motor*: ${jenis.merk} ${jenis.model} (${unitMotor.platNomor})
+📆 *Batas Waktu*: ${tanggalSelesai.toLocaleString('id-ID')} ${jamSelesai}
+⏱️ *Keterlambatan*: ${diffHours} jam
+🏷️ *Status*: OVERDUE
+
+Motor belum dikembalikan. Status otomatis diubah menjadi OVERDUE.
+
+Mohon segera hubungi penyewa untuk tindak lanjut.`;
+}
+
+/**
+ * Template notifikasi penyelesaian transaksi
+ * @param transaction Data transaksi
+ * @returns Text notifikasi penyelesaian
+ */
+export function getCompletionNotificationTemplate(transaction: any): string {
+  const unitMotor = transaction.unitMotor;
+  const jenis = unitMotor.jenis;
+
+  // Tanggal mulai dan selesai untuk informasi durasi sewa
+  const tanggalMulai = new Date(transaction.tanggalMulai);
+  const tanggalSelesai = new Date(transaction.tanggalSelesai);
+
+  // Hitung durasi sewa dalam hari
+  const diffTime = Math.abs(tanggalSelesai.getTime() - tanggalMulai.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  // Periksa biaya denda jika ada
+  const biayaDenda = transaction.biayaDenda || 0;
+
+  return `👋 Halo *${transaction.namaPenyewa}*!
+
+✅ *TRANSAKSI SELESAI* ✅
+
+Terima kasih telah mengembalikan motor:
+🏍️ *${jenis.merk} ${jenis.model}* (${unitMotor.platNomor})
+
+📋 *RINGKASAN SEWA*:
+📆 *Durasi Sewa*: ${diffDays} hari
+💰 *Total Biaya*: Rp ${formatCurrency(transaction.totalBiaya)}
+${biayaDenda > 0 ? `💸 *Biaya Denda*: Rp ${formatCurrency(biayaDenda)}\n` : ''}
+🏷️ *Status*: *SELESAI*
+
+Kami harap Anda puas dengan layanan kami. Jangan ragu untuk menyewa kembali di lain waktu.
+
+✨ *MENU LAYANAN WHATSAPP* ✨
+Ketik salah satu opsi berikut:
+2️⃣ *Cek Info Sewa* - Detail booking terakhir
+4️⃣ *Bantuan* - Bantuan lebih lanjut
+5️⃣ *MENU* - Lihat semua layanan
+
+Terima kasih! 🙏`;
+}
+
+/**
+ * Template status pesan berdasarkan status transaksi
+ * @param status Status transaksi
+ * @returns Text status pesan
+ */
+export function getStatusMessageTemplate(status: string): string {
+  switch (status.toLowerCase()) {
+    case 'pending': {
+      return '⏳ *PENDING*';
+    }
+    case 'confirmed':
+    case 'aktif': {
+      return '✅ *AKTIF*';
+    }
+    case 'completed':
+    case 'selesai': {
+      return '🏁 *SELESAI*';
+    }
+    case 'cancelled':
+    case 'dibatalkan': {
+      return '❌ *DIBATALKAN*';
+    }
+    case 'overdue': {
+      return '⚠️ *TERLAMBAT*';
+    }
+    default: {
+      return `🔄 *${status.toUpperCase()}*`;
+    }
+  }
+}
+
+/**
+ * Template informasi rental
+ * @param rental Data rental
+ * @returns Text informasi rental
+ */
+export function getRentalInfoTemplate(rental: any): string {
+  if (!rental) {
+    return `📋 *INFO PENYEWAAN* 📋
+
+Maaf, kami tidak menemukan data penyewaan aktif untuk nomor WhatsApp ini.
+
+Ketik *BOOKING* untuk melakukan penyewaan baru.
+Ketik *MENU* untuk kembali ke menu utama.`;
+  }
+
+  const tanggalMulai = new Date(rental.tanggalMulai);
+  const tanggalSelesai = new Date(rental.tanggalSelesai);
+
+  const diffTime = Math.abs(tanggalSelesai.getTime() - tanggalMulai.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  // Tambahan item
+  const additionalItems: string[] = [];
+  if (rental.helm > 0) {
+    additionalItems.push(`🪖 *Helm*: ${rental.helm} buah`);
+  }
+  if (rental.jasHujan > 0) {
+    additionalItems.push(`🧥 *Jas Hujan*: ${rental.jasHujan} buah`);
+  }
+
+  const biayaDenda = rental.biayaDenda
+    ? `\n💸 *Biaya Denda*: Rp ${formatCurrency(rental.biayaDenda)}`
+    : '';
+
+  return `📋 *INFO PENYEWAAN* 📋
+
+Status: ${getStatusMessageTemplate(rental.status)}
+
+👤 *Detail Penyewa*:
+   Nama: ${rental.namaPenyewa}
+   No. WhatsApp: ${rental.noWhatsapp}
+
+🏍️ *Motor*:
+   Merk: ${rental.unitMotor.jenis.merk} ${rental.unitMotor.jenis.model}
+   Plat: ${rental.unitMotor.platNomor}
+
+📅 *Durasi*:
+   Mulai: ${tanggalMulai.toLocaleDateString('id-ID')} ${rental.jamMulai || ''}
+   Selesai: ${tanggalSelesai.toLocaleDateString('id-ID')} ${rental.jamSelesai || ''}
+   Lama Sewa: ${diffDays} hari
+
+${additionalItems.length > 0 ? additionalItems.join('\n') + '\n' : ''}💰 *Biaya*:
+   Total: Rp ${formatCurrency(rental.totalBiaya)}${biayaDenda}
+   
+Ketik:
+✅ *PERPANJANG* - untuk perpanjang sewa
+❓ *BANTUAN* - untuk bantuan lebih lanjut
+🔄 *MENU* - untuk kembali ke menu utama`;
+}
+
+/**
+ * Template informasi tentang kami
+ * @returns Text informasi tentang kami
+ */
+export function getAboutUsTemplate(): string {
+  return `🏍️ *TENTANG ROSANTIBIKE MOTORENT* 🏍️
+
+ROSANTIBIKE Motorent adalah jasa penyewaan motor terpercaya sejak 2010. Berlokasi strategis di Malang, kami menyediakan berbagai jenis motor dengan kondisi prima untuk kebutuhan transportasi Anda.
+
+🌟 *Keunggulan Kami*:
+• Motor berkualitas dan terawat
+• Harga bersaing dan transparan
+• Proses booking yang mudah
+• Pelayanan 24/7
+• Pengalaman lebih dari 10 tahun
+
+📍 *Alamat*:
+Jl. Bauksit No. 90C, Kota Malang
+
+📞 *Kontak*:
+WhatsApp: 0812-3456-7890
+Email: info@rosantibike.com
+
+⏱️ *Jam Operasional*:
+Senin-Minggu: 08.00 - 21.00 WIB
+
+Ketik *MENU* untuk kembali ke menu utama.`;
 }
