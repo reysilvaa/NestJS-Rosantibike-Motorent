@@ -27,7 +27,7 @@ export class WhatsappMessagingService {
         this.logger.error('Invalid phone number: empty');
         throw new Error('Invalid phone number: empty');
       }
-      
+
       if (to.includes('@')) {
         whatsappId = to; // Sudah berformat lengkap untuk WPP Connect
       } else {
@@ -81,7 +81,7 @@ export class WhatsappMessagingService {
           lastError = error;
           attempts++;
           this.logger.warn(`Send attempt ${attempts} failed: ${error.message}`);
-          
+
           if (attempts < maxAttempts) {
             this.logger.log(`Retrying in 2 seconds...`);
             await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retry

@@ -10,7 +10,7 @@
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "// Development": "========= Development Scripts =========",
-    "dev": "pnpm run build && pnpm run start:cluster",
+    "dev": "nest start --watch",
     "dev:watch": "pnpm build && pnpm pm2:dev",
     "// Production": "========= Production Scripts =========",
     "start": "pnpm run start:prod",

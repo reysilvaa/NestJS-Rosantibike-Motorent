@@ -328,10 +328,10 @@ export class WhatsappController {
             // Format baru WPPConnect - periksa berbagai format yang mungkin
             from = webhookData.data?.from || webhookData.from || webhookData.sender?.id || '';
             body = webhookData.data?.body || webhookData.body || webhookData.content || '';
-            
+
             // Format data JSON untuk pemrosesan - gunakan struktur asli sebagai fallback
             messageData = webhookData.data || webhookData;
-            
+
             this.logger.log(`Extracted message info: from=${from}, body=${body}`);
 
             // Periksa apakah ini balasan dari pesan sebelumnya
@@ -361,9 +361,11 @@ export class WhatsappController {
             from = webhookData.from || '';
             body = webhookData.body || '';
             messageData = webhookData;
-            
+
             if (from && body) {
-              this.logger.log(`Detected possible WPP Connect v2 format. Using from=${from}, body=${body}`);
+              this.logger.log(
+                `Detected possible WPP Connect v2 format. Using from=${from}, body=${body}`,
+              );
             } else {
               // Format tidak dikenali
               this.logger.warn(`Format webhook tidak dikenali: ${JSON.stringify(webhookData)}`);
@@ -390,9 +392,9 @@ export class WhatsappController {
           // Tambahan validasi untuk memastikan data valid
           if (!from || !body) {
             this.logger.warn('Invalid message data: missing from or body');
-            return { 
-              status: 'error', 
-              message: 'Missing required message data (from or body field)' 
+            return {
+              status: 'error',
+              message: 'Missing required message data (from or body field)',
             };
           }
 
@@ -401,73 +403,72 @@ export class WhatsappController {
 
           // Beri respons webhook segera untuk mencegah timeout
           // Kemudian proses pesan secara asinkron
-          this.whatsappService.processIncomingMessage(messageDataObj)
-            .catch(error => {
-              this.logger.error(`Error processing message asynchronously: ${error.message}`);
-            });
-            
+          this.whatsappService.processIncomingMessage(messageDataObj).catch(error => {
+            this.logger.error(`Error processing message asynchronously: ${error.message}`);
+          });
+
           return {
             status: 'success',
             message: 'Webhook processed successfully',
             isReply: isReply,
           };
         }
-          
+
         case 'onack': {
           // Acknowledgement terhadap pesan yang dikirim
           this.logger.log(`Received ACK notification: ${JSON.stringify(webhookData.data)}`);
           return { status: 'success', message: 'ACK notification received' };
         }
-          
+
         case 'onpresencechanged': {
           // Perubahan status online/offline
           this.logger.log(`Presence changed: ${JSON.stringify(webhookData.data || webhookData)}`);
           // Jangan proses notifikasi presence sebagai pesan
           return { status: 'success', message: 'Presence change notification received' };
         }
-          
+
         case 'onparticipantschanged': {
           // Perubahan peserta dalam grup
           this.logger.log(`Group participants changed: ${JSON.stringify(webhookData.data)}`);
           return { status: 'success', message: 'Group participants change notification received' };
         }
-          
+
         case 'onreactionmessage': {
           // Reaksi terhadap pesan
           this.logger.log(`Message reaction: ${JSON.stringify(webhookData.data)}`);
           return { status: 'success', message: 'Message reaction notification received' };
         }
-          
+
         case 'onpollresponse': {
           // Tanggapan terhadap polling
           this.logger.log(`Poll response: ${JSON.stringify(webhookData.data)}`);
           return { status: 'success', message: 'Poll response notification received' };
         }
-          
+
         case 'onrevokedmessage': {
           // Pesan yang ditarik kembali
           this.logger.log(`Message revoked: ${JSON.stringify(webhookData.data)}`);
           return { status: 'success', message: 'Message revoke notification received' };
         }
-          
+
         case 'onlabelupdated': {
           // Label yang diperbarui
           this.logger.log(`Label updated: ${JSON.stringify(webhookData.data)}`);
           return { status: 'success', message: 'Label update notification received' };
         }
-          
+
         case 'onselfmessage': {
           // Pesan dari diri sendiri
           this.logger.log(`Self message: ${JSON.stringify(webhookData.data)}`);
           return { status: 'success', message: 'Self message notification received' };
         }
-          
+
         case 'incomingcall': {
           // Panggilan masuk
           this.logger.log(`Incoming call: ${JSON.stringify(webhookData.data)}`);
           return { status: 'success', message: 'Incoming call notification received' };
         }
-          
+
         default: {
           // Event lain yang belum ditangani khusus
           this.logger.log(`Received other event type: ${event}`);

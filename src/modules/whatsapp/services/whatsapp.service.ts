@@ -99,14 +99,14 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     // Validasi event khusus yang tidak perlu diproses sebagai pesan
     const eventType = messageData.messageData?.event || '';
     const nonMessageEvents = [
-      'onpresencechanged', 
-      'onack', 
-      'onreactionmessage', 
+      'onpresencechanged',
+      'onack',
+      'onreactionmessage',
       'onstate',
       'onstatusmsg',
       'onlivelocationsharestop',
     ];
-    
+
     if (nonMessageEvents.includes(eventType)) {
       this.logger.log(`Ignoring non-message event: ${eventType}`);
       return;
@@ -114,7 +114,9 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
 
     // Pastikan ada pengirim dan pesan sebelum meneruskan
     if (!messageData.from || !messageData.message) {
-      this.logger.warn(`Invalid message data, missing from or message: ${JSON.stringify(messageData)}`);
+      this.logger.warn(
+        `Invalid message data, missing from or message: ${JSON.stringify(messageData)}`,
+      );
       return;
     }
 
