@@ -236,7 +236,7 @@ export class WhatsappHandlerService {
       ['H3']: whatsappMenu.getAdminContactTemplate(),
       ['H4']: whatsappMenu.getFAQTemplate(),
     };
-    
+
     const message = helpMenuMap[option] || whatsappMenu.getHelpMenuTemplate();
     await this.messagingService.sendMessage(senderNumber, message);
   }
@@ -255,7 +255,7 @@ export class WhatsappHandlerService {
       ['A3']: () => this.sendExtensionInstructions(transaction, senderNumber),
       ['A4']: () => this.sendCustomHelpMenu(senderNumber),
     };
-    
+
     const action = actionMap[option];
     if (action) {
       await action();
@@ -275,7 +275,7 @@ export class WhatsappHandlerService {
       ['B1']: () => this.sendActiveTransactionInfo(transaction, senderNumber),
       ['B2']: () => this.sendCustomHelpMenu(senderNumber),
     };
-    
+
     const action = actionMap[option];
     if (action) {
       await action();
@@ -334,7 +334,7 @@ export class WhatsappHandlerService {
   private async processMenuSelection(senderNumber: string, menuOption: number, prisma: any) {
     try {
       this.logger.log(`Mulai memproses pilihan menu ${menuOption} dari ${senderNumber}`);
-      
+
       const menuActions = {
         [1]: () => this.sendMotorList(senderNumber, prisma),
         [2]: () => this.sendRentalPrices(senderNumber, prisma),
@@ -342,14 +342,14 @@ export class WhatsappHandlerService {
         [4]: () => this.sendTransactionStatusInfo(senderNumber),
         [5]: () => this.sendCustomHelpMenu(senderNumber),
       };
-      
+
       const action = menuActions[menuOption];
       if (action) {
         await action();
       } else {
         await this.messagingService.sendMessage(
           senderNumber,
-          'Maaf, pilihan menu tidak valid. Silakan pilih menu 1-5.'
+          'Maaf, pilihan menu tidak valid. Silakan pilih menu 1-5.',
         );
       }
 
