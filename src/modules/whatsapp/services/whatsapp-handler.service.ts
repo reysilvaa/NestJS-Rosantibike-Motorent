@@ -1,3 +1,4 @@
+/* eslint-disable unicorn/better-regex */
 import { Injectable, Logger } from '@nestjs/common';
 import { WhatsappMessagingService } from './whatsapp-messaging.service';
 import { WhatsappConnectionService } from './whatsapp-connection.service';
@@ -97,6 +98,63 @@ export class WhatsappHandlerService {
         return;
       }
 
+      // Cek untuk menu bantuan (H1-H4)
+      if (message && /^h[1-4]$/i.test(message.trim())) {
+        const helpOption = message.trim().toUpperCase();
+        this.logger.log(`[INCOMING] Permintaan bantuan: ${helpOption}`);
+        await this.processHelpOption(senderNumber, helpOption);
+        return;
+      }
+
+      // Cek untuk menu transaksi aktif (A1-A4)
+      if (message && /^a[1-4]$/i.test(message.trim())) {
+        const transactionOption = message.trim().toUpperCase();
+        this.logger.log(`[INCOMING] Permintaan menu transaksi: ${transactionOption}`);
+        
+        if (activeTransactions.length > 0) {
+          await this.processActiveTransactionCode(activeTransactions[0], transactionOption, senderNumber);
+        } else {
+          await this.messagingService.sendMessage(
+            senderNumber,
+            'Maaf, Anda tidak memiliki transaksi aktif. Ketik MENU untuk melihat menu utama.'
+          );
+        }
+        return;
+      }
+
+      // Cek untuk menu transaksi selesai (B1-B2)
+      if (message && /^b[1-2]$/i.test(message.trim())) {
+        const completionOption = message.trim().toUpperCase();
+        this.logger.log(`[INCOMING] Permintaan menu transaksi selesai: ${completionOption}`);
+        
+        const allTransactions = await prismaService.transaksiSewa.findMany({
+          where: {
+            noWhatsapp: formattedNumber
+          },
+          include: {
+            unitMotor: {
+              include: {
+                jenis: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: 1,
+        });
+        
+        if (allTransactions.length > 0) {
+          await this.processCompletionOption(allTransactions[0], completionOption, senderNumber);
+        } else {
+          await this.messagingService.sendMessage(
+            senderNumber,
+            'Maaf, Anda tidak memiliki riwayat transaksi. Ketik MENU untuk melihat menu utama.'
+          );
+        }
+        return;
+      }
+
       // Cek apakah pesan mengandung pilihan menu bernomor
       if (message && /^[1-9]\d*$/.test(message.trim())) {
         const menuOption = parseInt(message.trim(), 10);
@@ -104,11 +162,12 @@ export class WhatsappHandlerService {
 
         // Proses pilihan menu - Selalu tanggapi pesan angka sebagai pilihan menu
         if (activeTransactions.length > 0) {
-          // Jika ada transaksi aktif, gunakan menu transaksi aktif
-          this.logger.log(
-            `[INCOMING] Memproses menu transaksi aktif dengan pilihan: ${menuOption}`,
+          // Jika ada transaksi aktif, berikan info bahwa pilihan menu utama tidak berlaku
+          this.logger.log(`[INCOMING] Klien memiliki transaksi aktif, berikan panduan menu`);
+          await this.messagingService.sendMessage(
+            senderNumber,
+            'Anda memiliki transaksi aktif. Silakan gunakan kode A1-A4 untuk mengakses menu transaksi. Ketik MENU untuk melihat opsi menu.'
           );
-          await this.processActiveTransactionMenu(activeTransactions[0], menuOption, senderNumber);
         } else {
           // Jika tidak ada transaksi aktif, tampilkan menu umum
           this.logger.log(`[INCOMING] Memproses menu umum dengan pilihan: ${menuOption}`);
@@ -150,6 +209,134 @@ export class WhatsappHandlerService {
   }
 
   /**
+   * Memproses opsi menu bantuan
+   */
+  private async processHelpOption(senderNumber: string, option: string) {
+    switch (option) {
+      case 'H1': {
+        const message = whatsappMenu.getRentalRequirementsTemplate();
+        await this.messagingService.sendMessage(senderNumber, message);
+        break;
+      }
+      case 'H2': {
+        const message = whatsappMenu.getPaymentInfoTemplate();
+        await this.messagingService.sendMessage(senderNumber, message);
+        break;
+      }
+      case 'H3': {
+        const message = whatsappMenu.getAdminContactTemplate();
+        await this.messagingService.sendMessage(senderNumber, message);
+        break;
+      }
+      case 'H4': {
+        const message = whatsappMenu.getFAQTemplate();
+        await this.messagingService.sendMessage(senderNumber, message);
+        break;
+      }
+      default: {
+        await this.sendCustomHelpMenu(senderNumber);
+      }
+    }
+  }
+
+  /**
+   * Memproses opsi menu transaksi aktif dengan kode
+   */
+  private async processActiveTransactionCode(
+    transaction: any,
+    option: string,
+    senderNumber: string,
+  ) {
+    switch (option) {
+      case 'A1': {
+        await this.sendPaymentInstructions(transaction, senderNumber);
+        break;
+      }
+      case 'A2': {
+        await this.sendActiveTransactionInfo(transaction, senderNumber);
+        break;
+      }
+      case 'A3': {
+        await this.sendExtensionInstructions(transaction, senderNumber);
+        break;
+      }
+      case 'A4': {
+        await this.sendCustomHelpMenu(senderNumber);
+        break;
+      }
+      default: {
+        await this.messagingService.sendMessage(
+          senderNumber,
+          'Maaf, pilihan menu tidak valid. Silakan pilih menu A1-A4. Ketik MENU untuk melihat opsi menu.'
+        );
+      }
+    }
+  }
+
+  /**
+   * Memproses opsi menu transaksi selesai
+   */
+  private async processCompletionOption(
+    transaction: any,
+    option: string,
+    senderNumber: string,
+  ) {
+    switch (option) {
+      case 'B1': {
+        await this.sendActiveTransactionInfo(transaction, senderNumber);
+        break;
+      }
+      case 'B2': {
+        await this.sendCustomHelpMenu(senderNumber);
+        break;
+      }
+      default: {
+        await this.messagingService.sendMessage(
+          senderNumber,
+          'Maaf, pilihan menu tidak valid. Ketik MENU untuk melihat opsi menu.'
+        );
+      }
+    }
+  }
+
+  /**
+   * Memproses menu untuk transaksi aktif
+   */
+  private async processActiveTransactionMenu(
+    transaction: any,
+    menuOption: number,
+    senderNumber: string,
+  ) {
+    // Method ini dipertahankan untuk kompatibilitas jika masih ada yang menggunakan menu numerik
+    this.logger.log(`[DEPRECATED] Menggunakan menu transaksi numerik. Mengarahkan ke metode kode A1-A4`);
+    
+    switch (menuOption) {
+      case 1: {
+        await this.processActiveTransactionCode(transaction, 'A1', senderNumber);
+        break;
+      }
+      case 2: {
+        await this.processActiveTransactionCode(transaction, 'A2', senderNumber);
+        break;
+      }
+      case 3: {
+        await this.processActiveTransactionCode(transaction, 'A3', senderNumber);
+        break;
+      }
+      case 4: {
+        await this.processActiveTransactionCode(transaction, 'A4', senderNumber);
+        break;
+      }
+      default: {
+        await this.messagingService.sendMessage(
+          senderNumber,
+          'Gunakan kode menu A1-A4 untuk transaksi aktif. Ketik MENU untuk melihat opsi menu.'
+        );
+      }
+    }
+  }
+
+  /**
    * Mengirim menu utama ke pengguna
    */
   private async sendMainMenu(senderNumber: string) {
@@ -171,40 +358,6 @@ export class WhatsappHandlerService {
   private async sendActiveTransactionInfo(transaction: any, senderNumber: string) {
     const message = whatsappMenu.getActiveTransactionInfoTemplate(transaction);
     await this.messagingService.sendMessage(senderNumber, message);
-  }
-
-  /**
-   * Memproses menu untuk transaksi aktif
-   */
-  private async processActiveTransactionMenu(
-    transaction: any,
-    menuOption: number,
-    senderNumber: string,
-  ) {
-    switch (menuOption) {
-      case 1: {
-        await this.sendPaymentInstructions(transaction, senderNumber);
-        break;
-      }
-      case 2: {
-        await this.sendActiveTransactionInfo(transaction, senderNumber);
-        break;
-      }
-      case 3: {
-        await this.sendExtensionInstructions(transaction, senderNumber);
-        break;
-      }
-      case 4: {
-        await this.sendCustomHelpMenu(senderNumber);
-        break;
-      }
-      default: {
-        await this.messagingService.sendMessage(
-          senderNumber,
-          'Maaf, pilihan menu tidak valid. Silakan pilih menu 1-4.',
-        );
-      }
-    }
   }
 
   /**
