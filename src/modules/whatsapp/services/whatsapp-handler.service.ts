@@ -85,6 +85,19 @@ export class WhatsappHandlerService {
         );
       }
 
+      // Cek apakah pesan berisi kata kunci list menu
+      const isListMenuRequest =
+        message.toLowerCase().includes('listmenu') ||
+        message.toLowerCase().includes('list menu') ||
+        message.toLowerCase() === 'list';
+
+      // Jika pengguna meminta daftar menu lengkap
+      if (isListMenuRequest) {
+        this.logger.log(`[INCOMING] Klien meminta daftar lengkap menu`);
+        await this.sendAllMenusList(senderNumber);
+        return;
+      }
+
       // Cek apakah pesan berisi kata kunci "menu"
       const isMenuRequest = message.toLowerCase().includes('menu');
 
@@ -110,13 +123,17 @@ export class WhatsappHandlerService {
       if (message && /^a[1-4]$/i.test(message.trim())) {
         const transactionOption = message.trim().toUpperCase();
         this.logger.log(`[INCOMING] Permintaan menu transaksi: ${transactionOption}`);
-        
+
         if (activeTransactions.length > 0) {
-          await this.processActiveTransactionCode(activeTransactions[0], transactionOption, senderNumber);
+          await this.processActiveTransactionCode(
+            activeTransactions[0],
+            transactionOption,
+            senderNumber,
+          );
         } else {
           await this.messagingService.sendMessage(
             senderNumber,
-            'Maaf, Anda tidak memiliki transaksi aktif. Ketik MENU untuk melihat menu utama.'
+            'Maaf, Anda tidak memiliki transaksi aktif. Ketik MENU untuk melihat menu utama.',
           );
         }
         return;
@@ -126,10 +143,10 @@ export class WhatsappHandlerService {
       if (message && /^b[1-2]$/i.test(message.trim())) {
         const completionOption = message.trim().toUpperCase();
         this.logger.log(`[INCOMING] Permintaan menu transaksi selesai: ${completionOption}`);
-        
+
         const allTransactions = await prismaService.transaksiSewa.findMany({
           where: {
-            noWhatsapp: formattedNumber
+            noWhatsapp: formattedNumber,
           },
           include: {
             unitMotor: {
@@ -143,13 +160,13 @@ export class WhatsappHandlerService {
           },
           take: 1,
         });
-        
+
         if (allTransactions.length > 0) {
           await this.processCompletionOption(allTransactions[0], completionOption, senderNumber);
         } else {
           await this.messagingService.sendMessage(
             senderNumber,
-            'Maaf, Anda tidak memiliki riwayat transaksi. Ketik MENU untuk melihat menu utama.'
+            'Maaf, Anda tidak memiliki riwayat transaksi. Ketik MENU untuk melihat menu utama.',
           );
         }
         return;
@@ -166,7 +183,7 @@ export class WhatsappHandlerService {
           this.logger.log(`[INCOMING] Klien memiliki transaksi aktif, berikan panduan menu`);
           await this.messagingService.sendMessage(
             senderNumber,
-            'Anda memiliki transaksi aktif. Silakan gunakan kode A1-A4 untuk mengakses menu transaksi. Ketik MENU untuk melihat opsi menu.'
+            'Anda memiliki transaksi aktif. Silakan gunakan kode A1-A4 untuk mengakses menu transaksi. Ketik MENU untuk melihat opsi menu.',
           );
         } else {
           // Jika tidak ada transaksi aktif, tampilkan menu umum
@@ -267,7 +284,7 @@ export class WhatsappHandlerService {
       default: {
         await this.messagingService.sendMessage(
           senderNumber,
-          'Maaf, pilihan menu tidak valid. Silakan pilih menu A1-A4. Ketik MENU untuk melihat opsi menu.'
+          'Maaf, pilihan menu tidak valid. Silakan pilih menu A1-A4. Ketik MENU untuk melihat opsi menu.',
         );
       }
     }
@@ -276,11 +293,7 @@ export class WhatsappHandlerService {
   /**
    * Memproses opsi menu transaksi selesai
    */
-  private async processCompletionOption(
-    transaction: any,
-    option: string,
-    senderNumber: string,
-  ) {
+  private async processCompletionOption(transaction: any, option: string, senderNumber: string) {
     switch (option) {
       case 'B1': {
         await this.sendActiveTransactionInfo(transaction, senderNumber);
@@ -293,7 +306,7 @@ export class WhatsappHandlerService {
       default: {
         await this.messagingService.sendMessage(
           senderNumber,
-          'Maaf, pilihan menu tidak valid. Ketik MENU untuk melihat opsi menu.'
+          'Maaf, pilihan menu tidak valid. Ketik MENU untuk melihat opsi menu.',
         );
       }
     }
@@ -308,8 +321,10 @@ export class WhatsappHandlerService {
     senderNumber: string,
   ) {
     // Method ini dipertahankan untuk kompatibilitas jika masih ada yang menggunakan menu numerik
-    this.logger.log(`[DEPRECATED] Menggunakan menu transaksi numerik. Mengarahkan ke metode kode A1-A4`);
-    
+    this.logger.log(
+      `[DEPRECATED] Menggunakan menu transaksi numerik. Mengarahkan ke metode kode A1-A4`,
+    );
+
     switch (menuOption) {
       case 1: {
         await this.processActiveTransactionCode(transaction, 'A1', senderNumber);
@@ -330,7 +345,7 @@ export class WhatsappHandlerService {
       default: {
         await this.messagingService.sendMessage(
           senderNumber,
-          'Gunakan kode menu A1-A4 untuk transaksi aktif. Ketik MENU untuk melihat opsi menu.'
+          'Gunakan kode menu A1-A4 untuk transaksi aktif. Ketik MENU untuk melihat opsi menu.',
         );
       }
     }
@@ -732,5 +747,23 @@ export class WhatsappHandlerService {
   private async sendWelcomeMessage(senderNumber: string) {
     const welcomeText = whatsappMenu.getWelcomeMessageTemplate();
     await this.messagingService.sendMessage(senderNumber, welcomeText);
+  }
+
+  /**
+   * Mengirim daftar lengkap semua menu yang tersedia
+   */
+  private async sendAllMenusList(senderNumber: string) {
+    try {
+      this.logger.log(`[ALL MENUS] Mengirim daftar lengkap menu ke ${senderNumber}`);
+      const allMenusText = whatsappMenu.getMainMenuTemplate();
+      await this.messagingService.sendMessage(senderNumber, allMenusText);
+      this.logger.log(`[ALL MENUS] Daftar lengkap menu berhasil dikirim ke ${senderNumber}`);
+    } catch (error) {
+      this.logger.error(`[ALL MENUS] Error saat mengirim daftar menu: ${error.message}`);
+      await this.messagingService.sendMessage(
+        senderNumber,
+        'Maaf, terjadi kesalahan saat menampilkan daftar menu. Silakan ketik MENU untuk melihat menu utama.',
+      );
+    }
   }
 }

@@ -10,14 +10,30 @@ export function getMainMenuTemplate(nama?: string): string {
 
   return (
     `${greeting}\n\n` +
-    'ROSANTIBIKE MOTORRENT\n\n' +
-    'MENU UTAMA\n\n' +
-    '1 - Cek Daftar Motor\n' +
-    '2 - Cek Harga Sewa\n' +
-    '3 - Info Pemesanan\n' +
-    '4 - Status Transaksi\n' +
-    '5 - Bantuan\n\n' +
-    'Balas dengan nomor menu yang diinginkan.'
+    `ROSANTIBIKE MOTORRENT\n\n` +
+    `MENU UTAMA (Ketik MENU):\n` +
+    `1 - Cek Daftar Motor\n` +
+    `2 - Cek Harga Sewa\n` +
+    `3 - Info Pemesanan\n` +
+    `4 - Status Transaksi\n` +
+    `5 - Bantuan\n\n` +
+    `MENU BANTUAN (Ketik H1-H4):\n` +
+    `H1 - Info Syarat Sewa\n` +
+    `H2 - Cara Pembayaran\n` +
+    `H3 - Kontak Admin\n` +
+    `H4 - FAQ\n\n` +
+    `MENU TRANSAKSI AKTIF (untuk penyewa saat ini):\n` +
+    `A1 - Lunasi DP\n` +
+    `A2 - Cek Info Sewa Saya\n` +
+    `A3 - Perpanjang Sewa\n` +
+    `A4 - Bantuan\n\n` +
+    `MENU SETELAH TRANSAKSI SELESAI:\n` +
+    `B1 - Cek Info Sewa terakhir\n` +
+    `B2 - Bantuan lebih lanjut\n\n` +
+    `MENU LAINNYA:\n` +
+    `• BOOKING-[kode] untuk memeriksa status booking\n` +
+    `• MENU untuk kembali ke menu utama kapan saja\n\n` +
+    `Terima kasih telah menggunakan layanan ROSANTIBIKE MOTORRENT.`
   );
 }
 
@@ -95,18 +111,18 @@ export function getActiveTransactionInfoTemplate(transaction: any): string {
  * @returns Text instruksi pembayaran DP
  */
 export function getPaymentInstructionsTemplate(
-  transaction: any, 
-  paymentInfo: { 
-    bank?: string; 
-    accountNumber?: string; 
-    accountName?: string; 
+  transaction: any,
+  paymentInfo: {
+    bank?: string;
+    accountNumber?: string;
+    accountName?: string;
     dpPercentage?: number;
   } = {},
 ): string {
-  const { 
-    bank = 'BCA', 
-    accountNumber = '1234567890', 
-    accountName = 'ROSANTIBIKE Motorent', 
+  const {
+    bank = 'BCA',
+    accountNumber = '1234567890',
+    accountName = 'ROSANTIBIKE Motorent',
     dpPercentage = 0.3,
   } = paymentInfo;
 
@@ -130,8 +146,8 @@ export function getPaymentInstructionsTemplate(
  * @returns Text instruksi perpanjangan
  */
 export function getExtensionInstructionsTemplate(
-  transaction: any, 
-  adminNumber: string, 
+  transaction: any,
+  adminNumber: string,
   websiteUrl = 'https://rosantibikemotorent.com',
 ): string {
   return (
@@ -200,7 +216,7 @@ export function getRentalPricesTemplate(jenisMotor: any[]): string {
  * @returns Text informasi pemesanan
  */
 export function getBookingInfoTemplate(
-  adminNumber: string, 
+  adminNumber: string,
   websiteUrl = 'https://rosantibikemotorent.com',
 ): string {
   return (
@@ -389,7 +405,7 @@ export function getBookingNotificationTemplate(transaction: any): string {
   const tanggalSelesai = new Date(transaction.tanggalSelesai);
   const jenis = transaction.unitMotor.jenis;
   const unitMotor = transaction.unitMotor;
-  
+
   // Hitung durasi sewa dalam hari
   const diffTime = Math.abs(tanggalSelesai.getTime() - tanggalMulai.getTime());
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -441,7 +457,7 @@ export function getReminderNotificationTemplate(transaction: any): string {
   const unitMotor = transaction.unitMotor;
   const jenis = unitMotor.jenis;
   const tanggalSelesai = new Date(transaction.tanggalSelesai);
-  
+
   // Format jam dengan padding nol di depan jika perlu
   const jam =
     transaction.jamSelesai ||
@@ -477,7 +493,7 @@ export function getOverdueNotificationTemplate(transaction: any): string {
   const unitMotor = transaction.unitMotor;
   const jenis = unitMotor.jenis;
   const tanggalSelesai = new Date(transaction.tanggalSelesai);
-  
+
   // Format tanggal dan jam yang lebih user-friendly
   const tanggalFormat = tanggalSelesai.toLocaleDateString('id-ID', {
     weekday: 'long',
@@ -485,12 +501,12 @@ export function getOverdueNotificationTemplate(transaction: any): string {
     month: 'long',
     day: 'numeric',
   });
-  
+
   // Hitung keterlambatan dalam jam
   const now = new Date();
   const diffTime = Math.abs(now.getTime() - tanggalSelesai.getTime());
   const diffHours = Math.ceil(diffTime / (1000 * 60 * 60));
-  
+
   const jamSelesai =
     transaction.jamSelesai ||
     `${tanggalSelesai.getHours()}:${String(tanggalSelesai.getMinutes()).padStart(2, '0')}`;
@@ -526,12 +542,12 @@ export function getAdminOverdueNotificationTemplate(transaction: any): string {
   const unitMotor = transaction.unitMotor;
   const jenis = unitMotor.jenis;
   const tanggalSelesai = new Date(transaction.tanggalSelesai);
-  
+
   // Hitung keterlambatan dalam jam
   const now = new Date();
   const diffTime = Math.abs(now.getTime() - tanggalSelesai.getTime());
   const diffHours = Math.ceil(diffTime / (1000 * 60 * 60));
-  
+
   const jamSelesai =
     transaction.jamSelesai ||
     `${tanggalSelesai.getHours()}:${String(tanggalSelesai.getMinutes()).padStart(2, '0')}`;
@@ -558,15 +574,15 @@ Mohon segera hubungi penyewa untuk tindak lanjut.`;
 export function getCompletionNotificationTemplate(transaction: any): string {
   const unitMotor = transaction.unitMotor;
   const jenis = unitMotor.jenis;
-  
+
   // Tanggal mulai dan selesai untuk informasi durasi sewa
   const tanggalMulai = new Date(transaction.tanggalMulai);
   const tanggalSelesai = new Date(transaction.tanggalSelesai);
-  
+
   // Hitung durasi sewa dalam hari
   const diffTime = Math.abs(tanggalSelesai.getTime() - tanggalMulai.getTime());
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
+
   // Periksa biaya denda jika ada
   const biayaDenda = transaction.biayaDenda || 0;
 
