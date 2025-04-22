@@ -12,6 +12,7 @@ export function setupCors(app: INestApplication): void {
       'http://localhost:3001',
       'http://localhost:3000',
       'https://rosantibikemotorent.com',
+      'https://www.rosantibikemotorent.com',
       '*',
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
