@@ -16,12 +16,12 @@ import { HttpRequestProcessor } from './processors/http-request.processor';
           port: parseInt(configService.get('REDIS_PORT', '6379')),
           enableOfflineQueue: true,
           maxRetriesPerRequest: 3,
-          retryStrategy: (times) => {
+          retryStrategy: times => {
             const delay = Math.min(times * 100, 3000);
             console.log(`BullMQ Redis reconnecting attempt ${times} after ${delay}ms`);
             return delay;
           },
-          reconnectOnError: (err) => {
+          reconnectOnError: err => {
             console.error(`BullMQ Redis connection error: ${err.message}`);
             return true;
           },

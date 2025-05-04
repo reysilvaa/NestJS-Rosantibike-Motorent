@@ -169,7 +169,7 @@ export class WhatsappHandlerService {
     if (/^h\d+$/i.test(normalizedMessage)) {
       await this.messagingService.sendMessage(
         senderNumber,
-        'Maaf, kode bantuan tidak valid. Silakan gunakan kode H1-H4 untuk mengakses menu bantuan. Ketik MENU untuk melihat opsi menu.'
+        'Maaf, kode bantuan tidak valid. Silakan gunakan kode H1-H4 untuk mengakses menu bantuan. Ketik MENU untuk melihat opsi menu.',
       );
       return true;
     }
@@ -185,7 +185,7 @@ export class WhatsappHandlerService {
       } else {
         await this.messagingService.sendMessage(
           senderNumber,
-          'Maaf, Anda tidak memiliki transaksi aktif. Ketik MENU untuk melihat menu utama.'
+          'Maaf, Anda tidak memiliki transaksi aktif. Ketik MENU untuk melihat menu utama.',
         );
       }
       return true;
@@ -195,7 +195,7 @@ export class WhatsappHandlerService {
     if (/^a\d+$/i.test(normalizedMessage)) {
       await this.messagingService.sendMessage(
         senderNumber,
-        'Maaf, kode transaksi tidak valid. Silakan gunakan kode A1-A4 untuk mengakses menu transaksi. Ketik MENU untuk melihat opsi menu.'
+        'Maaf, kode transaksi tidak valid. Silakan gunakan kode A1-A4 untuk mengakses menu transaksi. Ketik MENU untuk melihat opsi menu.',
       );
       return true;
     }
@@ -212,7 +212,7 @@ export class WhatsappHandlerService {
         orderBy: { createdAt: 'desc' },
         take: 1,
       });
-      
+
       if (allTransactions.length > 0) {
         await this.processCompletionOption(
           allTransactions[0],
@@ -222,17 +222,17 @@ export class WhatsappHandlerService {
       } else {
         await this.messagingService.sendMessage(
           senderNumber,
-          'Maaf, Anda tidak memiliki riwayat transaksi. Ketik MENU untuk melihat menu utama.'
+          'Maaf, Anda tidak memiliki riwayat transaksi. Ketik MENU untuk melihat menu utama.',
         );
       }
       return true;
     }
-    
+
     // Tangani kode transaksi selesai yang tidak valid (seperti b3, b4, dll)
     if (/^b\d+$/i.test(normalizedMessage)) {
       await this.messagingService.sendMessage(
         senderNumber,
-        'Maaf, kode menu tidak valid. Silakan gunakan kode B1-B2 untuk mengakses menu setelah transaksi. Ketik MENU untuk melihat opsi menu.'
+        'Maaf, kode menu tidak valid. Silakan gunakan kode B1-B2 untuk mengakses menu setelah transaksi. Ketik MENU untuk melihat opsi menu.',
       );
       return true;
     }

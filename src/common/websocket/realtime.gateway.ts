@@ -3,14 +3,10 @@ import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Logger, Injectable, Inject, Optional } from '@nestjs/common';
 import type { Socket } from 'socket.io';
 import { Server } from 'socket.io';
+import { corsOptions } from '../config/cors.config';
 
 @WebSocketGateway({
-  cors: {
-    origin: ['http://localhost:3001', 'http://localhost:3000', '*'],
-    methods: ['GET', 'POST'],
-    credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  },
+  cors: corsOptions,
   namespace: '/realtime',
   transports: ['websocket', 'polling'],
   pingInterval: 25_000,
