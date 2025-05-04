@@ -16,7 +16,7 @@ import { Server } from 'socket.io';
   pingInterval: 25_000,
   pingTimeout: 60_000,
   allowUpgrades: true,
-  upgradeTimeout: 10_000,
+  upgradeTimeout: 30_000,
 })
 export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(RealtimeGateway.name);
@@ -31,19 +31,66 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
 
   // Batasan total koneksi websocket
   private totalConnections = 0;
-  private readonly maxTotalConnections = 50; // Batas maksimum koneksi total
-  private readonly minTotalConnections = 20; // Batas minimum koneksi total
+  private readonly maxTotalConnections = 100;
+  private readonly minTotalConnections = 20;
 
   // Threshold untuk Redis pub/sub
   private readonly redisPubSubThreshold = 200;
 
   // Flag untuk menunjukkan apakah Redis digunakan
   private useRedisPubSub = false;
+  private redisServiceAvailable = false;
 
   constructor(@Optional() @Inject('REDIS_PUB_SUB_SERVICE') private redisPubSubService?: any) {
     // Inisialisasi Redis pub/sub jika tersedia
     if (this.redisPubSubService) {
-      this.useRedisPubSub = true;
+      try {
+        // Cek apakah Redis service tersedia
+        this.redisServiceAvailable = this.isRedisServiceAvailable();
+        if (this.redisServiceAvailable) {
+          this.useRedisPubSub = true;
+          this.logger.log('Redis pub/sub service tersedia dan diaktifkan.');
+        } else {
+          this.logger.warn('Redis pub/sub service tidak tersedia. Menggunakan direct broadcast.');
+        }
+      } catch (error) {
+        this.logger.error(`Error saat inisialisasi Redis pub/sub: ${error.message}`);
+        this.redisServiceAvailable = false;
+        this.useRedisPubSub = false;
+      }
+    }
+  }
+
+  /**
+   * Memeriksa apakah Redis service tersedia
+   */
+  private isRedisServiceAvailable(): boolean {
+    try {
+      if (!this.redisPubSubService) return false;
+
+      // Memeriksa jika Redis service memiliki metode isConnected
+      if (typeof this.redisPubSubService.isConnected === 'function') {
+        return this.redisPubSubService.isConnected();
+      }
+
+      // Alternatif: periksa jika Redis service memiliki client yang terhubung
+      if (this.redisPubSubService.client && this.redisPubSubService.client.status === 'ready') {
+        return true;
+      }
+
+      // Mencoba mengakses Redis lain jika tersedia
+      if (
+        this.redisPubSubService.getClient &&
+        typeof this.redisPubSubService.getClient === 'function'
+      ) {
+        const client = this.redisPubSubService.getClient();
+        return client && (client.status === 'ready' || client.status === 'connect');
+      }
+
+      return false;
+    } catch (error) {
+      this.logger.error(`Error memeriksa koneksi Redis: ${error.message}`);
+      return false;
     }
   }
 
@@ -110,14 +157,14 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
       timestamp: new Date().toISOString(),
     });
 
-    // Setup interval ping untuk mencegah terputus
+    // Setup interval ping untuk mencegah terputus (lebih sering)
     const pingInterval = setInterval(() => {
       if (client.connected) {
         client.emit('ping', { timestamp: new Date().toISOString() });
       } else {
         clearInterval(pingInterval);
       }
-    }, 20_000);
+    }, 15_000);
 
     // Menyimpan interval di objek client untuk dibersihkan saat disconnect
     client.data.pingInterval = pingInterval;
@@ -169,16 +216,33 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
    * Update penggunaan Redis pub/sub berdasarkan jumlah koneksi
    */
   private updateRedisPubSubUsage() {
-    if (!this.redisPubSubService) return;
+    // Jika Redis service tidak tersedia, tidak perlu update
+    if (!this.redisServiceAvailable) {
+      this.useRedisPubSub = false;
+      return;
+    }
 
-    // Gunakan Redis hanya jika koneksi < 200
-    const shouldUseRedis = this.totalConnections < this.redisPubSubThreshold;
+    try {
+      // Periksa ulang jika Redis masih terhubung
+      this.redisServiceAvailable = this.isRedisServiceAvailable();
+      if (!this.redisServiceAvailable) {
+        this.useRedisPubSub = false;
+        this.logger.warn('Redis service terputus. Beralih ke direct broadcast.');
+        return;
+      }
 
-    if (shouldUseRedis !== this.useRedisPubSub) {
-      this.useRedisPubSub = shouldUseRedis;
-      this.logger.log(
-        `Redis pub/sub ${this.useRedisPubSub ? 'diaktifkan' : 'dinonaktifkan'} (Koneksi: ${this.totalConnections})`,
-      );
+      // Gunakan Redis hanya jika koneksi < threshold
+      const shouldUseRedis = this.totalConnections < this.redisPubSubThreshold;
+
+      if (shouldUseRedis !== this.useRedisPubSub) {
+        this.useRedisPubSub = shouldUseRedis;
+        this.logger.log(
+          `Redis pub/sub ${this.useRedisPubSub ? 'diaktifkan' : 'dinonaktifkan'} (Koneksi: ${this.totalConnections})`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(`Error saat update penggunaan Redis: ${error.message}`);
+      this.useRedisPubSub = false;
     }
   }
 
@@ -199,21 +263,37 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     }
 
     // Gunakan Redis pub/sub jika diaktifkan dan tersedia
-    if (this.useRedisPubSub && this.redisPubSubService) {
+    if (this.useRedisPubSub && this.redisServiceAvailable) {
       try {
+        // Periksa ulang apakah Redis masih terhubung
+        if (!this.isRedisServiceAvailable()) {
+          this.redisServiceAvailable = false;
+          this.useRedisPubSub = false;
+          // Fallback ke Socket.IO jika Redis tidak tersedia
+          this.server.emit(event, data);
+          this.logger.warn('Redis tidak tersedia, fallback ke direct broadcast.');
+          return;
+        }
+
         this.redisPubSubService.publish(event, data);
         this.logger.debug(`Broadcasting event "${event}" using Redis pub/sub`);
       } catch (error) {
         this.logger.error(`Redis pub/sub failed: ${error.message}`);
         // Fallback ke socket.io broadcast jika Redis gagal
+        this.redisServiceAvailable = false;
+        this.useRedisPubSub = false;
         this.server.emit(event, data);
       }
     } else {
       // Gunakan socket.io broadcast langsung
-      this.server.emit(event, data);
-      this.logger.debug(
-        `Broadcasting event "${event}" to all clients (${this.totalConnections} connections)`,
-      );
+      try {
+        this.server.emit(event, data);
+        this.logger.debug(
+          `Broadcasting event "${event}" to all clients (${this.totalConnections} connections)`,
+        );
+      } catch (error) {
+        this.logger.error(`Socket.IO broadcast failed: ${error.message}`);
+      }
     }
   }
 
@@ -221,16 +301,21 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
    * Kirim notifikasi ke client tertentu berdasarkan userId
    */
   sendToUser(userId: string, event: string, data: any) {
-    const client = this.clients.get(userId);
-    if (client && client.connected) {
-      client.emit(event, data);
-      this.logger.debug(`Sent event "${event}" to user ${userId}`);
-      return true;
+    try {
+      const client = this.clients.get(userId);
+      if (client && client.connected) {
+        client.emit(event, data);
+        this.logger.debug(`Sent event "${event}" to user ${userId}`);
+        return true;
+      }
+      this.logger.warn(
+        `Failed to send notification to user ${userId}: client not found or disconnected`,
+      );
+      return false;
+    } catch (error) {
+      this.logger.error(`Error sending to user ${userId}: ${error.message}`);
+      return false;
     }
-    this.logger.warn(
-      `Failed to send notification to user ${userId}: client not found or disconnected`,
-    );
-    return false;
   }
 
   /**
@@ -244,17 +329,21 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     data: any = {},
     targetUserIds: string[] = [],
   ) {
-    this.sendToAll(
-      'queue:update',
-      {
-        queue: queueName,
-        jobId,
-        status,
-        timestamp: new Date(),
-        ...data,
-      },
-      targetUserIds,
-    );
+    try {
+      this.sendToAll(
+        'queue:update',
+        {
+          queue: queueName,
+          jobId,
+          status,
+          timestamp: new Date(),
+          ...data,
+        },
+        targetUserIds,
+      );
+    } catch (error) {
+      this.logger.error(`Error sending queue update: ${error.message}`);
+    }
   }
 
   /**
@@ -262,15 +351,19 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
    * @param targetUserIds Array userIds yang menjadi target, jika kosong akan dikirim ke semua
    */
   sendHttpRequestComplete(requestId: string, result: any, targetUserIds: string[] = []) {
-    this.sendToAll(
-      'http:complete',
-      {
-        requestId,
-        timestamp: new Date(),
-        result,
-      },
-      targetUserIds,
-    );
+    try {
+      this.sendToAll(
+        'http:complete',
+        {
+          requestId,
+          timestamp: new Date(),
+          result,
+        },
+        targetUserIds,
+      );
+    } catch (error) {
+      this.logger.error(`Error sending HTTP request complete: ${error.message}`);
+    }
   }
 
   /**
@@ -282,6 +375,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
       uniqueIps: this.ipConnections.size,
       maxTotalConnections: this.maxTotalConnections,
       usingRedisPubSub: this.useRedisPubSub,
+      redisAvailable: this.redisServiceAvailable,
     };
   }
 }
