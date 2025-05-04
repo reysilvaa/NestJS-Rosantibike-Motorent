@@ -15,7 +15,7 @@ import { HttpRequestProcessor } from './processors/http-request.processor';
           host: configService.get('REDIS_HOST', 'localhost'),
           port: parseInt(configService.get('REDIS_PORT', '6379')),
           enableOfflineQueue: true,
-          maxRetriesPerRequest: 3,
+          maxRetriesPerRequest: null,
           retryStrategy: times => {
             const delay = Math.min(times * 100, 3000);
             console.log(`BullMQ Redis reconnecting attempt ${times} after ${delay}ms`);

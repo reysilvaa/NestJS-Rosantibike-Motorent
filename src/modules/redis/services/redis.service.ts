@@ -28,7 +28,7 @@ export class RedisService {
           this.logger.error(`Redis connection error: ${err.message}`);
           return true;
         },
-        maxRetriesPerRequest: 3,
+        maxRetriesPerRequest: null,
         connectTimeout: 10_000,
         autoResubscribe: true,
         autoResendUnfulfilledCommands: true,
