@@ -14,10 +14,21 @@ import { HttpRequestProcessor } from './processors/http-request.processor';
         connection: {
           host: configService.get('REDIS_HOST', 'localhost'),
           port: parseInt(configService.get('REDIS_PORT', '6379')),
-          maxRetriesPerRequest: null,
-          enableReadyCheck: false,
-          enableOfflineQueue: false,
-          connectTimeout: 5000,
+          enableOfflineQueue: true,
+          maxRetriesPerRequest: 3,
+          retryStrategy: (times) => {
+            const delay = Math.min(times * 100, 3000);
+            console.log(`BullMQ Redis reconnecting attempt ${times} after ${delay}ms`);
+            return delay;
+          },
+          reconnectOnError: (err) => {
+            console.error(`BullMQ Redis connection error: ${err.message}`);
+            return true;
+          },
+          connectTimeout: 10_000,
+          autoResubscribe: true,
+          autoResendUnfulfilledCommands: true,
+          enableReadyCheck: true,
         },
         prefix: configService.get('QUEUE_PREFIX', 'rental'),
         defaultJobOptions: {
@@ -29,15 +40,14 @@ import { HttpRequestProcessor } from './processors/http-request.processor';
           removeOnComplete: 100,
           removeOnFail: 100,
         },
-        // Konfigurasi worker untuk BullMQ
         workers: {
           lockDuration: 30_000,
           stalledInterval: 30_000,
           maxStalledCount: 2,
+          drainDelay: 5,
         },
       }),
     }),
-    // Daftarkan antrian secara umum
     BullModule.registerQueue(
       {
         name: 'transaksi',
