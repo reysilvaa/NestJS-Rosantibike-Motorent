@@ -84,6 +84,26 @@ jobs:
           
       - name: Build
         run: pnpm build
+
+      - name: Create deployment package
+        run: |
+          mkdir -p deployment
+          cp -r dist deployment/
+          cp package.json deployment/
+          cp pnpm-lock.yaml deployment/
+          cp ecosystem.config.js deployment/
+          cp -r prisma deployment/
+          cp .env.example deployment/
+          cp -r storage deployment/ || true
+          cp -r public deployment/ || true
+          tar -czf deployment.tar.gz deployment
+          
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: backend-build
+          path: deployment.tar.gz
+          retention-days: 1
           
   deploy:
     needs: build-test
@@ -91,7 +111,22 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: backend-build
+
       - name: Deploy to production
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          source: "deployment.tar.gz"
+          target: "/tmp"
+
+      - name: Setup deployment
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -99,9 +134,29 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            cd /path/to/backend
-            git pull
-            pnpm install --frozen-lockfile
+            rm -rf /var/www/rosantibike/backend-deploy-temp || true
+            mkdir -p /var/www/rosantibike/backend-deploy-temp
+            tar -xzf /tmp/deployment.tar.gz -C /var/www/rosantibike/backend-deploy-temp
+            cd /var/www/rosantibike/backend-deploy-temp/deployment
+            pnpm install --prod
+            
+            # Copy .env if exists otherwise use .env.example
+            if [ -f "/var/www/rosantibike/backend/.env" ]; then
+              cp /var/www/rosantibike/backend/.env .
+            else
+              cp .env.example .env
+            fi
+            
+            # Run migrations
             pnpm prisma migrate deploy
-            pnpm build
+            
+            # Backup current version and swap with new version
+            if [ -d "/var/www/rosantibike/backend" ]; then
+              mv /var/www/rosantibike/backend /var/www/rosantibike/backups/backend-backup-$(date +%Y%m%d%H%M%S)
+            fi
+            
+            mkdir -p /var/www/rosantibike/backend
+            cp -r ./* /var/www/rosantibike/backend/
+            
+            # Restart service
             pm2 restart backend 
