@@ -41,23 +41,21 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          
+
       - name: Setup PNPM
         uses: pnpm/action-setup@v2
         with:
           version: 8
-          
+
       - name: Get pnpm store directory
         id: pnpm-cache
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
-          
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
+
       - name: Setup pnpm cache
         uses: actions/cache@v4
         with:
@@ -65,20 +63,20 @@ jobs:
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
-            
+
       - name: Install Dependencies
         run: pnpm install || pnpm install --no-frozen-lockfile
 
       - name: Generate Prisma Client
         run: pnpm prisma generate
-      
+
       - name: Lint Check
         run: pnpm lint || echo "Linting issues found"
-        
+
       - name: Run Tests
         run: pnpm test
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
@@ -108,40 +106,41 @@ jobs:
           WHATSAPP_SESSION: ${{ secrets.WHATSAPP_SESSION || 'wa-rosanti' }}
           WHATSAPP_SECRET_KEY: ${{ secrets.WHATSAPP_SECRET_KEY }}
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
-          
+
       - name: Build
         run: pnpm build
 
       - name: Create deployment package
         run: |
           mkdir -p deployment
-          cp -r dist deployment/
-          cp package.json deployment/
-          cp pnpm-lock.yaml deployment/
-          cp ecosystem.config.js deployment/
-          cp -r prisma deployment/
-          cp .env.example deployment/
+          cp -r dist package.json pnpm-lock.yaml ecosystem.config.js prisma .env.example deployment/
           cp -r storage deployment/ || true
           cp -r public deployment/ || true
           tar -czf deployment.tar.gz deployment
-          
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: backend-build
           path: deployment.tar.gz
           retention-days: 1
-          
+
   deploy:
     needs: build-test
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
           name: backend-build
+
+      - name: Test SSH connection
+        run: |
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > id_rsa
+          chmod 600 id_rsa
+          ssh -o StrictHostKeyChecking=no -i id_rsa -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "echo SSH Connection Successful"
 
       - name: Deploy to production
         uses: appleboy/scp-action@master
@@ -152,7 +151,7 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           source: "deployment.tar.gz"
           target: "/tmp"
-          timeout: 120s
+          timeout: 300s
           debug: true
 
       - name: Setup deployment
@@ -163,47 +162,48 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script: |
+            echo "Extracting deployment package..."
             rm -rf /var/www/rosantibike/backend-deploy-temp || true
             mkdir -p /var/www/rosantibike/backend-deploy-temp
             tar -xzf /tmp/deployment.tar.gz -C /var/www/rosantibike/backend-deploy-temp
+
             cd /var/www/rosantibike/backend-deploy-temp/deployment
             pnpm install --prod || pnpm install --prod --no-frozen-lockfile
-            
-            # Copy .env if exists otherwise use .env.example
+
             if [ -f "/var/www/rosantibike/backend/.env" ]; then
-              cp /var/www/rosantibike/backend/.env .
+              cp /var/www/rosantibike/backend/.env .env
             else
               cp .env.example .env
-              # Sesuaikan variabel lingkungan yang diperlukan
-              sed -i "s|DATABASE_URL=.*|DATABASE_URL=\"${{ secrets.DATABASE_URL }}\"|g" .env
-              sed -i "s|JWT_SECRET=.*|JWT_SECRET=\"${{ secrets.JWT_SECRET }}\"|g" .env
-              sed -i "s|REDIS_HOST=.*|REDIS_HOST=\"${{ secrets.REDIS_HOST }}\"|g" .env
-              sed -i "s|REDIS_PORT=.*|REDIS_PORT=\"${{ secrets.REDIS_PORT }}\"|g" .env
-              sed -i "s|NODE_ENV=.*|NODE_ENV=\"production\"|g" .env
-              sed -i "s|CLOUDINARY_CLOUD_NAME=.*|CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}|g" .env
-              sed -i "s|CLOUDINARY_API_KEY=.*|CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}|g" .env
-              sed -i "s|CLOUDINARY_API_SECRET=.*|CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}|g" .env
-              sed -i "s|WHATSAPP_API_URL=.*|WHATSAPP_API_URL=${{ secrets.WHATSAPP_API_URL }}|g" .env
-              sed -i "s|WHATSAPP_SESSION=.*|WHATSAPP_SESSION=${{ secrets.WHATSAPP_SESSION }}|g" .env
-              sed -i "s|WHATSAPP_SECRET_KEY=.*|WHATSAPP_SECRET_KEY=${{ secrets.WHATSAPP_SECRET_KEY }}|g" .env
-              sed -i "s|WEBHOOK_URL=.*|WEBHOOK_URL=${{ secrets.WEBHOOK_URL }}|g" .env
+              sed -i "s|DATABASE_URL=.*|DATABASE_URL=${{ secrets.DATABASE_URL }}|" .env
+              sed -i "s|JWT_SECRET=.*|JWT_SECRET=${{ secrets.JWT_SECRET }}|" .env
+              sed -i "s|REDIS_HOST=.*|REDIS_HOST=${{ secrets.REDIS_HOST }}|" .env
+              sed -i "s|REDIS_PORT=.*|REDIS_PORT=${{ secrets.REDIS_PORT }}|" .env
+              sed -i "s|NODE_ENV=.*|NODE_ENV=production|" .env
+              sed -i "s|CLOUDINARY_CLOUD_NAME=.*|CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}|" .env
+              sed -i "s|CLOUDINARY_API_KEY=.*|CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}|" .env
+              sed -i "s|CLOUDINARY_API_SECRET=.*|CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}|" .env
+              sed -i "s|WHATSAPP_API_URL=.*|WHATSAPP_API_URL=${{ secrets.WHATSAPP_API_URL }}|" .env
+              sed -i "s|WHATSAPP_SESSION=.*|WHATSAPP_SESSION=${{ secrets.WHATSAPP_SESSION }}|" .env
+              sed -i "s|WHATSAPP_SECRET_KEY=.*|WHATSAPP_SECRET_KEY=${{ secrets.WHATSAPP_SECRET_KEY }}|" .env
+              sed -i "s|WEBHOOK_URL=.*|WEBHOOK_URL=${{ secrets.WEBHOOK_URL }}|" .env
             fi
-            
-            # Run migrations
+
+            echo "Running Prisma migration..."
             pnpm prisma migrate deploy
-            
-            # Backup current version and swap with new version
+
+            echo "Backing up and deploying..."
             if [ -d "/var/www/rosantibike/backend" ]; then
-              mv /var/www/rosantibike/backend /var/www/rosantibike/backups/backend-backup-$(date +%Y%m%d%H%M%S)
+              rm -rf /var/www/rosantibike/backend-backup
+              mv /var/www/rosantibike/backend /var/www/rosantibike/backend-backup
             fi
-            
+
             mkdir -p /var/www/rosantibike/backend
             cp -r ./* /var/www/rosantibike/backend/
-            
-            # Restart atau buat proses PM2 jika belum ada
+
+            echo "Starting PM2 process..."
             cd /var/www/rosantibike/backend
             if pm2 list | grep -q "rental-backend"; then
               pm2 restart rental-backend --update-env
             else
-              pm2 start ecosystem.config.js
-            fi 
+              pm2 start ecosystem.config.js --name rental-backend
+            fi
