@@ -8,6 +8,8 @@ export const corsOptions = {
   origin: [
     'http://localhost:3001',
     'http://localhost:3000',
+    'http://localhost:3002',
+    'https://admin.rosantibikemotorent.com',
     'https://rosantibikemotorent.com',
     'https://www.rosantibikemotorent.com',
     '*',
