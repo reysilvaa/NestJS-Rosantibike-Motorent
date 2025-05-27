@@ -1,25 +1,37 @@
-import { Process, Processor } from '@nestjs/bull';
+import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger, Inject } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { REQUEST } from '@nestjs/core';
-import { Request } from 'express';
+
 import { ModuleRef } from '@nestjs/core';
 import * as express from 'express';
 import { HttpAdapterHost } from '@nestjs/core';
 
 @Processor('http-request')
-export class HttpRequestProcessor {
+export class HttpRequestProcessor extends WorkerHost {
   private readonly logger = new Logger(HttpRequestProcessor.name);
 
   constructor(
     private moduleRef: ModuleRef,
     private readonly httpAdapterHost: HttpAdapterHost,
   ) {
+    super();
     this.logger.log('HttpRequestProcessor initialized');
   }
 
-  @Process('http-request')
-  async handleHttpRequest(job: Job) {
+  async process(job: Job): Promise<any> {
+    this.logger.debug(`Processing job: ${job.id}, name: ${job.name}`);
+
+    switch (job.name) {
+      case 'http-request': {
+        return this.handleHttpRequest(job);
+      }
+      default: {
+        throw new Error(`Unknown job name: ${job.name}`);
+      }
+    }
+  }
+
+  private async handleHttpRequest(job: Job) {
     const { id, method, path, query, params, body, headers, timestamp } = job.data;
     this.logger.log(`Processing HTTP request: ${method} ${path} (${id})`);
 

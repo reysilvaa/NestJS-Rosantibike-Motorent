@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { BullModule } from '@nestjs/bull';
+import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { QueueDebugController } from './queue.controller';
 import { QueueService } from './queue.service';
@@ -11,13 +11,24 @@ import { HttpRequestProcessor } from './processors/http-request.processor';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        redis: {
+        connection: {
           host: configService.get('REDIS_HOST', 'localhost'),
           port: parseInt(configService.get('REDIS_PORT', '6379')),
-          maxRetriesPerRequest: 3,
-          enableReadyCheck: false,
-          enableOfflineQueue: false,
-          connectTimeout: 5000,
+          enableOfflineQueue: true,
+          maxRetriesPerRequest: null,
+          retryStrategy: times => {
+            const delay = Math.min(times * 100, 3000);
+            console.log(`BullMQ Redis reconnecting attempt ${times} after ${delay}ms`);
+            return delay;
+          },
+          reconnectOnError: err => {
+            console.error(`BullMQ Redis connection error: ${err.message}`);
+            return true;
+          },
+          connectTimeout: 10_000,
+          autoResubscribe: true,
+          autoResendUnfulfilledCommands: true,
+          enableReadyCheck: true,
         },
         prefix: configService.get('QUEUE_PREFIX', 'rental'),
         defaultJobOptions: {
@@ -29,43 +40,32 @@ import { HttpRequestProcessor } from './processors/http-request.processor';
           removeOnComplete: 100,
           removeOnFail: 100,
         },
-        settings: {
+        workers: {
           lockDuration: 30_000,
           stalledInterval: 30_000,
           maxStalledCount: 2,
-          guardInterval: 5000,
-        },
-        limiter: {
-          max: 100,
-          duration: 5000,
+          drainDelay: 5,
         },
       }),
     }),
-    // Daftarkan antrian secara umum
     BullModule.registerQueue(
       {
         name: 'transaksi',
-        limiter: { max: 30, duration: 5000 },
       },
       {
         name: 'whatsapp',
-        limiter: { max: 20, duration: 10_000 },
       },
       {
         name: 'blog',
-        limiter: { max: 10, duration: 5000 },
       },
       {
         name: 'unit-motor',
-        limiter: { max: 20, duration: 5000 },
       },
       {
         name: 'jenis-motor',
-        limiter: { max: 10, duration: 5000 },
       },
       {
         name: 'http-request',
-        limiter: { max: 50, duration: 5000 },
       },
     ),
   ],

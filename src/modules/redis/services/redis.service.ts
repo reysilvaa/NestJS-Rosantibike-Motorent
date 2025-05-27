@@ -18,22 +18,62 @@ export class RedisService {
       this.redisClient = new Redis({
         host,
         port,
+        enableOfflineQueue: true,
+        retryStrategy: times => {
+          const delay = Math.min(times * 100, 3000);
+          this.logger.log(`Redis reconnecting attempt ${times} after ${delay}ms`);
+          return delay;
+        },
         reconnectOnError: err => {
           this.logger.error(`Redis connection error: ${err.message}`);
           return true;
         },
+        maxRetriesPerRequest: null,
+        connectTimeout: 10_000,
+        autoResubscribe: true,
+        autoResendUnfulfilledCommands: true,
       });
 
       this.redisClient.on('connect', () => {
         this.logger.log('Successfully connected to Redis');
       });
 
+      this.redisClient.on('ready', () => {
+        this.logger.log('Redis client is ready for use');
+      });
+
+      this.redisClient.on('reconnecting', () => {
+        this.logger.log('Redis client is reconnecting...');
+      });
+
       this.redisClient.on('error', err => {
         this.logger.error(`Redis error: ${err.message}`);
+      });
+
+      this.redisClient.on('end', () => {
+        this.logger.warn('Redis connection closed');
       });
     } catch (error) {
       this.logger.error(`Failed to initialize Redis: ${error.message}`);
       throw error;
+    }
+  }
+
+  isConnected(): boolean {
+    return this.redisClient?.status === 'ready' || this.redisClient?.status === 'connect';
+  }
+
+  async reconnect(): Promise<boolean> {
+    try {
+      if (!this.isConnected()) {
+        await this.redisClient.quit();
+        await this.redisClient.connect();
+        return true;
+      }
+      return this.isConnected();
+    } catch (error) {
+      this.logger.error(`Redis reconnect failed: ${error.message}`);
+      return false;
     }
   }
 
@@ -132,5 +172,9 @@ export class RedisService {
       this.logger.error(`Failed to get Redis info: ${error.message}`);
       return `Error: ${error.message}`;
     }
+  }
+
+  getClient(): Redis {
+    return this.redisClient;
   }
 }

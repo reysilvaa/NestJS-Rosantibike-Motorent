@@ -15,15 +15,14 @@ export { default as redisConfig } from './config/redis.config';
 // Interfaces
 export * from './interfaces';
 
-// Gateway
-export { NotificationGateway } from './gateway/notification.gateway';
-export { GatewayModule } from './gateway/gateway.module';
+// Realtime Websocket
+export { RealtimeGateway, WebsocketModule } from './websocket';
 
 // Logger
 export { LoggerModule } from './logger/logger.module';
 
-// Testing (untuk lingkungan testing)
-// export { PrismaMockProvider } from './testing/prisma-mock.provider';
-
+// Services & Common
 export * from './services';
+
+// Helpers
 export * from './helpers';

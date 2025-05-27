@@ -1,33 +1,52 @@
-import { Process, Processor } from '@nestjs/bull';
+import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
-import { Job } from 'bull';
-import type { TransaksiWithRelations } from '../../../common';
-import { PrismaService, StatusMotor, StatusTransaksi } from '../../../common';
-import * as fs from 'node:fs';
-import { delay } from 'baileys';
-import { NotificationGateway } from '../../../common/gateway/notification.gateway';
+import type { Job } from 'bullmq';
+import { PrismaService, StatusMotor, StatusTransaksi, RealtimeGateway } from '../../../common';
 import { WhatsappService } from '../../whatsapp/services/whatsapp.service';
+import * as whatsappMenu from '../../../common/helpers/whatsapp-menu.helper';
 
 @Processor('transaksi')
-export class TransaksiProcessor {
+export class TransaksiProcessor extends WorkerHost {
   private readonly logger = new Logger(TransaksiProcessor.name);
 
   constructor(
     private prisma: PrismaService,
-    private notificationGateway: NotificationGateway,
+    private realtimeGateway: RealtimeGateway,
     private whatsappService: WhatsappService,
   ) {
+    super();
     this.logger.log('TransaksiProcessor initialized');
+  }
+
+  async process(job: Job): Promise<any> {
+    this.logger.debug(`Processing job: ${job.id}, name: ${job.name}`);
+
+    switch (job.name) {
+      case 'notifikasi-booking': {
+        return this.handleNotifikasiBooking(job);
+      }
+      case 'kirim-pengingat-pengembalian': {
+        return this.handlePengingatPengembalian(job);
+      }
+      case 'cek-overdue': {
+        return this.handleCekOverdue(job);
+      }
+      case 'kirim-notifikasi-selesai': {
+        return this.handleNotifikasiSelesai(job);
+      }
+      default: {
+        throw new Error(`Unknown job name: ${job.name}`);
+      }
+    }
   }
 
   private async sendWhatsAppMessage(to: string, message: string) {
     try {
-      // Format nomor WhatsApp (pastikan pakai kode negara)
-      const formattedNumber = to.startsWith('+') ? to.slice(1) : to;
-      const whatsappId = `${formattedNumber}@s.whatsapp.net`;
+      // Gunakan nomor WhatsApp langsung karena sudah diformat saat disimpan ke database
+      // whatsapp-messaging.service.ts akan menambahkan @s.whatsapp.net jika belum ada
 
       // Kirim pesan menggunakan WhatsappService
-      const result = await this.whatsappService.sendMessage(whatsappId, message);
+      const result = await this.whatsappService.sendMessage(to, message);
 
       this.logger.log(`Pesan WhatsApp berhasil dikirim ke ${to}`);
       return result;
@@ -37,24 +56,37 @@ export class TransaksiProcessor {
     }
   }
 
-  @Process('notifikasi-booking')
-  async handleNotifikasiBooking(job: Job<{ transaksiId: string }>) {
+  private async handleNotifikasiBooking(job: Job<{ transaksiId: string }>) {
     this.logger.debug(`Memproses notifikasi booking: ${job.data.transaksiId}`);
 
     try {
       const { transaksiId } = job.data;
 
-      // Mock data untuk testing
-      const transaksi = (await this.prisma.transaksiSewa.findUnique({
+      // Get full transaction data including relationships
+      const transaksi = await this.prisma.transaksiSewa.findUnique({
         where: { id: transaksiId },
-      })) as unknown as TransaksiWithRelations;
+        include: {
+          unitMotor: {
+            include: {
+              jenis: true,
+            },
+          },
+        },
+      });
 
       if (!transaksi) {
         this.logger.error(`Transaksi ${transaksiId} tidak ditemukan`);
         return;
       }
 
-      const message = this.generateBookingMessage(transaksi);
+      if (!transaksi.unitMotor || !transaksi.unitMotor.jenis) {
+        this.logger.error(
+          `Data unit motor atau jenis tidak ditemukan untuk transaksi ${transaksiId}`,
+        );
+        return;
+      }
+
+      const message = whatsappMenu.getBookingNotificationTemplate(transaksi);
 
       this.logger.log(`Mengirim WhatsApp ke ${transaksi.noWhatsapp}: ${message}`);
 
@@ -67,20 +99,33 @@ export class TransaksiProcessor {
     }
   }
 
-  @Process('kirim-pengingat-pengembalian')
-  async handlePengingatPengembalian(job: Job<{ transaksiId: string }>) {
+  private async handlePengingatPengembalian(job: Job<{ transaksiId: string }>) {
     this.logger.debug(`Memproses pengingat pengembalian: ${job.data.transaksiId}`);
 
     try {
       const { transaksiId } = job.data;
 
-      // Mock data untuk testing
-      const transaksi = (await this.prisma.transaksiSewa.findUnique({
+      // Get full transaction data including relationships
+      const transaksi = await this.prisma.transaksiSewa.findUnique({
         where: { id: transaksiId },
-      })) as unknown as TransaksiWithRelations;
+        include: {
+          unitMotor: {
+            include: {
+              jenis: true,
+            },
+          },
+        },
+      });
 
       if (!transaksi) {
         this.logger.error(`Transaksi ${transaksiId} tidak ditemukan`);
+        return;
+      }
+
+      if (!transaksi.unitMotor || !transaksi.unitMotor.jenis) {
+        this.logger.error(
+          `Data unit motor atau jenis tidak ditemukan untuk transaksi ${transaksiId}`,
+        );
         return;
       }
 
@@ -90,7 +135,7 @@ export class TransaksiProcessor {
         return;
       }
 
-      const message = this.generateReminderMessage(transaksi);
+      const message = whatsappMenu.getReminderNotificationTemplate(transaksi);
 
       this.logger.log(`Mengirim pengingat WhatsApp ke ${transaksi.noWhatsapp}: ${message}`);
 
@@ -103,20 +148,33 @@ export class TransaksiProcessor {
     }
   }
 
-  @Process('cek-overdue')
-  async handleCekOverdue(job: Job<{ transaksiId: string }>) {
+  private async handleCekOverdue(job: Job<{ transaksiId: string }>) {
     this.logger.debug(`Memproses cek overdue: ${job.data.transaksiId}`);
 
     try {
       const { transaksiId } = job.data;
 
-      // Mock data untuk testing
-      const transaksi = (await this.prisma.transaksiSewa.findUnique({
+      // Get full transaction data including relationships
+      const transaksi = await this.prisma.transaksiSewa.findUnique({
         where: { id: transaksiId },
-      })) as unknown as TransaksiWithRelations;
+        include: {
+          unitMotor: {
+            include: {
+              jenis: true,
+            },
+          },
+        },
+      });
 
       if (!transaksi) {
         this.logger.error(`Transaksi ${transaksiId} tidak ditemukan`);
+        return;
+      }
+
+      if (!transaksi.unitMotor || !transaksi.unitMotor.jenis) {
+        this.logger.error(
+          `Data unit motor atau jenis tidak ditemukan untuk transaksi ${transaksiId}`,
+        );
         return;
       }
 
@@ -148,11 +206,11 @@ export class TransaksiProcessor {
         });
 
         // Kirim notifikasi WhatsApp
-        const message = this.generateOverdueMessage(transaksi);
+        const message = whatsappMenu.getOverdueNotificationTemplate(transaksi);
         await this.sendWhatsAppMessage(transaksi.noWhatsapp, message);
 
         // Kirim notifikasi real-time ke admin
-        this.notificationGateway.sendToAll('overdue-transaction', {
+        this.realtimeGateway.sendToAll('overdue-transaction', {
           id: transaksiId,
           unitMotor: {
             id: transaksi.unitMotor.id,
@@ -170,24 +228,37 @@ export class TransaksiProcessor {
     }
   }
 
-  @Process('kirim-notifikasi-selesai')
-  async handleNotifikasiSelesai(job: Job<{ transaksiId: string }>) {
+  private async handleNotifikasiSelesai(job: Job<{ transaksiId: string }>) {
     this.logger.debug(`Memproses notifikasi selesai: ${job.data.transaksiId}`);
 
     try {
       const { transaksiId } = job.data;
 
-      // Mock data untuk testing
-      const transaksi = (await this.prisma.transaksiSewa.findUnique({
+      // Get full transaction data including relationships
+      const transaksi = await this.prisma.transaksiSewa.findUnique({
         where: { id: transaksiId },
-      })) as unknown as TransaksiWithRelations;
+        include: {
+          unitMotor: {
+            include: {
+              jenis: true,
+            },
+          },
+        },
+      });
 
       if (!transaksi) {
         this.logger.error(`Transaksi ${transaksiId} tidak ditemukan`);
         return;
       }
 
-      const message = this.generateCompletionMessage(transaksi);
+      if (!transaksi.unitMotor || !transaksi.unitMotor.jenis) {
+        this.logger.error(
+          `Data unit motor atau jenis tidak ditemukan untuk transaksi ${transaksiId}`,
+        );
+        return;
+      }
+
+      const message = whatsappMenu.getCompletionNotificationTemplate(transaksi);
 
       this.logger.log(
         `Mengirim notifikasi selesai WhatsApp ke ${transaksi.noWhatsapp}: ${message}`,
@@ -200,92 +271,5 @@ export class TransaksiProcessor {
     } catch (error) {
       this.logger.error('Gagal mengirim notifikasi selesai', error);
     }
-  }
-
-  // Helper methods untuk format pesan
-  private generateBookingMessage(transaksi: TransaksiWithRelations): string {
-    const unitMotor = transaksi.unitMotor;
-    const jenis = unitMotor.jenis;
-    const tanggalMulai = new Date(transaksi.tanggalMulai);
-    const tanggalSelesai = new Date(transaksi.tanggalSelesai);
-
-    return `Halo *${transaksi.namaPenyewa}*!
-
-Terima kasih telah melakukan pemesanan di Rental Motor kami.
-
-Detail Pemesanan:
-🏍️ Motor: ${jenis.merk} ${jenis.model} (${unitMotor.platNomor})
-📆 Tanggal Sewa: ${tanggalMulai.toLocaleDateString('id-ID')}
-📆 Tanggal Kembali: ${tanggalSelesai.toLocaleDateString('id-ID')}
-💰 Total Biaya: Rp ${Number(transaksi.totalBiaya).toLocaleString('id-ID')}
-
-Silakan ambil motor pada tanggal yang sudah ditentukan. Jangan lupa bawa KTP dan SIM yang masih berlaku.
-
-Terima kasih!`;
-  }
-
-  private generateReminderMessage(transaksi: TransaksiWithRelations): string {
-    const unitMotor = transaksi.unitMotor;
-    const jenis = unitMotor.jenis;
-    const tanggalSelesai = new Date(transaksi.tanggalSelesai);
-
-    return `Halo *${transaksi.namaPenyewa}*!
-
-Pengingat bahwa masa sewa motor:
-🏍️ ${jenis.merk} ${jenis.model} (${unitMotor.platNomor})
-
-Akan berakhir hari ini pada pukul ${tanggalSelesai.getHours()}:${String(tanggalSelesai.getMinutes()).padStart(2, '0')}.
-
-Harap kembalikan tepat waktu untuk menghindari biaya keterlambatan.
-
-Terima kasih!`;
-  }
-
-  private generateOverdueMessage(transaksi: TransaksiWithRelations): string {
-    const unitMotor = transaksi.unitMotor;
-    const jenis = unitMotor.jenis;
-    const tanggalSelesai = new Date(transaksi.tanggalSelesai);
-
-    return `*PEMBERITAHUAN PENTING*
-
-Halo *${transaksi.namaPenyewa}*,
-
-Motor ${jenis.merk} ${jenis.model} (${unitMotor.platNomor}) yang Anda sewa telah melewati batas waktu pengembalian (${tanggalSelesai.toLocaleString('id-ID')}).
-
-Status sewa Anda sekarang adalah *TERLAMBAT (OVERDUE)*.
-
-Mohon segera kembalikan motor tersebut untuk menghindari biaya keterlambatan yang lebih tinggi. Biaya keterlambatan akan dihitung per jam.
-
-Terima kasih atas pengertian dan kerjasamanya.`;
-  }
-
-  private generateAdminOverdueMessage(transaksi: TransaksiWithRelations): string {
-    const unitMotor = transaksi.unitMotor;
-    const jenis = unitMotor.jenis;
-    const tanggalSelesai = new Date(transaksi.tanggalSelesai);
-
-    return `*NOTIFIKASI OVERDUE*
-
-Penyewa: ${transaksi.namaPenyewa} (${transaksi.noWhatsapp})
-Motor: ${jenis.merk} ${jenis.model} (${unitMotor.platNomor})
-Batas Waktu: ${tanggalSelesai.toLocaleString('id-ID')}
-Status: OVERDUE
-
-Motor belum dikembalikan lebih dari 1 jam dari batas waktu. Status otomatis diubah menjadi OVERDUE.`;
-  }
-
-  private generateCompletionMessage(transaksi: TransaksiWithRelations): string {
-    const unitMotor = transaksi.unitMotor;
-    const jenis = unitMotor.jenis;
-
-    return `Halo *${transaksi.namaPenyewa}*!
-
-Terima kasih telah mengembalikan motor *${jenis.merk} ${jenis.model}* (${unitMotor.platNomor}) dengan baik.
-
-Status sewa Anda telah diubah menjadi *SELESAI*.
-
-Kami harap Anda puas dengan layanan kami. Jangan ragu untuk menyewa kembali di lain waktu.
-
-Terima kasih!`;
   }
 }

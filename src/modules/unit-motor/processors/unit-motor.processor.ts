@@ -1,25 +1,47 @@
-import { Process, Processor } from '@nestjs/bull';
+import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
-import { Job } from 'bullmq';
-import { PrismaService } from '../../../common/prisma/prisma.service';
+import type { Job } from 'bullmq';
+import { CloudinaryService } from '../../../common/services/cloudinary.service';
+import { RealtimeGateway, PrismaService, StatusMotor } from '../../../common';
 import { WhatsappQueue } from '../../whatsapp/queues/whatsapp.queue';
-import { NotificationGateway } from '../../../common/gateway/notification.gateway';
-import { StatusMotor } from '../../../common/enums/status.enum';
 
 @Processor('unit-motor')
-export class UnitMotorProcessor {
+export class UnitMotorProcessor extends WorkerHost {
   private readonly logger = new Logger(UnitMotorProcessor.name);
 
   constructor(
-    private prisma: PrismaService,
-    private whatsappQueue: WhatsappQueue,
-    private notificationGateway: NotificationGateway,
+    private readonly prisma: PrismaService,
+    private readonly cloudinary: CloudinaryService,
+    private readonly realtimeGateway: RealtimeGateway,
+    private readonly whatsappQueue: WhatsappQueue,
   ) {
+    super();
     this.logger.log('UnitMotorProcessor initialized');
   }
 
-  @Process('sync-data')
-  async handleSyncData(job: Job) {
+  async process(job: Job): Promise<any> {
+    this.logger.debug(`Processing job: ${job.id}, name: ${job.name}`);
+
+    switch (job.name) {
+      case 'sync-data': {
+        return this.handleSyncData(job);
+      }
+      case 'maintenance-reminder': {
+        return this.handleMaintenanceReminder(job);
+      }
+      case 'update-status': {
+        return this.handleUpdateStatus(job);
+      }
+      case 'process-images': {
+        return this.handleProcessImages(job);
+      }
+      default: {
+        throw new Error(`Unknown job name: ${job.name}`);
+      }
+    }
+  }
+
+  private async handleSyncData(job: Job) {
     this.logger.debug(`Processing sync data job: ${job.id}`);
 
     try {
@@ -38,7 +60,7 @@ export class UnitMotorProcessor {
         this.logger.warn(`Found ${incompleteUnits.length} units with incomplete data`);
 
         // Notifikasi admin melalui WebSocket
-        this.notificationGateway.sendToAll('motor-status-update', {
+        this.realtimeGateway.sendToAll('motor-status-update', {
           id: 'system',
           status: null,
           platNomor: 'System',
@@ -54,8 +76,7 @@ export class UnitMotorProcessor {
     }
   }
 
-  @Process('maintenance-reminder')
-  async handleMaintenanceReminder(job: Job<{ unitMotorId: string }>) {
+  private async handleMaintenanceReminder(job: Job<{ unitMotorId: string }>) {
     this.logger.debug(`Processing maintenance reminder job: ${job.id}`);
 
     try {
@@ -93,7 +114,7 @@ Unit ini memerlukan pemeriksaan dan maintenance rutin. Harap dijadwalkan dalam w
       await this.whatsappQueue.addSendMessageJob(adminPhone, message);
 
       // Kirim notifikasi melalui WebSocket
-      this.notificationGateway.sendToAll('motor-status-update', {
+      this.realtimeGateway.sendToAll('motor-status-update', {
         id: unitMotorId,
         status: unitMotor.status,
         platNomor: unitMotor.platNomor,
@@ -108,8 +129,7 @@ Unit ini memerlukan pemeriksaan dan maintenance rutin. Harap dijadwalkan dalam w
     }
   }
 
-  @Process('update-status')
-  async handleUpdateStatus(job: Job<{ unitMotorId: string; status: string }>) {
+  private async handleUpdateStatus(job: Job<{ unitMotorId: string; status: string }>) {
     this.logger.debug(`Processing update status job: ${job.id}`);
 
     try {
@@ -130,7 +150,7 @@ Unit ini memerlukan pemeriksaan dan maintenance rutin. Harap dijadwalkan dalam w
       });
 
       // Kirim notifikasi melalui WebSocket
-      this.notificationGateway.sendToAll('motor-status-update', {
+      this.realtimeGateway.sendToAll('motor-status-update', {
         id: updatedUnit.id,
         status: updatedUnit.status as StatusMotor,
         platNomor: updatedUnit.platNomor,
@@ -145,8 +165,7 @@ Unit ini memerlukan pemeriksaan dan maintenance rutin. Harap dijadwalkan dalam w
     }
   }
 
-  @Process('process-images')
-  async handleProcessImages(job: Job<{ unitMotorId: string; images: string[] }>) {
+  private async handleProcessImages(job: Job<{ unitMotorId: string; images: string[] }>) {
     this.logger.debug(`Processing images for unit: ${job.data.unitMotorId}`);
 
     try {
@@ -173,7 +192,7 @@ Unit ini memerlukan pemeriksaan dan maintenance rutin. Harap dijadwalkan dalam w
       );
 
       // Kirim notifikasi
-      this.notificationGateway.sendToAll('motor-status-update', {
+      this.realtimeGateway.sendToAll('motor-status-update', {
         id: unitMotorId,
         status: unitMotor.status,
         platNomor: unitMotor.platNomor,

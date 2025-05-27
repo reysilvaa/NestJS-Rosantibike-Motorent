@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bull';
+import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { Logger } from '@nestjs/common';
 
@@ -93,7 +93,10 @@ export class WhatsappQueue {
         },
       );
     } catch (error) {
-      this.logger.error(`Failed to add start all sessions job to queue: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to add start all sessions job to queue: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }

@@ -1,16 +1,16 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { PrismaModule } from './common/prisma/prisma.module';
-import { AuthModule } from './modules/auth/auth.module';
-import { AdminModule } from './modules/admin/admin.module';
-import { JenisMotorModule } from './modules/jenis-motor/jenis-motor.module';
-import { UnitMotorModule } from './modules/unit-motor/unit-motor.module';
-import { TransaksiModule } from './modules/transaksi/transaksi.module';
-import { BlogModule } from './modules/blog/blog.module';
-import { LoggerModule } from './common/logger/logger.module';
-import { GatewayModule } from './common/gateway/gateway.module';
-import { CommonModule } from './common/common.module';
-import { SocketModule } from './common/gateway/socket.module';
+import { CloudinaryModule, LoggerModule, PrismaModule, WebsocketModule } from './common';
+import {
+  AuthModule,
+  AdminModule,
+  JenisMotorModule,
+  UnitMotorModule,
+  TransaksiModule,
+  BlogModule,
+  QueueModule,
+  RedisModule,
+} from './modules';
 
 @Module({
   imports: [
@@ -21,7 +21,7 @@ import { SocketModule } from './common/gateway/socket.module';
     }),
 
     // Common Module (termasuk Cloudinary)
-    CommonModule,
+    CloudinaryModule,
 
     // Database
     PrismaModule,
@@ -29,8 +29,14 @@ import { SocketModule } from './common/gateway/socket.module';
     // Logger
     LoggerModule,
 
-    // WebSocket Gateway
-    GatewayModule,
+    // Realtime Websocket
+    WebsocketModule,
+
+    // Redis Cache & Connections
+    RedisModule,
+
+    // Queue Management
+    QueueModule,
 
     // Core Feature Modules
     AuthModule,
@@ -39,7 +45,6 @@ import { SocketModule } from './common/gateway/socket.module';
     UnitMotorModule,
     TransaksiModule,
     BlogModule,
-    SocketModule,
   ],
 })
 export class AppModule {}

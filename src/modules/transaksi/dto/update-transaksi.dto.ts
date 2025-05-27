@@ -11,6 +11,7 @@ import {
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { StatusTransaksi } from '../../../common/enums/status.enum';
+import { formatWhatsappNumber } from '../../../common/helpers/whatsapp-formatter.helper';
 
 export class UpdateTransaksiDto {
   @IsString()
@@ -19,6 +20,7 @@ export class UpdateTransaksiDto {
 
   @IsString()
   @IsOptional()
+  @Transform(({ value }) => formatWhatsappNumber(value))
   noWhatsapp?: string;
 
   @IsUUID()
