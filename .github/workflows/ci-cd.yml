@@ -79,8 +79,35 @@ jobs:
         run: pnpm test
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
-          REDIS_URL: redis://localhost:6379
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_EXPIRES_IN: ${{ secrets.JWT_EXPIRES_IN || '7d' }}
+          NODE_ENV: development
+          QUEUE_PREFIX: rental_motor_test
+          PORT: 3030
+          API_PREFIX: /api
+          RATE_LIMIT_WINDOW_MS: 60000
+          RATE_LIMIT_MAX: 100
+          COMPRESSION_LEVEL: 6
+          BAILEYS_SESSION_PATH: ./storage/whatsapp-sessions
+          ADMIN_WHATSAPP: ${{ secrets.ADMIN_WHATSAPP || '+6285232152313' }}
+          WHATSAPP_SESSION_PATH: ./storage/whatsapp-session
+          WHATSAPP_SEND_DEBUG: false
+          WHATSAPP_RECONNECT_INTERVAL: 60000
+          WHATSAPP_MAX_RECONNECT_ATTEMPTS: 10
+          LOG_LEVEL: debug
+          LOG_FORMAT: text
+          CORS_ORIGIN: "*"
+          ENABLE_HTTPS: false
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+          DENDA_PER_JAM: 15000
+          WHATSAPP_API_URL: ${{ secrets.WHATSAPP_API_URL }}
+          WHATSAPP_SESSION: ${{ secrets.WHATSAPP_SESSION || 'wa-rosanti' }}
+          WHATSAPP_SECRET_KEY: ${{ secrets.WHATSAPP_SECRET_KEY }}
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
           
       - name: Build
         run: pnpm build
@@ -125,6 +152,8 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           source: "deployment.tar.gz"
           target: "/tmp"
+          timeout: 120s
+          debug: true
 
       - name: Setup deployment
         uses: appleboy/ssh-action@master
@@ -145,6 +174,19 @@ jobs:
               cp /var/www/rosantibike/backend/.env .
             else
               cp .env.example .env
+              # Sesuaikan variabel lingkungan yang diperlukan
+              sed -i "s|DATABASE_URL=.*|DATABASE_URL=\"${{ secrets.DATABASE_URL }}\"|g" .env
+              sed -i "s|JWT_SECRET=.*|JWT_SECRET=\"${{ secrets.JWT_SECRET }}\"|g" .env
+              sed -i "s|REDIS_HOST=.*|REDIS_HOST=\"${{ secrets.REDIS_HOST }}\"|g" .env
+              sed -i "s|REDIS_PORT=.*|REDIS_PORT=\"${{ secrets.REDIS_PORT }}\"|g" .env
+              sed -i "s|NODE_ENV=.*|NODE_ENV=\"production\"|g" .env
+              sed -i "s|CLOUDINARY_CLOUD_NAME=.*|CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}|g" .env
+              sed -i "s|CLOUDINARY_API_KEY=.*|CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}|g" .env
+              sed -i "s|CLOUDINARY_API_SECRET=.*|CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}|g" .env
+              sed -i "s|WHATSAPP_API_URL=.*|WHATSAPP_API_URL=${{ secrets.WHATSAPP_API_URL }}|g" .env
+              sed -i "s|WHATSAPP_SESSION=.*|WHATSAPP_SESSION=${{ secrets.WHATSAPP_SESSION }}|g" .env
+              sed -i "s|WHATSAPP_SECRET_KEY=.*|WHATSAPP_SECRET_KEY=${{ secrets.WHATSAPP_SECRET_KEY }}|g" .env
+              sed -i "s|WEBHOOK_URL=.*|WEBHOOK_URL=${{ secrets.WEBHOOK_URL }}|g" .env
             fi
             
             # Run migrations
