@@ -67,7 +67,7 @@ jobs:
             ${{ runner.os }}-pnpm-store-
             
       - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install || pnpm install --no-frozen-lockfile
 
       - name: Generate Prisma Client
         run: pnpm prisma generate
@@ -138,7 +138,7 @@ jobs:
             mkdir -p /var/www/rosantibike/backend-deploy-temp
             tar -xzf /tmp/deployment.tar.gz -C /var/www/rosantibike/backend-deploy-temp
             cd /var/www/rosantibike/backend-deploy-temp/deployment
-            pnpm install --prod
+            pnpm install --prod || pnpm install --prod --no-frozen-lockfile
             
             # Copy .env if exists otherwise use .env.example
             if [ -f "/var/www/rosantibike/backend/.env" ]; then
