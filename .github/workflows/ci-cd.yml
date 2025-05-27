@@ -158,5 +158,10 @@ jobs:
             mkdir -p /var/www/rosantibike/backend
             cp -r ./* /var/www/rosantibike/backend/
             
-            # Restart service
-            pm2 restart backend 
+            # Restart atau buat proses PM2 jika belum ada
+            cd /var/www/rosantibike/backend
+            if pm2 list | grep -q "rental-backend"; then
+              pm2 restart rental-backend --update-env
+            else
+              pm2 start ecosystem.config.js
+            fi 
