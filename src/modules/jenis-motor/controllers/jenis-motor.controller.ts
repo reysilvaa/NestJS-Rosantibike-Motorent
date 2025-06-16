@@ -113,6 +113,8 @@ export class JenisMotorController {
     @UploadedFiles() files?: Express.Multer.File[],
   ) {
     try {
+      // Pastikan cc adalah number
+      createJenisMotorDto.cc = Number(createJenisMotorDto.cc);
       // Jika ada file gambar, upload ke Cloudinary
       if (files && files.length > 0) {
         logInfo(this.logger, `Memproses pembuatan jenis motor dengan gambar`);
@@ -192,6 +194,10 @@ export class JenisMotorController {
     @UploadedFiles() files?: Express.Multer.File[],
   ) {
     try {
+      // Pastikan cc adalah number jika ada
+      if (updateJenisMotorDto.cc !== undefined) {
+        updateJenisMotorDto.cc = Number(updateJenisMotorDto.cc);
+      }
       // Dapatkan data jenis motor yang akan diupdate
       const jenisMotor = await this.jenisMotorService.findOne(id);
 

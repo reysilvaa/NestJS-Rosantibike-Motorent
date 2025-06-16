@@ -3,13 +3,14 @@
   "collection": "@nestjs/schematics",
   "sourceRoot": "src",
   "compilerOptions": {
+    "builder": "swc",
     "deleteOutDir": true,
-    "typeCheck": true,
-    "builder": "webpack",
+    "typeCheck": false,
+    "assets": ["**/*.hbs", "**/*.ejs", "**/*.html"],
     "plugins": ["@nestjs/swagger"]
   },
   "watchOptions": {
-    "watchFile": "priorityPolling",
+    "watchFile": "useFsEvents",
     "excludeFiles": ["dist/**/*", "node_modules/**/*", ".git/**/*"]
   }
 }

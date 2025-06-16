@@ -11,6 +11,7 @@ export * from './constants/app.constants';
 
 // Config
 export { default as redisConfig } from './config/redis.config';
+export { default as CLOUDINARY_CONFIG } from './config/cloudinary.config';
 
 // Interfaces
 export * from './interfaces';

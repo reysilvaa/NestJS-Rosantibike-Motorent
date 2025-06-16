@@ -1,6 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { CloudinaryModule, LoggerModule, PrismaModule, WebsocketModule } from './common';
+import {
+  CloudinaryModule,
+  LoggerModule,
+  PrismaModule,
+  WebsocketModule,
+  CLOUDINARY_CONFIG,
+} from './common';
 import {
   AuthModule,
   AdminModule,
@@ -18,6 +24,7 @@ import {
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+      load: [CLOUDINARY_CONFIG],
     }),
 
     // Common Module (termasuk Cloudinary)
