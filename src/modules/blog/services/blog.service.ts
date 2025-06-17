@@ -1,13 +1,11 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../common/prisma/prisma.service';
-import type { CreateBlogPostDto, UpdateBlogPostDto, FilterBlogPostDto } from '../dto';
-import { StatusArtikel } from '../../../common/enums/status.enum';
+import type { CreateBlogPostDto, UpdateBlogPostDto } from '../dto';
 import {
   verifyBlogPostExists,
   verifyBlogPostBySlugExists,
   verifySlugIsUnique,
   transformBlogPostForFrontend,
-  createBlogWhereCondition,
 } from '../helpers';
 import { handleError } from '../../../common/helpers';
 
@@ -90,6 +88,41 @@ export class BlogService {
       }
 
       return await this.prisma.$transaction(async tx => {
+        // Proses tags - buat tag baru jika belum ada
+        let tagConnections: { tag: { connect: { id: string } } }[] = [];
+
+        if (createBlogPostDto.tags && Array.isArray(createBlogPostDto.tags)) {
+          // Untuk setiap tag, cek apakah sudah ada di database
+          // Jika belum, buat tag baru
+          const tagPromises = createBlogPostDto.tags.map(async tagName => {
+            // Konversi nama tag ke lowercase untuk konsistensi
+            const normalizedTagName = tagName.trim().toLowerCase();
+            
+            // Cari tag berdasarkan nama (lowercase)
+            let tag = await tx.blogTag.findFirst({
+              where: { nama: normalizedTagName },
+            });
+            
+            // Jika tag belum ada, buat baru
+            if (!tag && normalizedTagName) {
+              tag = await tx.blogTag.create({
+                data: { nama: normalizedTagName },
+              });
+            }
+
+            // Jika tag valid, tambahkan ke koneksi
+            if (tag) {
+              return { tag: { connect: { id: tag.id } } };
+            }
+            return null;
+          });
+
+          // Tunggu semua promise selesai
+          const resolvedTags = await Promise.all(tagPromises);
+          // Filter null values
+          tagConnections = resolvedTags.filter(t => t !== null);
+        }
+
         // Buat artikel
         const post = await tx.blogPost.create({
           data: {
@@ -100,11 +133,7 @@ export class BlogService {
             kategori: 'UMUM',
             status: createBlogPostDto.status,
             tags: {
-              create: createBlogPostDto.tags?.map(tagId => ({
-                tag: {
-                  connect: { id: tagId },
-                },
-              })),
+              create: tagConnections,
             },
           },
           include: {
@@ -134,6 +163,41 @@ export class BlogService {
       }
 
       return await this.prisma.$transaction(async tx => {
+        // Proses tags jika ada
+        let tagConnections: { tag: { connect: { id: string } } }[] = [];
+
+        if (updateBlogPostDto.tags && Array.isArray(updateBlogPostDto.tags)) {
+          // Untuk setiap tag, cek apakah sudah ada di database
+          // Jika belum, buat tag baru
+          const tagPromises = updateBlogPostDto.tags.map(async tagName => {
+            // Konversi nama tag ke lowercase untuk konsistensi
+            const normalizedTagName = tagName.trim().toLowerCase();
+            
+            // Cari tag berdasarkan nama (lowercase)
+            let tag = await tx.blogTag.findFirst({
+              where: { nama: normalizedTagName },
+            });
+            
+            // Jika tag belum ada, buat baru
+            if (!tag && normalizedTagName) {
+              tag = await tx.blogTag.create({
+                data: { nama: normalizedTagName },
+              });
+            }
+
+            // Jika tag valid, tambahkan ke koneksi
+            if (tag) {
+              return { tag: { connect: { id: tag.id } } };
+            }
+            return null;
+          });
+
+          // Tunggu semua promise selesai
+          const resolvedTags = await Promise.all(tagPromises);
+          // Filter null values
+          tagConnections = resolvedTags.filter(t => t !== null);
+        }
+
         // Update artikel
         const post = await tx.blogPost.update({
           where: { id },
@@ -146,11 +210,7 @@ export class BlogService {
             ...(updateBlogPostDto.tags && {
               tags: {
                 deleteMany: {},
-                create: updateBlogPostDto.tags.map(tagId => ({
-                  tag: {
-                    connect: { id: tagId },
-                  },
-                })),
+                create: tagConnections,
               },
             }),
           },
@@ -188,6 +248,37 @@ export class BlogService {
       });
     } catch (error) {
       return handleError(this.logger, error, `Gagal menghapus artikel dengan ID ${id}`);
+    }
+  }
+
+  async findAllTags() {
+    try {
+      return await this.prisma.blogTag.findMany({
+        orderBy: {
+          nama: 'asc'
+        }
+      });
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal mengambil daftar tag');
+    }
+  }
+  
+  async searchTags(query: string) {
+    try {
+      return await this.prisma.blogTag.findMany({
+        where: {
+          nama: {
+            contains: query.toLowerCase(),
+            mode: 'insensitive'
+          }
+        },
+        orderBy: {
+          nama: 'asc'
+        },
+        take: 10
+      });
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal mencari tag');
     }
   }
 }

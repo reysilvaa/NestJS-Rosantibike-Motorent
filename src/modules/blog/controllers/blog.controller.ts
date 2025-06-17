@@ -287,18 +287,42 @@ export class BlogController {
   @ApiResponse({ status: 404, description: 'Blog tidak ditemukan' })
   async removeBlog(@Param('id') id: string) {
     try {
-      // Dapatkan blog yang akan dihapus
-      const blog = await this.blogService.findOne(id);
-
-      // Jika blog memiliki gambar, hapus gambar dari Cloudinary
-      if (blog.thumbnail) {
-        await this.cloudinaryService.deleteFile(blog.thumbnail);
-      }
-
-      // Hapus blog
-      return this.blogService.remove(id);
+      await this.blogService.remove(id);
+      return {
+        message: 'Blog berhasil dihapus',
+      };
     } catch (error) {
-      return handleError(this.logger, error, 'Gagal menghapus blog', 'removeBlog');
+      return handleError(this.logger, error, `Gagal menghapus blog dengan ID ${id}`, 'removeBlog');
+    }
+  }
+
+  @Get('tags')
+  @ApiOperation({ summary: 'Mendapatkan semua tag blog' })
+  @ApiResponse({ status: 200, description: 'Daftar tag berhasil diambil' })
+  async getAllTags() {
+    try {
+      const tags = await this.blogService.findAllTags();
+      return {
+        data: tags,
+        message: 'Daftar tag berhasil diambil',
+      };
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal mengambil daftar tag', 'getAllTags');
+    }
+  }
+  
+  @Get('tags/search')
+  @ApiOperation({ summary: 'Mencari tag berdasarkan query' })
+  @ApiResponse({ status: 200, description: 'Hasil pencarian tag' })
+  async searchTags(@Query('q') query: string) {
+    try {
+      const tags = await this.blogService.searchTags(query);
+      return {
+        data: tags,
+        message: 'Pencarian tag berhasil',
+      };
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal mencari tag', 'searchTags');
     }
   }
 
@@ -306,6 +330,7 @@ export class BlogController {
   @ApiOperation({ summary: 'Debug upload file untuk melihat field yang dikirim' })
   @ApiConsumes('multipart/form-data')
   @ApiResponse({ status: 200, description: 'Debug info' })
+  @UseInterceptors(createFileUploadInterceptor())
   async debugUpload(@Req() req: any) {
     return logRequestDebugInfo(req, this.logger);
   }
