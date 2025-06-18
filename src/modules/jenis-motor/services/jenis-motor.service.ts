@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import type { CreateJenisMotorDto, UpdateJenisMotorDto } from '../dto';
 import { verifyJenisMotorExists, verifyCanDeleteJenisMotor } from '../helpers';
@@ -82,7 +82,7 @@ export class JenisMotorService {
       const jenisMotor = await verifyJenisMotorExists(id, this.prisma, this.logger);
 
       // Jika merk atau model berubah, update slug
-      let updateData = { ...data };
+      const updateData = { ...data };
 
       if (data.merk || data.model) {
         // Ambil data yang sudah ada
@@ -137,11 +137,11 @@ export class JenisMotorService {
     // Hapus karakter khusus dan ganti spasi dengan dash
     const merkSlug = merk
       .toLowerCase()
-      .replaceAll(/[^\w\s]/g, '')
+      .replaceAll(/[^\s\w]/g, '')
       .replaceAll(/\s+/g, '-');
     const modelSlug = model
       .toLowerCase()
-      .replaceAll(/[^\w\s]/g, '')
+      .replaceAll(/[^\s\w]/g, '')
       .replaceAll(/\s+/g, '-');
 
     return `${merkSlug}-${modelSlug}`;

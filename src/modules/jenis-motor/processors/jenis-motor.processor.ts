@@ -1,6 +1,6 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
-import { Job } from 'bullmq';
+import type { Job } from 'bullmq';
 import { PrismaService, RealtimeGateway } from '../../../common';
 import { WhatsappQueue } from '../../whatsapp/queues/whatsapp.queue';
 import { JenisMotorService } from '../services/jenis-motor.service';

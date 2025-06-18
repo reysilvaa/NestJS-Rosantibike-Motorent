@@ -14,7 +14,19 @@ export class AdminService {
         nama: true,
         createdAt: true,
         updatedAt: true,
-        // Tidak menyertakan password untuk keamanan
+      },
+    });
+  }
+
+  async findById(id: string) {
+    return this.prisma.admin.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        username: true,
+        nama: true,
+        createdAt: true,
+        updatedAt: true,
       },
     });
   }

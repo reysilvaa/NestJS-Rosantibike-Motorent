@@ -9,11 +9,19 @@ import { CreateAdminDto, UpdateAdminDto } from '../dto';
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
-  @Get('debug')
-  @ApiOperation({ summary: 'Debug - Dapatkan daftar admin' })
+  @Get('')
+  @ApiOperation({ summary: 'Dapatkan daftar admin' })
   @ApiResponse({ status: 200, description: 'Daftar admin berhasil diambil' })
-  async debug() {
+  async findAll() {
     return this.adminService.findAll();
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Dapatkan admin berdasarkan ID' })
+  @ApiResponse({ status: 200, description: 'Admin berhasil diambil' })
+  @ApiResponse({ status: 404, description: 'Admin tidak ditemukan' })
+  async findById(@Param('id') id: string) {
+    return this.adminService.findById(id);
   }
 
   @Post()
