@@ -97,12 +97,12 @@ export class BlogService {
           const tagPromises = createBlogPostDto.tags.map(async tagName => {
             // Konversi nama tag ke lowercase untuk konsistensi
             const normalizedTagName = tagName.trim().toLowerCase();
-            
+
             // Cari tag berdasarkan nama (lowercase)
             let tag = await tx.blogTag.findFirst({
               where: { nama: normalizedTagName },
             });
-            
+
             // Jika tag belum ada, buat baru
             if (!tag && normalizedTagName) {
               tag = await tx.blogTag.create({
@@ -172,12 +172,12 @@ export class BlogService {
           const tagPromises = updateBlogPostDto.tags.map(async tagName => {
             // Konversi nama tag ke lowercase untuk konsistensi
             const normalizedTagName = tagName.trim().toLowerCase();
-            
+
             // Cari tag berdasarkan nama (lowercase)
             let tag = await tx.blogTag.findFirst({
               where: { nama: normalizedTagName },
             });
-            
+
             // Jika tag belum ada, buat baru
             if (!tag && normalizedTagName) {
               tag = await tx.blogTag.create({
@@ -255,27 +255,27 @@ export class BlogService {
     try {
       return await this.prisma.blogTag.findMany({
         orderBy: {
-          nama: 'asc'
-        }
+          nama: 'asc',
+        },
       });
     } catch (error) {
       return handleError(this.logger, error, 'Gagal mengambil daftar tag');
     }
   }
-  
+
   async searchTags(query: string) {
     try {
       return await this.prisma.blogTag.findMany({
         where: {
           nama: {
             contains: query.toLowerCase(),
-            mode: 'insensitive'
-          }
+            mode: 'insensitive',
+          },
         },
         orderBy: {
-          nama: 'asc'
+          nama: 'asc',
         },
-        take: 10
+        take: 10,
       });
     } catch (error) {
       return handleError(this.logger, error, 'Gagal mencari tag');

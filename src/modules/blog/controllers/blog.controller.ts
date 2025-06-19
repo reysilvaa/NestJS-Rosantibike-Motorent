@@ -310,7 +310,7 @@ export class BlogController {
       return handleError(this.logger, error, 'Gagal mengambil daftar tag', 'getAllTags');
     }
   }
-  
+
   @Get('tags/search')
   @ApiOperation({ summary: 'Mencari tag berdasarkan query' })
   @ApiResponse({ status: 200, description: 'Hasil pencarian tag' })

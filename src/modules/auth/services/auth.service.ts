@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AdminService } from '../../admin/services/admin.service';
 import * as bcrypt from 'bcrypt';
+import { Response } from 'express';
 
 @Injectable()
 export class AuthService {
@@ -43,5 +44,61 @@ export class AuthService {
         nama: admin.nama,
       },
     };
+  }
+
+  /**
+   * Mengatur cookie autentikasi pada respons
+   * @param response Express Response
+   * @param token Token JWT
+   */
+  setCookies(response: Response, token: string): void {
+    const domain = process.env.COOKIE_DOMAIN;
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    this.logger.log(`Setting cookie with domain: ${domain || 'not set'}, secure: ${isProduction}`);
+
+    const cookieOptions = {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? ('none' as const) : ('lax' as const),
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 hari
+      path: '/',
+    };
+
+    if (domain) {
+      response.cookie('accessToken', token, {
+        ...cookieOptions,
+        domain,
+      });
+    } else {
+      response.cookie('accessToken', token, cookieOptions);
+    }
+  }
+
+  /**
+   * Menghapus cookie autentikasi pada respons
+   * @param response Express Response
+   */
+  clearCookies(response: Response): void {
+    const domain = process.env.COOKIE_DOMAIN;
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    const cookieOptions = {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? ('none' as const) : ('lax' as const),
+      path: '/',
+    };
+
+    // Hapus cookie dengan berbagai konfigurasi
+    response.clearCookie('accessToken');
+    response.clearCookie('accessToken', cookieOptions);
+
+    if (domain) {
+      response.clearCookie('accessToken', {
+        ...cookieOptions,
+        domain,
+      });
+    }
   }
 }

@@ -49,14 +49,14 @@ export class AuthController {
     }
     this.logger.log(`Login successful for username: ${loginDto.username}`);
     const result = await this.authService.login(admin);
-    response.cookie('accessToken', result.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/',
-    });
-    return { admin: result.admin };
+
+    // Mengatur cookie menggunakan fungsi dari service
+    this.authService.setCookies(response, result.access_token);
+
+    return {
+      admin: result.admin,
+      token: result.access_token,
+    };
   }
 
   @Post('logout')
@@ -65,12 +65,11 @@ export class AuthController {
   @ApiOperation({ summary: 'Logout admin' })
   @ApiResponse({ status: 200, description: 'Logout berhasil' })
   async logout(@Res({ passthrough: true }) response: Response) {
-    response.clearCookie('accessToken', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-    });
+    this.logger.log('Executing logout, clearing cookies');
+
+    // Menghapus cookie menggunakan fungsi dari service
+    this.authService.clearCookies(response);
+
     return { message: 'Logout berhasil' };
   }
 
