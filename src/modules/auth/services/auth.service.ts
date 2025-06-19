@@ -52,7 +52,7 @@ export class AuthService {
    * @param token Token JWT
    */
   setCookies(response: Response, token: string): void {
-    const domain = process.env.COOKIE_DOMAIN || 'rosantibikemotorent.com';
+    const domain = process.env.COOKIE_DOMAIN || 'admin.rosantibikemotorent.com';
     const isProduction = process.env.NODE_ENV === 'production';
 
     this.logger.log(`Setting cookie with domain: ${domain}, secure: ${isProduction}`);
@@ -74,7 +74,7 @@ export class AuthService {
    * @param response Express Response
    */
   clearCookies(response: Response): void {
-    const domain = process.env.COOKIE_DOMAIN || 'rosantibikemotorent.com';
+    const domain = process.env.COOKIE_DOMAIN || 'admin.rosantibikemotorent.com';
     const isProduction = process.env.NODE_ENV === 'production';
 
     this.logger.log(`Clearing cookies with domain: ${domain}, secure: ${isProduction}`);
