@@ -52,18 +52,18 @@ export class AuthService {
    * @param token Token JWT
    */
   setCookies(response: Response, token: string): void {
-    const domain = process.env.COOKIE_DOMAIN || '.rosantibikemotorent.com';
+    const domain = process.env.COOKIE_DOMAIN || 'rosantibikemotorent.com';
     const isProduction = process.env.NODE_ENV === 'production';
 
     this.logger.log(`Setting cookie with domain: ${domain}, secure: ${isProduction}`);
 
     const cookieOptions = {
       httpOnly: true,
-      secure: true,
-      sameSite: 'none' as const,
+      secure: isProduction, // Hanya gunakan secure di production
+      sameSite: isProduction ? ('none' as const) : ('lax' as const), // Gunakan 'lax' untuk development
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 hari
       path: '/',
-      domain,
+      domain: isProduction ? domain : undefined, // Jangan gunakan domain di development
     };
 
     response.cookie('accessToken', token, cookieOptions);
@@ -74,7 +74,7 @@ export class AuthService {
    * @param response Express Response
    */
   clearCookies(response: Response): void {
-    const domain = process.env.COOKIE_DOMAIN || '.rosantibikemotorent.com';
+    const domain = process.env.COOKIE_DOMAIN || 'rosantibikemotorent.com';
     const isProduction = process.env.NODE_ENV === 'production';
 
     this.logger.log(`Clearing cookies with domain: ${domain}, secure: ${isProduction}`);
@@ -82,11 +82,11 @@ export class AuthService {
     // Opsi dasar untuk cookie
     const cookieOptions = {
       httpOnly: true,
-      secure: true,
-      sameSite: 'none' as const,
+      secure: isProduction, // Hanya gunakan secure di production
+      sameSite: isProduction ? ('none' as const) : ('lax' as const), // Gunakan 'lax' untuk development
       path: '/',
       expires: new Date(0), // Set expires di masa lalu
-      domain,
+      domain: isProduction ? domain : undefined, // Jangan gunakan domain di development
     };
 
     // Hapus cookie dengan berbagai konfigurasi
