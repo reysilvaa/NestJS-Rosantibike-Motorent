@@ -59,11 +59,11 @@ export class AuthService {
 
     const cookieOptions = {
       httpOnly: true,
-      secure: isProduction, // Hanya gunakan secure di production
-      sameSite: isProduction ? ('none' as const) : ('lax' as const), // Gunakan 'lax' untuk development
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 hari
+      secure: isProduction,
+      sameSite: isProduction ? ('none' as const) : ('lax' as const),
+      maxAge: 7 * 24 * 60 * 60 * 1000,
       path: '/',
-      domain: isProduction ? domain : undefined, // Jangan gunakan domain di development
+      domain: isProduction ? domain : undefined,
     };
 
     response.cookie('accessToken', token, cookieOptions);
@@ -79,20 +79,17 @@ export class AuthService {
 
     this.logger.log(`Clearing cookies with domain: ${domain}, secure: ${isProduction}`);
 
-    // Opsi dasar untuk cookie
     const cookieOptions = {
       httpOnly: true,
-      secure: isProduction, // Hanya gunakan secure di production
-      sameSite: isProduction ? ('none' as const) : ('lax' as const), // Gunakan 'lax' untuk development
+      secure: isProduction,
+      sameSite: isProduction ? ('none' as const) : ('lax' as const),
       path: '/',
-      expires: new Date(0), // Set expires di masa lalu
-      domain: isProduction ? domain : undefined, // Jangan gunakan domain di development
+      expires: new Date(0),
+      domain: isProduction ? domain : undefined,
     };
 
-    // Hapus cookie dengan berbagai konfigurasi
     response.clearCookie('accessToken', cookieOptions);
 
-    // Set header untuk memastikan cache dan data situs dibersihkan
     response.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     response.setHeader('Pragma', 'no-cache');
     response.setHeader('Expires', '0');

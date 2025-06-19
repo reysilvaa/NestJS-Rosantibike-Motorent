@@ -22,12 +22,12 @@ export const corsOptions = {
           'https://www.rosantibikemotorent.com',
           'https://api.rosantibikemotorent.com',
         ];
-    
+
     // Untuk pengembangan, izinkan permintaan tanpa origin (misalnya dari Postman)
     if (!origin) {
       return callback(null, true);
     }
-    
+
     if (allowedOrigins.includes(origin)) {
       logger.log(`Origin diizinkan: ${origin}`);
       callback(null, true);
@@ -51,7 +51,7 @@ export function setupCors(app: INestApplication): void {
   // Log environment
   const isProduction = process.env.NODE_ENV === 'production';
   logger.log(`Mengatur CORS untuk lingkungan: ${isProduction ? 'production' : 'development'}`);
-  
+
   // Konfigurasi CORS yang lebih spesifik
   app.enableCors(corsOptions);
 

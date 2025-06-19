@@ -51,13 +51,10 @@ export class AuthController {
     this.logger.log(`Login successful for username: ${loginDto.username}`);
     const result = await this.authService.login(admin);
 
-    // Mengatur cookie menggunakan fungsi dari service
     this.authService.setCookies(response, result.access_token);
 
-    // Set header untuk cache control
     response.setHeader('Cache-Control', 'private');
 
-    // Kirim respons
     return response.status(200).json({
       admin: result.admin,
       token: result.access_token,
@@ -70,10 +67,8 @@ export class AuthController {
   async logout(@Res() response: Response) {
     this.logger.log('Executing logout, clearing cookies');
 
-    // Gunakan fungsi clearCookies dari service untuk menghapus cookie
     this.authService.clearCookies(response);
 
-    // Kirim respons dengan instruksi untuk client
     return response.status(200).json({
       message: 'Logout berhasil',
       clearLocalStorage: true,
