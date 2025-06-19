@@ -52,27 +52,21 @@ export class AuthService {
    * @param token Token JWT
    */
   setCookies(response: Response, token: string): void {
-    const domain = process.env.COOKIE_DOMAIN;
+    const domain = process.env.COOKIE_DOMAIN || '.rosantibikemotorent.com';
     const isProduction = process.env.NODE_ENV === 'production';
 
-    this.logger.log(`Setting cookie with domain: ${domain || 'not set'}, secure: ${isProduction}`);
+    this.logger.log(`Setting cookie with domain: ${domain}, secure: ${isProduction}`);
 
     const cookieOptions = {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? ('none' as const) : ('lax' as const),
+      secure: true,
+      sameSite: 'none' as const,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 hari
       path: '/',
+      domain,
     };
 
-    if (domain) {
-      response.cookie('accessToken', token, {
-        ...cookieOptions,
-        domain,
-      });
-    } else {
-      response.cookie('accessToken', token, cookieOptions);
-    }
+    response.cookie('accessToken', token, cookieOptions);
   }
 
   /**
@@ -80,32 +74,23 @@ export class AuthService {
    * @param response Express Response
    */
   clearCookies(response: Response): void {
-    const domain = process.env.COOKIE_DOMAIN;
+    const domain = process.env.COOKIE_DOMAIN || '.rosantibikemotorent.com';
     const isProduction = process.env.NODE_ENV === 'production';
 
-    this.logger.log(
-      `Clearing cookies with domain: ${domain || 'not set'}, secure: ${isProduction}`,
-    );
+    this.logger.log(`Clearing cookies with domain: ${domain}, secure: ${isProduction}`);
 
     // Opsi dasar untuk cookie
     const cookieOptions = {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? ('none' as const) : ('lax' as const),
+      secure: true,
+      sameSite: 'none' as const,
       path: '/',
       expires: new Date(0), // Set expires di masa lalu
+      domain,
     };
 
     // Hapus cookie dengan berbagai konfigurasi
     response.clearCookie('accessToken', cookieOptions);
-
-    // Jika ada domain, hapus dengan domain juga
-    if (domain) {
-      response.clearCookie('accessToken', {
-        ...cookieOptions,
-        domain,
-      });
-    }
 
     // Set header untuk memastikan cache dan data situs dibersihkan
     response.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
