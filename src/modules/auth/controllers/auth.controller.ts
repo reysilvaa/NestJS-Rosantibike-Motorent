@@ -40,37 +40,45 @@ export class AuthController {
     },
   })
   @ApiResponse({ status: 401, description: 'Username atau password salah' })
-  async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) response: Response) {
+  async login(@Body() loginDto: LoginDto, @Res() response: Response) {
     this.logger.debug(`Attempting login with username: ${loginDto.username}`);
     const admin = await this.authService.validateAdmin(loginDto.username, loginDto.password);
     if (!admin) {
       this.logger.warn(`Login failed for username: ${loginDto.username}`);
       throw new UnauthorizedException('Username atau password salah');
     }
+
     this.logger.log(`Login successful for username: ${loginDto.username}`);
     const result = await this.authService.login(admin);
 
     // Mengatur cookie menggunakan fungsi dari service
     this.authService.setCookies(response, result.access_token);
 
-    return {
+    // Set header untuk cache control
+    response.setHeader('Cache-Control', 'private');
+
+    // Kirim respons
+    return response.status(200).json({
       admin: result.admin,
       token: result.access_token,
-    };
+    });
   }
 
   @Post('logout')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Logout admin' })
   @ApiResponse({ status: 200, description: 'Logout berhasil' })
-  async logout(@Res({ passthrough: true }) response: Response) {
+  async logout(@Res() response: Response) {
     this.logger.log('Executing logout, clearing cookies');
 
-    // Menghapus cookie menggunakan fungsi dari service
+    // Gunakan fungsi clearCookies dari service untuk menghapus cookie
     this.authService.clearCookies(response);
 
-    return { message: 'Logout berhasil' };
+    // Kirim respons dengan instruksi untuk client
+    return response.status(200).json({
+      message: 'Logout berhasil',
+      clearLocalStorage: true,
+      redirectTo: '/auth/login',
+    });
   }
 
   @Get('me')

@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AdminService } from '../../admin/services/admin.service';
 import * as bcrypt from 'bcrypt';
-import { Response } from 'express';
+import type { Response } from 'express';
 
 @Injectable()
 export class AuthService {
@@ -76,29 +76,41 @@ export class AuthService {
   }
 
   /**
-   * Menghapus cookie autentikasi pada respons
+   * Menghapus cookie autentikasi pada respons dan mengatur header untuk logout
    * @param response Express Response
    */
   clearCookies(response: Response): void {
     const domain = process.env.COOKIE_DOMAIN;
     const isProduction = process.env.NODE_ENV === 'production';
 
+    this.logger.log(
+      `Clearing cookies with domain: ${domain || 'not set'}, secure: ${isProduction}`,
+    );
+
+    // Opsi dasar untuk cookie
     const cookieOptions = {
       httpOnly: true,
       secure: isProduction,
       sameSite: isProduction ? ('none' as const) : ('lax' as const),
       path: '/',
+      expires: new Date(0), // Set expires di masa lalu
     };
 
     // Hapus cookie dengan berbagai konfigurasi
-    response.clearCookie('accessToken');
     response.clearCookie('accessToken', cookieOptions);
 
+    // Jika ada domain, hapus dengan domain juga
     if (domain) {
       response.clearCookie('accessToken', {
         ...cookieOptions,
         domain,
       });
     }
+
+    // Set header untuk memastikan cache dan data situs dibersihkan
+    response.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.setHeader('Pragma', 'no-cache');
+    response.setHeader('Expires', '0');
+    response.setHeader('Clear-Site-Data', '"cookies", "storage"');
   }
 }
