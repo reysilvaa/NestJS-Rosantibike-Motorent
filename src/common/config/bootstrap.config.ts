@@ -11,10 +11,8 @@ import { setupCors } from './cors.config';
  */
 export async function bootstrap(): Promise<void> {
   try {
-    // Buat aplikasi dengan konfigurasi dasar
     const app = await NestFactory.create(AppModule, {
       logger: ['error', 'warn', 'log'],
-      cors: true,
       bodyParser: true,
     });
 

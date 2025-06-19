@@ -1,7 +1,19 @@
-import { Controller, Post, Body, UnauthorizedException, Logger } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UnauthorizedException,
+  Logger,
+  Res,
+  UseGuards,
+  Get,
+  Req,
+} from '@nestjs/common';
 import { AuthService } from '../services/auth.service';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { LoginDto } from '../dto';
+import { Response, Request } from 'express';
+import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -16,7 +28,6 @@ export class AuthController {
     description: 'Login berhasil',
     schema: {
       properties: {
-        access_token: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
         admin: {
           type: 'object',
           properties: {
@@ -29,7 +40,7 @@ export class AuthController {
     },
   })
   @ApiResponse({ status: 401, description: 'Username atau password salah' })
-  async login(@Body() loginDto: LoginDto) {
+  async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) response: Response) {
     this.logger.debug(`Attempting login with username: ${loginDto.username}`);
     const admin = await this.authService.validateAdmin(loginDto.username, loginDto.password);
     if (!admin) {
@@ -37,6 +48,38 @@ export class AuthController {
       throw new UnauthorizedException('Username atau password salah');
     }
     this.logger.log(`Login successful for username: ${loginDto.username}`);
-    return this.authService.login(admin);
+    const result = await this.authService.login(admin);
+    response.cookie('accessToken', result.access_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
+    });
+    return { admin: result.admin };
+  }
+
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Logout admin' })
+  @ApiResponse({ status: 200, description: 'Logout berhasil' })
+  async logout(@Res({ passthrough: true }) response: Response) {
+    response.clearCookie('accessToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
+    return { message: 'Logout berhasil' };
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Mendapatkan data admin yang sedang login' })
+  @ApiResponse({ status: 200, description: 'Data admin berhasil diambil' })
+  async getProfile(@Req() req: Request) {
+    return { admin: req.user };
   }
 }

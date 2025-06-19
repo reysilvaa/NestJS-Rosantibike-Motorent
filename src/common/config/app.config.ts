@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import * as compression from 'compression';
 import helmet from 'helmet';
 import * as morgan from 'morgan';
+import * as cookieParser from 'cookie-parser';
 import { join } from 'node:path';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { NestExpressApplication } from '@nestjs/platform-express';
@@ -11,14 +12,13 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
  * Mengonfigurasi middleware aplikasi
  */
 export const configureMiddleware = (app: INestApplication): void => {
-  // Helmet untuk keamanan header HTTP
   app.use(
     helmet({
-      crossOriginResourcePolicy: false, // Izinkan koneksi WebSocket
+      crossOriginResourcePolicy: false,
     }),
   );
+  app.use(cookieParser());
 
-  // Kompresi respons
   app.use(compression());
 
   // Logging HTTP
@@ -30,18 +30,6 @@ export const configureMiddleware = (app: INestApplication): void => {
  */
 export const configureStaticAssets = (app: NestExpressApplication): void => {
   app.useStaticAssets(join(__dirname, '..', '..', '..', 'public'));
-};
-
-/**
- * Mengonfigurasi CORS
- */
-export const configureCors = (app: INestApplication): void => {
-  app.enableCors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    credentials: true,
-  });
 };
 
 /**

@@ -9,14 +9,16 @@ export const corsOptions = {
     'http://localhost:3001',
     'http://localhost:3000',
     'http://localhost:3002',
+    'http://localhost:3030',
     'https://admin.rosantibikemotorent.com',
     'https://rosantibikemotorent.com',
     'https://www.rosantibikemotorent.com',
-    '*',
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   credentials: true,
+  exposedHeaders: ['Set-Cookie'],
+  optionsSuccessStatus: 200,
 };
 
 /**
