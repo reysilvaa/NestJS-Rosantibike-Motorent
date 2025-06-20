@@ -150,15 +150,8 @@ export class WhatsappConnectionService {
     try {
       const token = await this.getToken();
 
-      // Get webhook URL from config
-      const webhookUrl =
-        this.configService.get('WEBHOOK_URL') ||
-        `${this.configService.get('APP_URL')}/whatsapp/webhook`;
-
-      // Log webhook URL yang digunakan
+      const webhookUrl = this.configService.get('WEBHOOK_URL');
       this.logger.log(`Setting webhook URL to: ${webhookUrl}`);
-
-      // Periksa webhook URL - jika tidak berisi http, itu tidak valid
       if (!webhookUrl.startsWith('http')) {
         this.logger.warn(
           `Webhook URL tidak valid: ${webhookUrl}. URL harus dimulai dengan http:// or https://`,
@@ -315,8 +308,19 @@ export class WhatsappConnectionService {
    */
   async getQrCode() {
     try {
+      // Jika sudah terhubung, tidak perlu QR code
+      if (this.connectionStatus === 'connected') {
+        this.logger.log('WhatsApp sudah terhubung, tidak perlu QR code');
+        return null;
+      }
+      if (this.lastQrCode && this.connectionStatus === 'connecting') {
+        this.logger.log('Menggunakan QR code dari cache');
+        return this.lastQrCode;
+      }
+
       const token = await this.getToken();
 
+      this.logger.log('Mengambil QR code baru dari server');
       const response = await axios.get(
         `${this.config.baseUrl}/api/${this.config.session}/qrcode-session`,
         {
@@ -329,14 +333,47 @@ export class WhatsappConnectionService {
 
       if (response.data && response.data.status === 'QRCODE' && response.data.qrcode) {
         this.lastQrCode = response.data.qrcode;
-        this.logger.log('QR code fetched successfully');
-        return response.data.qrcode;
+        this.logger.log('QR code baru berhasil diambil');
+
+        if (this.connectionStatus !== 'connecting') {
+          this.logger.log('Memulai proses koneksi setelah mendapatkan QR code');
+          this.connect().catch(error => {
+            this.logger.error(
+              `Error memulai koneksi setelah mendapatkan QR code: ${error.message}`,
+            );
+          });
+        }
+
+        return this.lastQrCode;
+      } else if (response.data && response.data.status === 'CONNECTED') {
+        this.logger.log('Server melaporkan WhatsApp sudah terhubung');
+        this.connectionStatus = 'connected';
+        this.lastQrCode = null;
+        return null;
       }
 
-      return null;
+      // Jika tidak bisa mendapatkan QR code dan tidak sedang connecting, coba mulai koneksi
+      if (this.connectionStatus !== 'connecting') {
+        this.logger.log('Tidak bisa mendapatkan QR code, mencoba memulai koneksi baru');
+        this.connect().catch(error => {
+          this.logger.error(`Error saat mencoba koneksi untuk QR code: ${error.message}`);
+        });
+      }
+
+      return this.lastQrCode;
     } catch (error) {
-      this.logger.error(`Error getting QR code: ${error.message}`);
-      return null;
+      this.logger.error(`Error saat mengambil QR code: ${error.message}`);
+
+      if (this.connectionStatus !== 'connecting') {
+        this.logger.log('Error saat mengambil QR code, mencoba memulai koneksi baru');
+        this.connect().catch(error => {
+          this.logger.error(
+            `Error saat mencoba koneksi setelah gagal mendapatkan QR code: ${error.message}`,
+          );
+        });
+      }
+
+      return this.lastQrCode;
     }
   }
 
@@ -373,7 +410,6 @@ export class WhatsappConnectionService {
         return;
       }
 
-      // Jika belum terhubung, mulai sesi dan dapatkan QR code jika diperlukan
       const sessionResult = await this.startSession();
 
       if (sessionResult.status === 'connected') {
@@ -383,7 +419,6 @@ export class WhatsappConnectionService {
         this.retryCount = 0;
       } else if (sessionResult.status === 'qrcode') {
         this.logger.log('QR code received, waiting for scan...');
-        // Set interval untuk terus memeriksa status koneksi setelah QR code diterima
         const checkInterval = setInterval(async () => {
           const checkResult = await this.checkConnection();
 
@@ -475,13 +510,6 @@ export class WhatsappConnectionService {
       reconnectAttemptInProgress: this.reconnectAttemptInProgress,
       hasQrCode: !!this.lastQrCode,
     };
-  }
-
-  /**
-   * Mendapatkan QR code terakhir
-   */
-  getLastQrCode(): string | null {
-    return this.lastQrCode;
   }
 
   /**

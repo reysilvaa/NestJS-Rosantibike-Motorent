@@ -39,8 +39,8 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     return this.connectionService.getConnectionStatus();
   }
 
-  getLastQrCode() {
-    return this.connectionService.getLastQrCode();
+  getQrCode() {
+    return this.connectionService.getQrCode();
   }
 
   async getSessionStatus() {

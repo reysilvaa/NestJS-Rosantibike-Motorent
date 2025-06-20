@@ -13,7 +13,7 @@ import { Response } from 'express';
 import { WhatsappService } from '../services/whatsapp.service';
 import { ApiOperation, ApiResponse, ApiTags, ApiBody } from '@nestjs/swagger';
 import { handleError, logInfo } from '../../../common/helpers';
-import { WhatsappMessageData } from '../../../common/interfaces/whatsapp.interface';
+import type { WhatsappMessageData } from '../../../common/interfaces/whatsapp.interface';
 
 // DTO untuk test-menu
 class TestMenuDto {
@@ -74,208 +74,104 @@ export class WhatsappController {
 
   constructor(private readonly whatsappService: WhatsappService) {}
 
-  @Get('status')
-  @ApiOperation({ summary: 'Mendapatkan status koneksi WhatsApp' })
-  @ApiResponse({ status: 200, description: 'Status koneksi berhasil ditemukan' })
-  getStatus() {
-    return this.whatsappService.getConnectionStatus();
-  }
-
   @Get('session-status')
-  @ApiOperation({ summary: 'Mendapatkan status sesi WhatsApp dari API' })
-  @ApiResponse({ status: 200, description: 'Status sesi berhasil ditemukan' })
+  @ApiOperation({ summary: 'Mendapatkan status sesi WhatsApp' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Status sesi WhatsApp' })
   async getSessionStatus() {
-    const sessionStatus = await this.whatsappService.getSessionStatus();
-    return {
-      status: 'success',
-      data: sessionStatus,
-    };
-  }
-
-  @Get('qr-code')
-  @ApiOperation({ summary: 'Mendapatkan QR code untuk menghubungkan WhatsApp' })
-  @ApiResponse({ status: 200, description: 'QR code berhasil diperoleh' })
-  @ApiResponse({ status: 404, description: 'QR code tidak tersedia' })
-  async getQrCode(@Res() res: Response) {
-    const qrCode = this.whatsappService.getLastQrCode();
-
-    if (!qrCode) {
-      throw new HttpException(
-        'QR code tidak tersedia. Mungkin sudah terhubung atau belum siap.',
-        HttpStatus.NOT_FOUND,
-      );
+    try {
+      return await this.whatsappService.getSessionStatus();
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
-
-    return res.status(HttpStatus.OK).json({
-      status: 'success',
-      qrCode,
-    });
   }
 
-  @Post('reset')
-  @ApiOperation({ summary: 'Reset koneksi WhatsApp' })
-  @ApiResponse({ status: 200, description: 'Koneksi berhasil di-reset' })
-  async resetConnection() {
-    await this.whatsappService.resetConnection();
-    return {
-      status: 'success',
-      message: 'Koneksi WhatsApp sedang di-reset',
-    };
-  }
-
-  @Post('logout')
-  @ApiOperation({ summary: 'Logout dari sesi WhatsApp' })
-  @ApiResponse({ status: 200, description: 'Berhasil logout dari WhatsApp' })
-  async logoutSession() {
-    const result = await this.whatsappService.logoutSession();
-    return {
-      status: 'success',
-      message: 'Berhasil logout dari WhatsApp',
-      data: result,
-    };
+  @Get('qrcode')
+  @ApiOperation({ summary: 'Mendapatkan QR code untuk koneksi WhatsApp' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'QR code koneksi WhatsApp' })
+  async getQrCode() {
+    try {
+      return await this.whatsappService.getQrCode();
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
 
   @Post('start-all')
   @ApiOperation({ summary: 'Memulai semua sesi WhatsApp' })
-  @ApiResponse({ status: 200, description: 'Sesi WhatsApp berhasil dimulai' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Semua sesi WhatsApp berhasil dimulai' })
   async startAllSessions() {
-    const result = await this.whatsappService.startAllSessions();
-    return {
-      status: 'success',
-      message: 'Sesi WhatsApp berhasil dimulai',
-      data: result,
-    };
+    try {
+      return await this.whatsappService.startAllSessions();
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
 
   @Get('all-sessions')
-  @ApiOperation({ summary: 'Mendapatkan daftar semua sesi WhatsApp' })
-  @ApiResponse({ status: 200, description: 'Daftar sesi berhasil ditemukan' })
+  @ApiOperation({ summary: 'Mendapatkan semua sesi WhatsApp' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Daftar semua sesi WhatsApp' })
   async getAllSessions() {
-    const result = await this.whatsappService.getAllSessions();
-    return {
-      status: 'success',
-      data: result,
-    };
+    try {
+      return await this.whatsappService.getAllSessions();
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
+  @Get('reset-session')
+  @ApiOperation({ summary: 'Reset semua sesi WhatsApp' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Semua sesi WhatsApp berhasil direset' })
+  async resetSession() {
+    try {
+      return await this.whatsappService.resetConnection();
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
 
   @Get('chats')
   @ApiOperation({ summary: 'Mendapatkan daftar chat WhatsApp' })
-  @ApiResponse({ status: 200, description: 'Daftar chat berhasil ditemukan' })
-  @ApiResponse({ status: 400, description: 'Gagal mendapatkan daftar chat' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Daftar chat WhatsApp' })
   async getChats() {
     try {
-      const result = await this.whatsappService.getChats();
-
-      if (!result) {
-        throw new HttpException('Gagal mendapatkan daftar chat', HttpStatus.BAD_REQUEST);
-      }
-
-      return {
-        status: 'success',
-        data: result,
-      };
+      return await this.whatsappService.getChats();
     } catch (error) {
-      throw new HttpException(
-        `Gagal mendapatkan daftar chat: ${error.message}`,
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
-
-  @Get('messages/:phone')
-  @ApiOperation({ summary: 'Mendapatkan pesan dalam chat' })
-  @ApiResponse({ status: 200, description: 'Pesan berhasil ditemukan' })
-  @ApiResponse({ status: 400, description: 'Gagal mendapatkan pesan' })
-  async getMessages(@Param('phone') phone: string) {
-    try {
-      const result = await this.whatsappService.getMessagesInChat(phone);
-
-      if (!result) {
-        throw new HttpException('Gagal mendapatkan pesan', HttpStatus.BAD_REQUEST);
-      }
-
-      return {
-        status: 'success',
-        data: result,
-      };
-    } catch (error) {
-      throw new HttpException(`Gagal mendapatkan pesan: ${error.message}`, HttpStatus.BAD_REQUEST);
-    }
-  }
-
+  
   @Get('contact/:phone')
-  @ApiOperation({ summary: 'Mendapatkan informasi kontak' })
-  @ApiResponse({ status: 200, description: 'Kontak berhasil ditemukan' })
-  @ApiResponse({ status: 400, description: 'Gagal mendapatkan kontak' })
+  @ApiOperation({ summary: 'Mendapatkan detail kontak WhatsApp' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Detail kontak WhatsApp' })
   async getContact(@Param('phone') phone: string) {
     try {
-      const result = await this.whatsappService.getContact(phone);
-
-      if (!result) {
-        throw new HttpException('Gagal mendapatkan kontak', HttpStatus.BAD_REQUEST);
-      }
-
-      return {
-        status: 'success',
-        data: result,
-      };
+      return await this.whatsappService.getContact(phone);
     } catch (error) {
-      throw new HttpException(`Gagal mendapatkan kontak: ${error.message}`, HttpStatus.BAD_REQUEST);
+      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  @Post('send')
+  @Post('send-message')
   @ApiOperation({ summary: 'Mengirim pesan WhatsApp' })
-  @ApiResponse({ status: 200, description: 'Pesan berhasil dikirim' })
-  @ApiResponse({ status: 400, description: 'Gagal mengirim pesan' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Pesan WhatsApp berhasil dikirim' })
   async sendMessage(@Body() body: { to: string; message: string }) {
     try {
-      const result = await this.whatsappService.sendMessage(body.to, body.message);
-
-      if (!result) {
-        throw new HttpException('Gagal mengirim pesan', HttpStatus.BAD_REQUEST);
-      }
-
-      return {
-        status: 'success',
-        message: 'Pesan berhasil dikirim',
-        data: result,
-      };
+      const { to, message } = body;
+      return await this.whatsappService.sendMessage(to, message);
     } catch (error) {
-      throw new HttpException(`Gagal mengirim pesan: ${error.message}`, HttpStatus.BAD_REQUEST);
+      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  @Post('send-admin')
-  @ApiOperation({ summary: 'Kirim pesan ke admin WhatsApp' })
-  @ApiResponse({ status: 200, description: 'Pesan berhasil dikirim ke admin' })
-  @ApiResponse({ status: 500, description: 'Gagal mengirim pesan ke admin' })
+  @Post('send-to-admin')
+  @ApiOperation({ summary: 'Mengirim pesan WhatsApp ke admin' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Pesan WhatsApp berhasil dikirim ke admin' })
   async sendToAdmin(@Body() body: { message: string }) {
     try {
-      if (!body || !body.message) {
-        throw new HttpException('Pesan diperlukan', HttpStatus.BAD_REQUEST);
-      }
-
       const { message } = body;
-      logInfo(this.logger, 'Mengirim pesan ke admin');
-      const result = await this.whatsappService.sendToAdmin(message);
-
-      if (!result) {
-        throw new HttpException(
-          'Gagal mengirim pesan ke admin WhatsApp',
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        );
-      }
-
-      logInfo(this.logger, 'Pesan berhasil dikirim ke admin');
-      return { success: true, message: 'Pesan berhasil dikirim ke admin' };
+      return await this.whatsappService.sendToAdmin(message);
     } catch (error) {
-      return handleError(
-        this.logger,
-        error,
-        'Gagal mengirim pesan ke admin WhatsApp',
-        'sendToAdmin',
-      );
+      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 

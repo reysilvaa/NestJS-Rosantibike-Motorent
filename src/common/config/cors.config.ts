@@ -21,18 +21,16 @@ export const corsOptions = {
           'https://rosantibikemotorent.com',
           'https://www.rosantibikemotorent.com',
           'https://api.rosantibikemotorent.com',
+          'https://wa.rosantibikemotorent.com',
         ];
 
-    // Untuk pengembangan, izinkan permintaan tanpa origin (misalnya dari Postman)
     if (!origin) {
       return callback(null, true);
     }
 
     if (allowedOrigins.includes(origin)) {
-      logger.log(`Origin diizinkan: ${origin}`);
       callback(null, true);
     } else {
-      logger.warn(`Origin ditolak: ${origin}`);
       callback(null, false);
     }
   },
