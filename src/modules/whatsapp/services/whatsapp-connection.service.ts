@@ -143,37 +143,114 @@ export class WhatsappConnectionService {
         );
       }
 
-      const response = await axios.post(
-        `${this.config.baseUrl}/api/${this.config.session}/start-session`,
-        {
-          webhook: webhookUrl,
-          waitQrCode: false,
-          webhookEnabled: true,
-        },
-        {
-          headers: {
-            accept: 'application/json',
-            contentType: 'application/json',
-            authorization: `Bearer ${token}`,
+      try {
+        const response = await axios.post(
+          `${this.config.baseUrl}/api/${this.config.session}/start-session`,
+          {
+            webhook: webhookUrl,
+            waitQrCode: false,
+            webhookEnabled: true,
           },
-        },
-      );
+          {
+            headers: {
+              accept: 'application/json',
+              contentType: 'application/json',
+              authorization: `Bearer ${token}`,
+            },
+            timeout: 15000,
+          },
+        );
 
-      if (response.data) {
-        if (response.data.status === 'QRCODE' && response.data.qrcode) {
-          this.lastQrCode = response.data.qrcode;
-          this.connectionStatus = 'connecting';
-          this.logger.log('QR code received from WhatsApp API');
-          return { status: 'qrcode', qrCode: response.data.qrcode };
-        } else if (response.data.status === 'CONNECTED') {
-          this.connectionStatus = 'connected';
-          this.lastQrCode = null;
-          this.logger.log('Session started successfully');
-          return { status: 'connected' };
+        if (response.data) {
+          if (response.data.status === 'QRCODE' && response.data.qrcode) {
+            this.lastQrCode = response.data.qrcode;
+            this.connectionStatus = 'connecting';
+            this.logger.log('QR code received from WhatsApp API');
+            return { status: 'qrcode', qrCode: response.data.qrcode };
+          } else if (response.data.status === 'CONNECTED') {
+            this.connectionStatus = 'connected';
+            this.lastQrCode = null;
+            this.logger.log('Session started successfully');
+            return { status: 'connected' };
+          } else if (response.data.qrcode) {
+            // Format alternatif untuk QR code
+            this.lastQrCode = response.data.qrcode;
+            this.connectionStatus = 'connecting';
+            this.logger.log('QR code received from WhatsApp API (alternative format)');
+            return { status: 'qrcode', qrCode: response.data.qrcode };
+          }
         }
+
+        this.logger.warn('Format respons tidak dikenali, mencoba metode alternatif');
+      } catch (startError) {
+        this.logger.warn(
+          `Error pada start-session: ${startError.message}, mencoba metode alternatif`,
+        );
       }
 
-      throw new Error('Failed to start session: Invalid response format');
+      // Metode alternatif jika start-session gagal
+      try {
+        const altResponse = await axios.post(
+          `${this.config.baseUrl}/api/${this.config.session}/start-all`,
+          {},
+          {
+            headers: {
+              accept: 'application/json',
+              contentType: 'application/json',
+              authorization: `Bearer ${token}`,
+            },
+            timeout: 15000, // Timeout 15 detik
+          },
+        );
+
+        if (altResponse.data) {
+          this.logger.log(`Respons dari start-all: ${JSON.stringify(altResponse.data)}`);
+
+          // Cek jika berhasil
+          if (altResponse.data.status === 'success' || altResponse.data.status === 'CONNECTED') {
+            this.connectionStatus = 'connected';
+            this.lastQrCode = null;
+            this.logger.log('Session started successfully via alternative method');
+            return { status: 'connected' };
+          }
+
+          // Cek jika perlu QR code
+          if (altResponse.data.qrcode || (altResponse.data.data && altResponse.data.data.qrcode)) {
+            const qrCode = altResponse.data.qrcode || altResponse.data.data.qrcode;
+            this.lastQrCode = qrCode;
+            this.connectionStatus = 'connecting';
+            this.logger.log('QR code received from alternative method');
+            return { status: 'qrcode', qrCode };
+          }
+        }
+      } catch (altError) {
+        this.logger.warn(`Error pada metode alternatif: ${altError.message}`);
+      }
+
+      // Jika semua metode gagal, coba ambil QR code langsung
+      try {
+        const qrResponse = await axios.get(
+          `${this.config.baseUrl}/api/${this.config.session}/qrcode-session`,
+          {
+            headers: {
+              accept: '*/*',
+              authorization: `Bearer ${token}`,
+            },
+            timeout: 15000, // Timeout 15 detik
+          },
+        );
+
+        if (qrResponse.data && qrResponse.data.qrcode) {
+          this.lastQrCode = qrResponse.data.qrcode;
+          this.connectionStatus = 'connecting';
+          this.logger.log('QR code received directly');
+          return { status: 'qrcode', qrCode: qrResponse.data.qrcode };
+        }
+      } catch (qrError) {
+        this.logger.warn(`Error mengambil QR code langsung: ${qrError.message}`);
+      }
+
+      throw new Error('Gagal memulai sesi: Semua metode koneksi gagal');
     } catch (error) {
       this.logger.error(`Error starting session: ${error.message}`);
       throw error;
@@ -393,7 +470,7 @@ export class WhatsappConnectionService {
             this.retryCount = 0;
             this.lastQrCode = null;
           }
-        }, 10_000);
+        }, 10000);
 
         setTimeout(() => {
           clearInterval(checkInterval);
@@ -401,7 +478,7 @@ export class WhatsappConnectionService {
             this.isConnecting = false;
             this.handleDisconnect('QR code scan timeout');
           }
-        }, 120_000);
+        }, 120000);
       }
     } catch (error) {
       this.isConnecting = false;
