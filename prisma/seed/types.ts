@@ -1,12 +1,12 @@
 import { Decimal } from '@prisma/client/runtime/library';
 import { Prisma } from '@prisma/client';
 
-// Enum menggunakan literal string yang sesuai dengan schema.prisma
+
 export type StatusMotor = 'TERSEDIA' | 'DISEWA' | 'DIPESAN' | 'OVERDUE';
 export type StatusTransaksi = 'AKTIF' | 'SELESAI' | 'OVERDUE';
 export type StatusArtikel = 'DRAFT' | 'TERBIT';
 
-// Nilai enum yang bisa digunakan
+
 export const StatusMotor = {
   TERSEDIA: 'TERSEDIA' as StatusMotor,
   DISEWA: 'DISEWA' as StatusMotor,
@@ -25,7 +25,7 @@ export const StatusArtikel = {
   TERBIT: 'TERBIT' as StatusArtikel,
 };
 
-// Interface untuk Admin
+
 export type AdminType = {
   id: string;
   username: string;
@@ -35,7 +35,7 @@ export type AdminType = {
   updatedAt: Date;
 };
 
-// Interface untuk Jenis Motor
+
 export interface JenisMotorType {
   id: string;
   merk: string;
@@ -47,20 +47,20 @@ export interface JenisMotorType {
   updatedAt: Date;
 }
 
-// Interface untuk Unit Motor
+
 export interface UnitMotorType {
   id: string;
   jenisId: string;
   platNomor: string;
   slug: string;
   status: string;
-  hargaSewa: any; // Using 'any' for Decimal type
+  hargaSewa: any; 
   tahunPembuatan?: number;
   createdAt: Date;
   updatedAt: Date;
 }
 
-// Interface untuk Transaksi
+
 export type TransaksiType = {
   id: string;
   namaPenyewa: string;
@@ -74,7 +74,7 @@ export type TransaksiType = {
   updatedAt?: Date;
 };
 
-// Interface untuk Blog Tag
+
 export type BlogTagType = {
   id: string;
   nama: string;
@@ -82,7 +82,7 @@ export type BlogTagType = {
   updatedAt?: Date;
 };
 
-// Interface untuk Blog Post
+
 export type BlogPostType = {
   id: string;
   judul: string;

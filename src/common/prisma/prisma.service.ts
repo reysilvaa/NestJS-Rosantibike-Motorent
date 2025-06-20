@@ -1,12 +1,8 @@
 import type { OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import type { Prisma as _Prisma } from '@prisma/client';
 
-/**
- * Enum status motor yang tersedia dalam sistem
- * Digunakan untuk tracking kondisi unit motor
- */
 export enum StatusMotor {
   TERSEDIA = 'TERSEDIA',
   DISEWA = 'DISEWA',
@@ -29,7 +25,6 @@ export enum StatusArtikel {
   ARSIP = 'ARSIP',
 }
 
-// Mock data types
 export interface TransaksiWithRelations {
   id: string;
   namaPenyewa: string;
@@ -53,7 +48,6 @@ export interface TransaksiWithRelations {
   };
 }
 
-// Mock admin type
 export interface AdminType {
   id: string;
   username: string;
@@ -81,7 +75,6 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     await this.$connect();
     this.logger.log('Connected to database');
 
-    // Debugging event for query
     (this as any).$on('query', (e: any) => {
       this.logger.debug(`Query: ${e.query}`);
       this.logger.debug(`Params: ${e.params}`);
@@ -95,10 +88,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     this.logger.log('Disconnected from database');
   }
 
-  // Override transaction untuk testing
   $transaction = super.$transaction;
 
-  // Override model methods
   get unitMotor() {
     return super.unitMotor;
   }

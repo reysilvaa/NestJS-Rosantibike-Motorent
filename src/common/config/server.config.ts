@@ -1,10 +1,7 @@
 import type { INestApplication, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import type { ConfigService } from '@nestjs/config';
 import type { Server } from 'node:http';
 
-/**
- * Fungsi untuk menjalankan server HTTP
- */
 export const startServer = async (
   app: INestApplication,
   configService: ConfigService,
@@ -18,9 +15,6 @@ export const startServer = async (
   return { server, port };
 };
 
-/**
- * Fungsi untuk mengkonfigurasi graceful shutdown
- */
 export const configureShutdown = (server: Server, logger: Logger): void => {
   const signals = ['SIGTERM', 'SIGINT'];
 
@@ -33,7 +27,6 @@ export const configureShutdown = (server: Server, logger: Logger): void => {
         process.exit(0);
       });
 
-      // Force shutdown after 10 seconds
       setTimeout(() => {
         logger.error('Forced shutdown after timeout');
         process.exit(1);

@@ -3,7 +3,6 @@ import { Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import { WhatsappService } from '../services/whatsapp.service';
 
-// Interface untuk tipe kembalian WhatsApp initialization
 interface WhatsappInitResult {
   status: string;
   qrCode?: string;
@@ -50,11 +49,8 @@ export class WhatsappProcessor extends WorkerHost {
     );
 
     try {
-      // Format nomor telepon - pastikan dalam format E.164
       const phoneNumber = this.formatPhoneNumber(job.data.to);
 
-      // Kirim pesan menggunakan WhatsappService.sendMessage
-      // Mengirim pesan ke API WPPConnect
       const result = await this.whatsappService.sendMessage(phoneNumber, job.data.message);
 
       this.logger.debug(
@@ -80,13 +76,10 @@ export class WhatsappProcessor extends WorkerHost {
     this.logger.debug(`Processing init session job for ${job.data.sessionId}`);
 
     try {
-      // Inisialisasi sesi WhatsApp menggunakan service
       const result = await this.whatsappService.initialize();
 
-      // Buat default object jika result null atau undefined
       let initResult: WhatsappInitResult = { status: 'error' };
       if (result) {
-        // Pastikan result adalah object sebelum mengakses propertinya
         initResult =
           typeof result === 'object'
             ? (result as unknown as WhatsappInitResult)
@@ -112,7 +105,6 @@ export class WhatsappProcessor extends WorkerHost {
     this.logger.debug(`Processing start all sessions job: ${job.id}`);
 
     try {
-      // Menggunakan API WPPConnect untuk memulai semua sesi
       const result = await this.whatsappService.startAllSessions();
 
       this.logger.debug(`Started all WhatsApp sessions`);
@@ -131,7 +123,6 @@ export class WhatsappProcessor extends WorkerHost {
     this.logger.debug(`Processing get chats job for session ${job.data.sessionId}`);
 
     try {
-      // Mendapatkan daftar chat menggunakan API WPPConnect
       const chats = await this.whatsappService.getChats();
 
       this.logger.debug(`Retrieved ${chats?.length || 0} chats`);
@@ -161,18 +152,14 @@ export class WhatsappProcessor extends WorkerHost {
 
     try {
       const session = job.data.session || 'default';
-      // Perbaiki tipe array untuk mencegah error
+
       const results: Array<{ to: string; success: boolean; messageId: any }> = [];
       const errors: Array<{ to: string; success: boolean; error: string }> = [];
 
-      // Proses setiap penerima
       for (const recipient of job.data.recipients) {
         try {
-          // Format nomor telepon
           const phoneNumber = this.formatPhoneNumber(recipient);
 
-          // Kirim pesan menggunakan WhatsappService.sendMessage
-          // yang terhubung ke API WPPConnect
           const result = await this.whatsappService.sendMessage(phoneNumber, job.data.message);
 
           results.push({
@@ -215,11 +202,8 @@ export class WhatsappProcessor extends WorkerHost {
   }
 
   private formatPhoneNumber(phoneNumber: string): string {
-    // Gunakan replaceAll daripada replace
     let cleaned = phoneNumber.replaceAll(/\D/g, '');
 
-    // Pastikan nomor dimulai dengan 62 (kode negara Indonesia)
-    // Gunakan slice daripada substring
     if (cleaned.startsWith('0')) {
       cleaned = '62' + cleaned.slice(1);
     } else if (!cleaned.startsWith('62')) {

@@ -1,10 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
-/**
- * Mengatur konfigurasi Swagger untuk dokumentasi API
- * @param app Aplikasi NestJS
- */
 export function setupSwagger(app: INestApplication): void {
   const config = new DocumentBuilder()
     .setTitle('Rental Motor API')

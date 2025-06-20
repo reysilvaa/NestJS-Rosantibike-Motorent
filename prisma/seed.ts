@@ -15,27 +15,27 @@ async function main() {
   try {
     console.log('Memulai proses seed database...');
 
-    // Seed admin
+    
     const admin = await seedAdmin(prisma);
     console.log(`${admin.length} admin telah di-seed`);
 
-    // Seed jenis motor
+    
     const jenisMotor = await seedJenisMotor(prisma);
     console.log(`${jenisMotor.length} jenis motor telah di-seed`);
 
-    // Seed unit motor
+    
     const unitMotor = await seedUnitMotor(prisma, jenisMotor);
     console.log(`${unitMotor.length} unit motor telah di-seed`);
 
-    // Seed transaksi
+    
     const transaksi = await seedTransaksi(prisma, unitMotor);
     console.log(`${transaksi.length} transaksi telah di-seed`);
 
-    // Seed blog tags
+    
     const blogTags = await seedBlogTags(prisma);
     console.log(`${blogTags.length} tags blog telah di-seed`);
 
-    // Seed blog posts
+    
     const blogPosts = await seedBlogPosts(prisma, blogTags);
     console.log(`${blogPosts.length} artikel blog telah di-seed`);
 

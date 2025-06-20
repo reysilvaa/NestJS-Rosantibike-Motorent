@@ -11,9 +11,6 @@ export class TransaksiQueue {
     this.logger.log('TransaksiQueue service initialized');
   }
 
-  /**
-   * Menambahkan tugas untuk notifikasi booking
-   */
   async addNotifikasiBookingJob(transaksiId: string) {
     this.logger.debug(`Adding notifikasi booking job to queue: ${transaksiId}`);
 
@@ -43,9 +40,6 @@ export class TransaksiQueue {
     }
   }
 
-  /**
-   * Menambahkan tugas untuk pengingat pengembalian
-   */
   async addPengingatPengembalianJob(transaksiId: string) {
     this.logger.debug(`Adding pengingat pengembalian job to queue: ${transaksiId}`);
 
@@ -75,9 +69,6 @@ export class TransaksiQueue {
     }
   }
 
-  /**
-   * Menambahkan tugas untuk cek overdue
-   */
   async addCekOverdueJob(transaksiId: string) {
     this.logger.debug(`Adding cek overdue job to queue: ${transaksiId}`);
 
@@ -104,9 +95,6 @@ export class TransaksiQueue {
     }
   }
 
-  /**
-   * Menambahkan tugas untuk notifikasi selesai
-   */
   async addNotifikasiSelesaiJob(transaksiId: string) {
     this.logger.debug(`Adding notifikasi selesai job to queue: ${transaksiId}`);
 
@@ -136,9 +124,6 @@ export class TransaksiQueue {
     }
   }
 
-  /**
-   * Menambahkan tugas untuk jadwal cek overdue
-   */
   async addScheduleCekOverdueJob(transaksiId: string, scheduleTime: Date) {
     this.logger.debug(
       `Adding scheduled cek overdue job to queue: ${transaksiId} at ${scheduleTime}`,

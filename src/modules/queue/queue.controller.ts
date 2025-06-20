@@ -105,7 +105,6 @@ export class QueueDebugController {
         }
       }
 
-      // Simplify job data for response
       const simplifiedJobs = jobs.map(job => ({
         id: job.id,
         name: job.name,
@@ -310,10 +309,8 @@ export class QueueDebugController {
     try {
       const { name = 'test-job', data, options = {} } = jobData;
 
-      // Tambahkan job
       const job = await queue.add(name, data, options);
 
-      // Jika worker debug belum ada, buat worker debug
       this.queueService.createDebugWorker(queueName);
 
       return {
@@ -357,7 +354,6 @@ export class QueueDebugController {
     }
 
     try {
-      // Membersihkan job dengan status tertentu
       const count = await queue.clean(0, limit || 1000, status);
 
       return {
@@ -479,7 +475,7 @@ export class QueueDebugController {
     required: false,
     type: Number,
   })
-  startDebugWorker(
+  async startDebugWorker(
     @Param('queue') queueName: string,
     @Query('concurrency') concurrency: number = 1,
   ) {
@@ -491,7 +487,7 @@ export class QueueDebugController {
     }
 
     try {
-      const worker = this.queueService.createDebugWorker(queueName, concurrency);
+      await this.queueService.createDebugWorker(queueName, concurrency);
 
       return {
         timestamp: new Date(),

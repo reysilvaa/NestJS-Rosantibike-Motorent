@@ -45,21 +45,17 @@ export class UnitMotorProcessor extends WorkerHost {
     this.logger.debug(`Processing sync data job: ${job.id}`);
 
     try {
-      // Logika sinkronisasi data unit motor
-      // Misalnya, memeriksa kekonsistenan data
       const unitMotors = await this.prisma.unitMotor.findMany({
         include: {
           jenis: true,
         },
       });
 
-      // Contoh logika: periksa apakah semua unit motor memiliki nomor plat
       const incompleteUnits = unitMotors.filter(unit => !unit.platNomor);
 
       if (incompleteUnits.length > 0) {
         this.logger.warn(`Found ${incompleteUnits.length} units with incomplete data`);
 
-        // Notifikasi admin melalui WebSocket
         this.realtimeGateway.sendToAll('motor-status-update', {
           id: 'system',
           status: null,
@@ -82,7 +78,6 @@ export class UnitMotorProcessor extends WorkerHost {
     try {
       const { unitMotorId } = job.data;
 
-      // Dapatkan informasi unit motor
       const unitMotor = await this.prisma.unitMotor.findUnique({
         where: { id: unitMotorId },
         include: {
@@ -94,15 +89,13 @@ export class UnitMotorProcessor extends WorkerHost {
         throw new Error(`Unit motor dengan ID ${unitMotorId} tidak ditemukan`);
       }
 
-      // Dapatkan informasi admin
       const admin = await this.prisma.admin.findFirst();
 
       if (!admin) {
         throw new Error('Tidak ada admin yang ditemukan untuk notifikasi');
       }
 
-      // Kirim notifikasi maintenance ke admin (simulasi nomor WhatsApp admin)
-      const adminPhone = '628123456789'; // Nomor admin dalam contoh
+      const adminPhone = '628123456789';
       const message = `*Pengingat Maintenance Unit Motor*
       
 Plat Nomor: ${unitMotor.platNomor}
@@ -110,10 +103,8 @@ Jenis: ${unitMotor.jenis.merk} ${unitMotor.jenis.model}
       
 Unit ini memerlukan pemeriksaan dan maintenance rutin. Harap dijadwalkan dalam waktu dekat.`;
 
-      // Kirim pesan via WhatsApp
       await this.whatsappQueue.addSendMessageJob(adminPhone, message);
 
-      // Kirim notifikasi melalui WebSocket
       this.realtimeGateway.sendToAll('motor-status-update', {
         id: unitMotorId,
         status: unitMotor.status,
@@ -135,12 +126,10 @@ Unit ini memerlukan pemeriksaan dan maintenance rutin. Harap dijadwalkan dalam w
     try {
       const { unitMotorId, status } = job.data;
 
-      // Validasi status
       if (!Object.values(StatusMotor).includes(status as StatusMotor)) {
         throw new Error(`Status tidak valid: ${status}`);
       }
 
-      // Update status unit motor
       const updatedUnit = await this.prisma.unitMotor.update({
         where: { id: unitMotorId },
         data: { status: status as StatusMotor },
@@ -149,7 +138,6 @@ Unit ini memerlukan pemeriksaan dan maintenance rutin. Harap dijadwalkan dalam w
         },
       });
 
-      // Kirim notifikasi melalui WebSocket
       this.realtimeGateway.sendToAll('motor-status-update', {
         id: updatedUnit.id,
         status: updatedUnit.status as StatusMotor,
@@ -171,7 +159,6 @@ Unit ini memerlukan pemeriksaan dan maintenance rutin. Harap dijadwalkan dalam w
     try {
       const { unitMotorId, images } = job.data;
 
-      // Dapatkan informasi unit motor
       const unitMotor = await this.prisma.unitMotor.findUnique({
         where: { id: unitMotorId },
       });
@@ -180,18 +167,14 @@ Unit ini memerlukan pemeriksaan dan maintenance rutin. Harap dijadwalkan dalam w
         throw new Error(`Unit motor dengan ID ${unitMotorId} tidak ditemukan`);
       }
 
-      // Simulasi pemrosesan gambar
       const processedImages = images.map(img => {
-        // Simulasi proses resize dan watermark
         return img.replaceAll('/original/', '/processed/');
       });
 
-      // Update gambar unit motor (dalam contoh ini, kita hanya log)
       this.logger.debug(
         `Processed ${processedImages.length} images for unit ${unitMotor.platNomor}`,
       );
 
-      // Kirim notifikasi
       this.realtimeGateway.sendToAll('motor-status-update', {
         id: unitMotorId,
         status: unitMotor.status,

@@ -8,9 +8,6 @@ import { join } from 'node:path';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 
-/**
- * Mengonfigurasi middleware aplikasi
- */
 export const configureMiddleware = (app: INestApplication): void => {
   app.use(
     helmet({
@@ -21,20 +18,13 @@ export const configureMiddleware = (app: INestApplication): void => {
 
   app.use(compression());
 
-  // Logging HTTP
   app.use(morgan('combined'));
 };
 
-/**
- * Mengonfigurasi static file serving
- */
 export const configureStaticAssets = (app: NestExpressApplication): void => {
   app.useStaticAssets(join(__dirname, '..', '..', '..', 'public'));
 };
 
-/**
- * Mengonfigurasi global pipes
- */
 export const configureGlobalPipes = (app: INestApplication): void => {
   app.useGlobalPipes(
     new ValidationPipe({
@@ -49,9 +39,6 @@ export const configureGlobalPipes = (app: INestApplication): void => {
   );
 };
 
-/**
- * Mengonfigurasi Swagger untuk dokumentasi API
- */
 export const configureSwagger = (app: INestApplication): void => {
   const config = new DocumentBuilder()
     .setTitle('Rental Motor API')

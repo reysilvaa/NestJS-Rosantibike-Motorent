@@ -1,4 +1,5 @@
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import type { OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue, QueueEvents, Worker } from 'bullmq';
 import { ConfigService } from '@nestjs/config';
@@ -11,7 +12,6 @@ export class QueueService implements OnModuleDestroy {
   private workers: Map<string, Worker> = new Map();
   private redisConfig: { host: string; port: number };
 
-  // Membatasi jumlah worker debug yang dapat dibuat
   private readonly maxDebugWorkers = 5;
 
   constructor(
@@ -30,9 +30,6 @@ export class QueueService implements OnModuleDestroy {
     this.logger.log('QueueService initialized');
   }
 
-  /**
-   * Mendapatkan instansi queue
-   */
   getQueue(queueName: string): Queue | null {
     switch (queueName) {
       case 'transaksi': {
@@ -59,24 +56,20 @@ export class QueueService implements OnModuleDestroy {
     }
   }
 
-  /**
-   * Menambahkan HTTP request ke dalam queue
-   */
   async addHttpRequestJob(requestData: any) {
-    // Tentukan prioritas berdasarkan method dan path
-    let priority = 5; // default priority
+    let priority = 5;
 
     switch (requestData.method) {
       case 'GET': {
-        priority = 10; // prioritas tinggi untuk GET request
+        priority = 10;
         break;
       }
       case 'POST': {
-        priority = 5; // prioritas medium untuk POST request
+        priority = 5;
         break;
       }
       case 'DELETE': {
-        priority = 2; // prioritas rendah untuk DELETE request
+        priority = 2;
         break;
       }
     }
@@ -93,12 +86,8 @@ export class QueueService implements OnModuleDestroy {
     });
   }
 
-  /**
-   * Mendapatkan informasi tentang queue
-   * Cache hasil untuk mengurangi query ke Redis
-   */
   private queueInfoCache = new Map<string, { data: any; timestamp: number }>();
-  private readonly cacheTtl = 5000; // 5 detik
+  private readonly cacheTtl = 5000;
 
   async getQueueInfo(queueName: string) {
     const queue = this.getQueue(queueName);
@@ -106,7 +95,6 @@ export class QueueService implements OnModuleDestroy {
       return null;
     }
 
-    // Cek cache
     const now = Date.now();
     const cacheKey = queueName;
     const cachedInfo = this.queueInfoCache.get(cacheKey);
@@ -139,7 +127,6 @@ export class QueueService implements OnModuleDestroy {
         keys: await queue.getJobCounts(),
       };
 
-      // Simpan ke cache
       this.queueInfoCache.set(cacheKey, { data: result, timestamp: now });
 
       return result;
@@ -149,10 +136,6 @@ export class QueueService implements OnModuleDestroy {
     }
   }
 
-  /**
-   * Membuat dan mendapatkan scheduler untuk sebuah queue
-   * Lazy loading, hanya dibuat saat dibutuhkan
-   */
   getScheduler(queueName: string): any {
     if (!this.schedulers.has(queueName)) {
       const scheduler = { name: queueName, connection: this.redisConfig };
@@ -164,10 +147,6 @@ export class QueueService implements OnModuleDestroy {
     return this.schedulers.get(queueName)!;
   }
 
-  /**
-   * Membuat dan mendapatkan QueueEvents untuk sebuah queue
-   * Lazy loading dengan batasan event
-   */
   getQueueEvents(queueName: string): QueueEvents {
     if (!this.queueEvents.has(queueName)) {
       const queueEvents = new QueueEvents(queueName, {
@@ -184,7 +163,6 @@ export class QueueService implements OnModuleDestroy {
         );
       });
 
-      // Log hanya event penting untuk mengurangi beban
       queueEvents.on('failed', ({ jobId, failedReason }) => {
         this.logger.error(`Job ${jobId} failed in queue ${queueName}: ${failedReason}`);
       });
@@ -197,12 +175,7 @@ export class QueueService implements OnModuleDestroy {
     return this.queueEvents.get(queueName)!;
   }
 
-  /**
-   * Membuat worker dummy (hanya untuk debugging)
-   * Dengan batasan jumlah worker dan optimasi performa
-   */
-  createDebugWorker(queueName: string, concurrency: number = 1): Worker {
-    // Batasi jumlah worker yang dapat dibuat
+  async createDebugWorker(queueName: string, concurrency: number = 1): Promise<Worker> {
     if (this.workers.size >= this.maxDebugWorkers && !this.workers.has(queueName)) {
       this.logger.warn(
         `Reached max debug workers limit (${this.maxDebugWorkers}). Cannot create worker for ${queueName}`,
@@ -210,9 +183,8 @@ export class QueueService implements OnModuleDestroy {
       throw new Error(`Max debug workers limit reached (${this.maxDebugWorkers})`);
     }
 
-    // Close existing worker if needed
     if (this.workers.has(queueName)) {
-      this.workers.get(queueName)!.close();
+      await this.workers.get(queueName)!.close();
     }
 
     const worker = new Worker(
@@ -221,7 +193,6 @@ export class QueueService implements OnModuleDestroy {
         this.logger.debug(`Processing job ${job.id} in debug worker (${queueName})`);
         this.logger.debug(`Job data: ${JSON.stringify(job.data)}`);
 
-        // Simulasi pemrosesan dengan batasan waktu
         await new Promise(resolve => setTimeout(resolve, Math.min(1000, 50 + Math.random() * 100)));
 
         return { processed: true, timestamp: new Date() };
@@ -238,7 +209,6 @@ export class QueueService implements OnModuleDestroy {
 
     this.workers.set(queueName, worker);
 
-    // Hanya catat error untuk mengurangi log
     worker.on('failed', (job, error) => {
       this.logger.error(
         `Job ${job?.id} failed in debug worker (${queueName}): ${error.message}`,
@@ -251,27 +221,21 @@ export class QueueService implements OnModuleDestroy {
     return worker;
   }
 
-  /**
-   * Menutup semua resource
-   */
   async closeAll() {
     this.logger.log('Closing all queue resources...');
 
     const closePromises: Promise<void>[] = [];
 
-    // Close workers
     for (const [name, worker] of this.workers.entries()) {
       this.logger.log(`Closing worker for queue: ${name}`);
       closePromises.push(worker.close());
     }
 
-    // Close queue events
     for (const [name, queueEvents] of this.queueEvents.entries()) {
       this.logger.log(`Closing queue events for queue: ${name}`);
       closePromises.push(queueEvents.close());
     }
 
-    // Tutup resource secara paralel
     await Promise.all(closePromises);
 
     this.workers.clear();
@@ -282,9 +246,6 @@ export class QueueService implements OnModuleDestroy {
     this.logger.log('All queue resources closed');
   }
 
-  /**
-   * Lifecycle hook untuk memastikan resources dibersihkan
-   */
   async onModuleDestroy() {
     await this.closeAll();
   }

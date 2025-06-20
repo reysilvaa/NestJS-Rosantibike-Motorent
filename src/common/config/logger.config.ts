@@ -1,11 +1,7 @@
 import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
 
-/**
- * Konfigurasi Winston Logger
- */
 export const createLogger = () => {
-  // Format untuk teks yang mudah dibaca
   const readableFormat = winston.format.printf(
     ({ level, message, timestamp, context, trace, ...meta }) => {
       const contextStr = context ? `[${context}] ` : '';

@@ -11,9 +11,6 @@ export class UnitMotorQueue {
     this.logger.log('UnitMotorQueue service initialized');
   }
 
-  /**
-   * Menambahkan tugas untuk sinkronisasi data unit motor
-   */
   async addSyncDataJob() {
     this.logger.debug('Adding sync data job to queue');
 
@@ -39,9 +36,6 @@ export class UnitMotorQueue {
     }
   }
 
-  /**
-   * Menambahkan tugas untuk pemeliharaan rutin unit motor
-   */
   async addMaintenanceReminderJob(unitMotorId: string) {
     this.logger.debug(`Adding maintenance reminder job to queue for unit motor: ${unitMotorId}`);
 
@@ -71,9 +65,6 @@ export class UnitMotorQueue {
     }
   }
 
-  /**
-   * Menambahkan tugas untuk memperbarui status unit motor
-   */
   async addUpdateStatusJob(unitMotorId: string, status: string) {
     this.logger.debug(`Adding update status job to queue for unit motor: ${unitMotorId}`);
 
@@ -101,9 +92,6 @@ export class UnitMotorQueue {
     }
   }
 
-  /**
-   * Menambahkan tugas untuk memproses gambar unit motor
-   */
   async addProcessImageJob(unitMotorId: string, images: string[]) {
     this.logger.debug(`Adding process image job to queue for unit motor: ${unitMotorId}`);
 

@@ -1,27 +1,20 @@
 export const APP_CONSTANTS = {
-  // JWT
   JWT_STRATEGY: 'jwt',
 
-  // Pagination
   DEFAULT_PAGE_SIZE: 10,
   MAX_PAGE_SIZE: 100,
 
-  // File Upload
-  MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB
+  MAX_FILE_SIZE: 5 * 1024 * 1024,
   ALLOWED_FILE_TYPES: ['image/jpeg', 'image/png', 'image/webp'],
 
-  // Cache
-  CACHE_TTL: 60 * 60, // 1 hour in seconds
+  CACHE_TTL: 60 * 60,
 
-  // Rate Limiting
-  RATE_LIMIT_WINDOW_MS: 60_000, // 1 minute
+  RATE_LIMIT_WINDOW_MS: 60_000,
   RATE_LIMIT_MAX: 100,
 
-  // WhatsApp
-  WHATSAPP_RECONNECT_INTERVAL: 5000, // 5 seconds
+  WHATSAPP_RECONNECT_INTERVAL: 5000,
   WHATSAPP_MAX_RECONNECT_ATTEMPTS: 5,
 
-  // Transaction Status
   TRANSACTION_STATUS: {
     PENDING: 'PENDING',
     CONFIRMED: 'CONFIRMED',
@@ -30,7 +23,6 @@ export const APP_CONSTANTS = {
     CANCELLED: 'CANCELLED',
   },
 
-  // Payment Status
   PAYMENT_STATUS: {
     PENDING: 'PENDING',
     PAID: 'PAID',
@@ -38,27 +30,23 @@ export const APP_CONSTANTS = {
     REFUNDED: 'REFUNDED',
   },
 
-  // Payment Method
   PAYMENT_METHOD: {
     CASH: 'CASH',
     TRANSFER: 'TRANSFER',
     E_WALLET: 'E_WALLET',
   },
 
-  // User Role
   USER_ROLE: {
     ADMIN: 'ADMIN',
     CUSTOMER: 'CUSTOMER',
   },
 
-  // File Type
   FILE_TYPE: {
     IMAGE: 'IMAGE',
     DOCUMENT: 'DOCUMENT',
     OTHER: 'OTHER',
   },
 
-  // Notification Type
   NOTIFICATION_TYPE: {
     TRANSACTION_CREATED: 'TRANSACTION_CREATED',
     TRANSACTION_CONFIRMED: 'TRANSACTION_CONFIRMED',

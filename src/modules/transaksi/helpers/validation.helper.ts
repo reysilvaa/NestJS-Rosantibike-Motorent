@@ -1,11 +1,8 @@
 import type { Logger } from '@nestjs/common';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import type { PrismaService } from '../../../common/prisma/prisma.service';
-import { StatusMotor, StatusTransaksi } from '../../../common/enums/status.enum';
+import { StatusTransaksi } from '../../../common/enums/status.enum';
 
-/**
- * Memverifikasi keberadaan transaksi berdasarkan ID
- */
 export async function verifyTransaksiExists(id: string, prisma: PrismaService, logger: Logger) {
   const transaksi = await prisma.transaksiSewa.findUnique({
     where: { id },
@@ -26,9 +23,6 @@ export async function verifyTransaksiExists(id: string, prisma: PrismaService, l
   return transaksi;
 }
 
-/**
- * Memverifikasi keberadaan unit motor berdasarkan ID
- */
 export async function verifyUnitMotorExists(id: string, prisma: PrismaService, logger: Logger) {
   const unitMotor = await prisma.unitMotor.findUnique({
     where: { id },
@@ -42,9 +36,6 @@ export async function verifyUnitMotorExists(id: string, prisma: PrismaService, l
   return unitMotor;
 }
 
-/**
- * Memverifikasi ketersediaan unit motor pada rentang waktu tertentu
- */
 export async function verifyUnitMotorAvailability(
   unitId: string,
   tanggalMulai: Date,
@@ -58,7 +49,6 @@ export async function verifyUnitMotorAvailability(
     throw new BadRequestException('Tanggal mulai harus sebelum tanggal selesai');
   }
 
-  // Buat kondisi where yang mengecualikan transaksi saat ini (jika ada)
   const whereCondition: any = {
     id: transaksiId ? { not: transaksiId } : undefined,
     unitId,
@@ -79,7 +69,6 @@ export async function verifyUnitMotorAvailability(
     ],
   };
 
-  // Periksa apakah unit sudah dipesan pada rentang waktu tertentu
   const existingBooking = await prisma.transaksiSewa.findFirst({
     where: whereCondition,
   });
@@ -91,7 +80,6 @@ export async function verifyUnitMotorAvailability(
     throw new BadRequestException('Unit motor sudah dipesan pada rentang waktu tersebut');
   }
 
-  // Periksa apakah transaksi sebelumnya telah selesai selama minimal 1 jam
   const oneHourAgo = new Date();
   oneHourAgo.setHours(oneHourAgo.getHours() - 1);
 
@@ -120,9 +108,6 @@ export async function verifyUnitMotorAvailability(
   return true;
 }
 
-/**
- * Memverifikasi apakah transaksi dapat diselesaikan
- */
 export function verifyCanCompleteTransaksi(transaksi: any, logger: Logger) {
   if (transaksi.status === StatusTransaksi.SELESAI) {
     logger.error(`Transaksi dengan ID ${transaksi.id} sudah selesai`);

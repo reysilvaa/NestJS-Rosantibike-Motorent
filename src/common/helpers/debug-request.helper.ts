@@ -1,11 +1,5 @@
 import type { Logger } from '@nestjs/common';
 
-/**
- * Mencatat detail request untuk debugging
- * @param req Request object
- * @param logger Instance Logger
- * @returns Object yang berisi informasi debug
- */
 export const logRequestDebugInfo = (req: any, logger: Logger) => {
   logger.log('DEBUG REQUEST:');
   logger.log('Headers:', JSON.stringify(req.headers, null, 2));
@@ -23,7 +17,6 @@ export const logRequestDebugInfo = (req: any, logger: Logger) => {
   logger.log('Request Original URL:', req.originalUrl);
   logger.log('Request Base URL:', req.baseUrl);
 
-  // Log setiap field dalam body
   if (req.body) {
     logger.log('Body Fields:');
     Object.keys(req.body).forEach(key => {
@@ -31,7 +24,6 @@ export const logRequestDebugInfo = (req: any, logger: Logger) => {
     });
   }
 
-  // Log setiap field dalam files
   if (req.files && Object.keys(req.files).length > 0) {
     logger.log('File Fields:');
     Object.keys(req.files).forEach(key => {
@@ -42,7 +34,6 @@ export const logRequestDebugInfo = (req: any, logger: Logger) => {
     });
   }
 
-  // Log raw request body jika ada
   if (req.rawBody) {
     logger.log('Raw Request Body Length:', req.rawBody.length);
     logger.log('Raw Request Body Preview:', req.rawBody.toString().slice(0, 1000));

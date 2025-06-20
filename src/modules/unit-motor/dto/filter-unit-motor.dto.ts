@@ -43,11 +43,10 @@ export class FilterUnitMotorDto {
   @IsOptional()
   @IsString({ each: true })
   @Transform(({ value }) => {
-    // Jika nilai adalah string (dari query ?brands=merek1,merek2), pecah menjadi array
     if (typeof value === 'string') {
       return value.split(',');
     }
-    // Jika sudah array, kembalikan apa adanya
+
     return value;
   })
   brands?: string[];

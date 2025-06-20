@@ -8,7 +8,7 @@ module.exports = {
       max_memory_restart: process.env.PM2_MAX_MEMORY || '750M',
       node_args: process.env.PM2_NODE_ARGS || '--max-old-space-size=700',
       
-      // Konfigurasi lingkungan pengembangan
+      
       env_development: {
         NODE_ENV: 'development',
         PORT: 3030,
@@ -17,7 +17,7 @@ module.exports = {
         ignore_watch: ['node_modules', 'logs', '.git', 'uploaded'],
       },
       
-      // Konfigurasi lingkungan produksi
+      
       env_production: {
         NODE_ENV: 'production',
         PORT: 3030,

@@ -12,7 +12,6 @@ import * as winston from 'winston';
         const logFormat = configService.get('LOG_FORMAT') || 'text';
         const logLevel = configService.get('LOG_LEVEL') || 'debug';
 
-        // Format untuk teks yang mudah dibaca
         const readableFormat = winston.format.printf(
           ({ level, message, timestamp, context, trace, ...meta }) => {
             const contextStr = context ? `[${context}] ` : '';

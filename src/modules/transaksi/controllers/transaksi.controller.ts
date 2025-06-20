@@ -61,7 +61,6 @@ export class TransaksiController {
   })
   async getHistory(@Query() filter: FilterTransaksiDto) {
     try {
-      // Menambahkan parameter untuk hanya mengambil transaksi yang sudah selesai atau overdue
       filter.status = [StatusTransaksi.SELESAI, StatusTransaksi.OVERDUE];
       const result = await this.transaksiService.findAll(filter);
       return paginationResponse(

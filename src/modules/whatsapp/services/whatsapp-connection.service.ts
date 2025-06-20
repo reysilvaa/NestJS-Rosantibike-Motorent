@@ -45,9 +45,6 @@ export class WhatsappConnectionService {
     return this.config;
   }
 
-  /**
-   * Generate token untuk API WhatsApp
-   */
   async generateToken(): Promise<string> {
     try {
       const response = await axios.post(
@@ -74,9 +71,6 @@ export class WhatsappConnectionService {
     }
   }
 
-  /**
-   * Mendapatkan token saat ini atau generate baru jika tidak ada
-   */
   async getToken(): Promise<string> {
     if (!this.token) {
       return this.generateToken();
@@ -84,9 +78,6 @@ export class WhatsappConnectionService {
     return this.token;
   }
 
-  /**
-   * Memeriksa status koneksi sesi WhatsApp
-   */
   async checkConnection(): Promise<boolean> {
     try {
       const token = await this.getToken();
@@ -119,9 +110,6 @@ export class WhatsappConnectionService {
     }
   }
 
-  /**
-   * Mendapatkan status sesi WhatsApp
-   */
   async getSessionStatus() {
     try {
       const token = await this.getToken();
@@ -143,9 +131,6 @@ export class WhatsappConnectionService {
     }
   }
 
-  /**
-   * Memulai sesi WhatsApp
-   */
   async startSession() {
     try {
       const token = await this.getToken();
@@ -163,7 +148,6 @@ export class WhatsappConnectionService {
         {
           webhook: webhookUrl,
           waitQrCode: false,
-          // Pastikan webhook callback aktif
           webhookEnabled: true,
         },
         {
@@ -177,7 +161,6 @@ export class WhatsappConnectionService {
 
       if (response.data) {
         if (response.data.status === 'QRCODE' && response.data.qrcode) {
-          // QR code diterima, simpan untuk ditampilkan jika diperlukan
           this.lastQrCode = response.data.qrcode;
           this.connectionStatus = 'connecting';
           this.logger.log('QR code received from WhatsApp API');
@@ -197,9 +180,6 @@ export class WhatsappConnectionService {
     }
   }
 
-  /**
-   * Memulai semua sesi WhatsApp
-   */
   async startAllSessions() {
     try {
       const token = await this.getToken();
@@ -223,9 +203,6 @@ export class WhatsappConnectionService {
     }
   }
 
-  /**
-   * Mendapatkan daftar semua sesi WhatsApp
-   */
   async getAllSessions() {
     try {
       const token = await this.getToken();
@@ -247,9 +224,6 @@ export class WhatsappConnectionService {
     }
   }
 
-  /**
-   * Menutup sesi WhatsApp
-   */
   async closeSession() {
     try {
       if (!this.token) {
@@ -276,9 +250,6 @@ export class WhatsappConnectionService {
     }
   }
 
-  /**
-   * Logout dari sesi WhatsApp
-   */
   async logoutSession() {
     try {
       const token = await this.getToken();
@@ -303,12 +274,8 @@ export class WhatsappConnectionService {
     }
   }
 
-  /**
-   * Mendapatkan QR code
-   */
   async getQrCode() {
     try {
-      // Jika sudah terhubung, tidak perlu QR code
       if (this.connectionStatus === 'connected') {
         this.logger.log('WhatsApp sudah terhubung, tidak perlu QR code');
         return null;
@@ -352,7 +319,6 @@ export class WhatsappConnectionService {
         return null;
       }
 
-      // Jika tidak bisa mendapatkan QR code dan tidak sedang connecting, coba mulai koneksi
       if (this.connectionStatus !== 'connecting') {
         this.logger.log('Tidak bisa mendapatkan QR code, mencoba memulai koneksi baru');
         this.connect().catch(error => {
@@ -377,9 +343,6 @@ export class WhatsappConnectionService {
     }
   }
 
-  /**
-   * Konek ke WhatsApp
-   */
   async connect() {
     if (this.isConnecting) {
       this.logger.log('Connection attempt already in progress');
@@ -430,9 +393,8 @@ export class WhatsappConnectionService {
             this.retryCount = 0;
             this.lastQrCode = null;
           }
-        }, 10_000); // Cek setiap 10 detik
+        }, 10_000);
 
-        // Hentikan interval setelah 2 menit jika masih belum terhubung
         setTimeout(() => {
           clearInterval(checkInterval);
           if (this.connectionStatus !== 'connected') {
@@ -448,9 +410,6 @@ export class WhatsappConnectionService {
     }
   }
 
-  /**
-   * Handle ketika koneksi terputus
-   */
   private async handleDisconnect(reason: string) {
     this.isConnecting = false;
     this.connectionStatus = 'disconnected';
@@ -475,9 +434,6 @@ export class WhatsappConnectionService {
     }
   }
 
-  /**
-   * Reset koneksi WhatsApp
-   */
   async resetConnection() {
     this.logger.log('Resetting WhatsApp connection...');
     this.retryCount = 0;
@@ -498,9 +454,6 @@ export class WhatsappConnectionService {
     return this.connect();
   }
 
-  /**
-   * Mendapatkan status koneksi saat ini
-   */
   getConnectionStatus(): WhatsappStatus {
     return {
       status: this.connectionStatus,
@@ -512,9 +465,6 @@ export class WhatsappConnectionService {
     };
   }
 
-  /**
-   * Inisialisasi ulang koneksi WhatsApp
-   */
   async initialize() {
     try {
       this.logger.log('Initializing WhatsApp');
@@ -525,9 +475,6 @@ export class WhatsappConnectionService {
     }
   }
 
-  /**
-   * Cek apakah terhubung
-   */
   isConnected(): boolean {
     return this.connectionStatus === 'connected';
   }

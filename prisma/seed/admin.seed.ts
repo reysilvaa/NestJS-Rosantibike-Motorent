@@ -17,15 +17,15 @@ export async function seedAdmin(prisma: PrismaClient): Promise<AdminType[]> {
   ];
 
   try {
-    // Try to create all admins at once
+    
     const result = await prisma.admin.createMany({
       data: adminData,
-      skipDuplicates: false, // Skip if username already exists
+      skipDuplicates: false, 
     });
 
     console.log(`${result.count} admin berhasil dibuat`);
 
-    // Return all admins from the database
+    
     return await prisma.admin.findMany();
   } catch (error) {
     console.error('Error seeding admin:', error);

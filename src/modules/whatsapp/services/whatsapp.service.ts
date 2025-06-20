@@ -34,7 +34,6 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  // Connection methods
   getConnectionStatus() {
     return this.connectionService.getConnectionStatus();
   }
@@ -67,7 +66,6 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     return this.connectionService.logoutSession();
   }
 
-  // Messaging methods
   async sendMessage(to: string, message: string) {
     return this.messagingService.sendMessage(to, message);
   }
@@ -88,15 +86,12 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     return this.messagingService.getContact(phone);
   }
 
-  // Message handler methods
   async processIncomingMessage(messageData: WhatsappMessageData) {
-    // Validasi input sebelum meneruskan ke handler
     if (!messageData) {
       this.logger.warn('Received empty message data, ignoring');
       return;
     }
 
-    // Validasi event khusus yang tidak perlu diproses sebagai pesan
     const eventType = messageData.messageData?.event || '';
     const nonMessageEvents = [
       'onpresencechanged',
@@ -112,7 +107,6 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    // Pastikan ada pengirim dan pesan sebelum meneruskan
     if (!messageData.from || !messageData.message) {
       this.logger.warn(
         `Invalid message data, missing from or message: ${JSON.stringify(messageData)}`,
@@ -120,7 +114,6 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    // Validasi format pengirim
     if (messageData.from === '@c.us') {
       this.logger.warn(`Invalid sender format: ${messageData.from}`);
       return;

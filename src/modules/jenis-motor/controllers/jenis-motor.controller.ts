@@ -113,16 +113,14 @@ export class JenisMotorController {
     @UploadedFiles() files?: Express.Multer.File[],
   ) {
     try {
-      // Pastikan cc adalah number
       createJenisMotorDto.cc = Number(createJenisMotorDto.cc);
-      // Jika ada file gambar, upload ke Cloudinary
+
       if (files && files.length > 0) {
         logInfo(this.logger, `Memproses pembuatan jenis motor dengan gambar`);
         const file = getFirstFile(files, false);
         if (file) {
           logInfo(this.logger, getFileInfo(file));
 
-          // Upload gambar ke Cloudinary
           logInfo(this.logger, 'Mengunggah gambar ke Cloudinary...');
           const gambarUrl = await this.cloudinaryService.uploadJenisMotorImage(file);
 
@@ -132,12 +130,10 @@ export class JenisMotorController {
 
           logInfo(this.logger, `Gambar berhasil diupload ke: ${gambarUrl}`);
 
-          // Set gambar URL ke DTO
           createJenisMotorDto.gambar = gambarUrl;
         }
       }
 
-      // Buat jenis motor dengan atau tanpa gambar
       const created = await this.jenisMotorService.create(createJenisMotorDto);
 
       return {
@@ -194,31 +190,27 @@ export class JenisMotorController {
     @UploadedFiles() files?: Express.Multer.File[],
   ) {
     try {
-      // Pastikan cc adalah number jika ada
       if (updateJenisMotorDto.cc !== undefined) {
         updateJenisMotorDto.cc = Number(updateJenisMotorDto.cc);
       }
-      // Dapatkan data jenis motor yang akan diupdate
+
       const jenisMotor = await this.jenisMotorService.findOne(id);
 
       if (!jenisMotor) {
         throw new NotFoundException(`Jenis motor dengan ID "${id}" tidak ditemukan`);
       }
 
-      // Jika ada file gambar baru, upload ke Cloudinary
       if (files && files.length > 0) {
         logInfo(this.logger, `Memproses update jenis motor dengan gambar baru`);
         const file = getFirstFile(files, false);
         if (file) {
           logInfo(this.logger, getFileInfo(file));
 
-          // Hapus gambar lama jika ada
           if (jenisMotor.gambar) {
             logInfo(this.logger, `Menghapus gambar lama: ${jenisMotor.gambar}`);
             await this.cloudinaryService.deleteFile(jenisMotor.gambar);
           }
 
-          // Upload gambar baru ke Cloudinary
           logInfo(this.logger, 'Mengunggah gambar baru ke Cloudinary...');
           const gambarUrl = await this.cloudinaryService.uploadJenisMotorImage(file);
 
@@ -228,12 +220,10 @@ export class JenisMotorController {
 
           logInfo(this.logger, `Gambar baru berhasil diupload ke: ${gambarUrl}`);
 
-          // Set gambar URL ke DTO
           updateJenisMotorDto.gambar = gambarUrl;
         }
       }
 
-      // Update jenis motor
       const updated = await this.jenisMotorService.update(id, updateJenisMotorDto);
 
       return {
@@ -252,20 +242,16 @@ export class JenisMotorController {
   @ApiResponse({ status: 200, description: 'Jenis motor berhasil dihapus' })
   @ApiResponse({ status: 404, description: 'Jenis motor tidak ditemukan' })
   async remove(@Param('id') id: string) {
-    // Dapatkan data jenis motor yang akan dihapus
     const jenisMotor = await this.jenisMotorService.findOne(id);
 
-    // Jika jenis motor memiliki gambar, hapus gambar dari Cloudinary
     try {
       if (jenisMotor && 'gambar' in jenisMotor && jenisMotor.gambar) {
         await this.cloudinaryService.deleteFile(jenisMotor.gambar);
       }
     } catch (error) {
-      // Log error tapi lanjutkan proses
       this.logger.error('Error saat menghapus gambar:', error.message);
     }
 
-    // Hapus data jenis motor
     return this.jenisMotorService.remove(id);
   }
 

@@ -1,6 +1,3 @@
-/**
- * Mentransformasi blog post untuk format yang sesuai dengan frontend
- */
 export function transformBlogPostForFrontend(post: any) {
   return {
     id: post.id,

@@ -2,9 +2,6 @@ import { NotFoundException } from '@nestjs/common';
 import type { PrismaService } from '../../../common/prisma/prisma.service';
 import type { Logger } from '@nestjs/common';
 
-/**
- * Memverifikasi keberadaan jenis motor berdasarkan ID
- */
 export async function verifyJenisMotorExists(id: string, prisma: PrismaService, logger: Logger) {
   try {
     const jenisMotor = await prisma.jenisMotor.findUnique({
@@ -28,10 +25,6 @@ export async function verifyJenisMotorExists(id: string, prisma: PrismaService, 
   }
 }
 
-/**
- * Memverifikasi apakah jenis motor dapat dihapus
- * (tidak memiliki unit motor terkait)
- */
 export async function verifyCanDeleteJenisMotor(id: string, prisma: PrismaService, logger: Logger) {
   try {
     const unitMotors = await prisma.unitMotor.findMany({

@@ -11,9 +11,6 @@ export class WhatsappQueue {
     this.logger.log('WhatsappQueue service initialized');
   }
 
-  /**
-   * Menambahkan tugas untuk mengirim pesan WhatsApp
-   */
   async addSendMessageJob(to: string, message: string, options?: any) {
     this.logger.debug(`Adding send message job to queue: ${to}`);
 
@@ -42,9 +39,6 @@ export class WhatsappQueue {
     }
   }
 
-  /**
-   * Menambahkan tugas untuk memulai sesi WhatsApp
-   */
   async addInitSessionJob() {
     this.logger.debug('Adding initialize WhatsApp session job to queue');
 
@@ -70,9 +64,6 @@ export class WhatsappQueue {
     }
   }
 
-  /**
-   * Menambahkan tugas untuk memulai semua sesi WhatsApp
-   */
   async addStartAllSessionsJob() {
     this.logger.debug('Adding start all WhatsApp sessions job to queue');
 
@@ -101,9 +92,6 @@ export class WhatsappQueue {
     }
   }
 
-  /**
-   * Menambahkan tugas untuk mendapatkan daftar chat
-   */
   async addGetChatsJob() {
     this.logger.debug('Adding get chats job to queue');
 
@@ -129,9 +117,6 @@ export class WhatsappQueue {
     }
   }
 
-  /**
-   * Menambahkan tugas untuk mengirim pesan broadcast
-   */
   async addBroadcastJob(recipients: string[], message: string, options?: any) {
     this.logger.debug(`Adding broadcast job to queue for ${recipients.length} recipients`);
 

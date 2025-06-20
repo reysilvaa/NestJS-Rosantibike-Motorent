@@ -20,32 +20,24 @@ import {
 
 @Module({
   imports: [
-    // Konfigurasi global
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
       load: [CLOUDINARY_CONFIG],
     }),
 
-    // Common Module (termasuk Cloudinary)
     CloudinaryModule,
 
-    // Database
     PrismaModule,
 
-    // Logger
     LoggerModule,
 
-    // Realtime Websocket
     WebsocketModule,
 
-    // Redis Cache & Connections
     RedisModule,
 
-    // Queue Management
     QueueModule,
 
-    // Core Feature Modules
     AuthModule,
     AdminModule,
     JenisMotorModule,

@@ -46,11 +46,6 @@ export class AuthService {
     };
   }
 
-  /**
-   * Mengatur cookie autentikasi pada respons
-   * @param response Express Response
-   * @param token Token JWT
-   */
   setCookies(response: Response, token: string): void {
     const domain = process.env.COOKIE_DOMAIN || 'admin.rosantibikemotorent.com';
     const isProduction = process.env.NODE_ENV === 'production';
@@ -69,10 +64,6 @@ export class AuthService {
     response.cookie('accessToken', token, cookieOptions);
   }
 
-  /**
-   * Menghapus cookie autentikasi pada respons dan mengatur header untuk logout
-   * @param response Express Response
-   */
   clearCookies(response: Response): void {
     const domain = process.env.COOKIE_DOMAIN || 'admin.rosantibikemotorent.com';
     const isProduction = process.env.NODE_ENV === 'production';

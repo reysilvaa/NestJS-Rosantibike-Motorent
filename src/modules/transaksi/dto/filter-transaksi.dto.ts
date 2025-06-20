@@ -5,7 +5,7 @@ import { Transform } from 'class-transformer';
 export class FilterTransaksiDto {
   @IsString()
   @IsOptional()
-  search?: string; // Untuk mencari nama penyewa atau nomor WhatsApp
+  search?: string;
 
   @IsUUID()
   @IsOptional()

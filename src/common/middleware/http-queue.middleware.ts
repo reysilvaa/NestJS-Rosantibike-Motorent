@@ -1,5 +1,6 @@
-import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
-import { Request, Response, NextFunction } from 'express';
+import type { NestMiddleware } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import type { Request, Response, NextFunction } from 'express';
 import { QueueService } from '../../modules/queue/queue.service';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -11,15 +12,12 @@ export class HttpQueueMiddleware implements NestMiddleware {
   constructor(private queueService: QueueService) {}
 
   async use(req: Request, res: Response, next: NextFunction) {
-    // Exclude certain paths from queueing
     if (this.isExcludedPath(req.path)) {
       return next();
     }
 
-    // Generate unique ID for the request
     const requestId = uuidv4();
 
-    // Capture body data
     const requestData = {
       id: requestId,
       method: req.method,
@@ -32,11 +30,9 @@ export class HttpQueueMiddleware implements NestMiddleware {
     };
 
     try {
-      // Add request to queue
       const job = await this.queueService.addHttpRequestJob(requestData);
       this.logger.log(`HTTP request queued: ${req.method} ${req.path} (${requestId})`);
 
-      // Send response with tracking info
       res.status(202).json({
         status: 'accepted',
         message: 'Request diterima dan sedang diproses',
@@ -47,7 +43,6 @@ export class HttpQueueMiddleware implements NestMiddleware {
     } catch (error) {
       this.logger.error(`Failed to queue request: ${error.message}`, error.stack);
 
-      // If queue fails, process normally
       next();
     }
   }

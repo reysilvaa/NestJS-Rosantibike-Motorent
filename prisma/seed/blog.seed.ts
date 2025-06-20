@@ -13,7 +13,7 @@ export async function seedBlogTags(prisma: PrismaClient): Promise<BlogTagType[]>
 
   const tags: BlogTagType[] = [];
   for (const data of tagData) {
-    // Cek apakah tag sudah ada
+    
     const existingTag = await prisma.blogTag.findUnique({
       where: { nama: data.nama },
     });
@@ -123,7 +123,7 @@ export async function seedBlogPosts(
 
   const posts: BlogPostType[] = [];
   for (const data of blogPostData) {
-    // Cek apakah post sudah ada
+    
     const existingPost = await prisma.blogPost.findUnique({
       where: { slug: data.slug },
     });
@@ -132,7 +132,7 @@ export async function seedBlogPosts(
       console.log(`Artikel "${data.judul}" sudah ada`);
       posts.push(existingPost as BlogPostType);
     } else {
-      // Pilih 2 tag random untuk setiap artikel
+      
       const randomTags = tags.sort(() => 0.5 - Math.random()).slice(0, 2);
 
       const post = await prisma.blogPost.create({

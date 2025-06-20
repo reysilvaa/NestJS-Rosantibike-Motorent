@@ -11,10 +11,8 @@ export class CreateBlogPostDto {
   @IsOptional()
   @Expose()
   @Transform(({ value, obj }) => {
-    // Jika slug sudah ada, gunakan itu
     if (value) return value;
 
-    // Jika tidak, buat slug dari judul
     if (obj.judul) {
       return obj.judul
         .toLowerCase()

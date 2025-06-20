@@ -1,10 +1,5 @@
 import { formatCurrency, getStatusLabel } from './whatsapp-formatter.helper';
 
-/**
- * Template menu utama untuk pengguna
- * @param nama Nama pengguna yang akan disapa (opsional)
- * @returns Text menu utama
- */
 export function getMainMenuTemplate(nama?: string): string {
   const greeting = nama ? `Halo ${nama}!` : 'Halo!';
 
@@ -37,11 +32,6 @@ export function getMainMenuTemplate(nama?: string): string {
   );
 }
 
-/**
- * Template menu untuk transaksi aktif
- * @param transaction Data transaksi
- * @returns Text menu transaksi aktif
- */
 export function getActiveTransactionMenuTemplate(transaction: any): string {
   return (
     `MENU TRANSAKSI AKTIF\n\n` +
@@ -55,11 +45,6 @@ export function getActiveTransactionMenuTemplate(transaction: any): string {
   );
 }
 
-/**
- * Template informasi transaksi aktif
- * @param transaction Data transaksi
- * @returns Text informasi transaksi
- */
 export function getActiveTransactionInfoTemplate(transaction: any): string {
   const startDate = new Date(transaction.tanggalMulai).toLocaleDateString('id-ID', {
     weekday: 'long',
@@ -75,7 +60,6 @@ export function getActiveTransactionInfoTemplate(transaction: any): string {
     day: 'numeric',
   });
 
-  // Hitung berapa hari sewa
   const startDateObj = new Date(transaction.tanggalMulai);
   const endDateObj = new Date(transaction.tanggalSelesai);
   const diffTime = Math.abs(endDateObj.getTime() - startDateObj.getTime());
@@ -104,12 +88,6 @@ export function getActiveTransactionInfoTemplate(transaction: any): string {
   );
 }
 
-/**
- * Template instruksi pembayaran DP
- * @param transaction Data transaksi
- * @param paymentInfo Informasi pembayaran dari database
- * @returns Text instruksi pembayaran DP
- */
 export function getPaymentInstructionsTemplate(
   transaction: any,
   paymentInfo: {
@@ -138,13 +116,6 @@ export function getPaymentInstructionsTemplate(
   );
 }
 
-/**
- * Template instruksi perpanjangan sewa
- * @param transaction Data transaksi
- * @param adminNumber Nomor admin
- * @param websiteUrl URL website dari database
- * @returns Text instruksi perpanjangan
- */
 export function getExtensionInstructionsTemplate(
   transaction: any,
   adminNumber: string,
@@ -160,11 +131,6 @@ export function getExtensionInstructionsTemplate(
   );
 }
 
-/**
- * Template daftar motor
- * @param jenisMotor Array jenis motor
- * @returns Text daftar motor
- */
 export function getMotorListTemplate(jenisMotor: any[]): string {
   let motorListText = 'DAFTAR MOTOR TERSEDIA\n\n';
 
@@ -177,7 +143,6 @@ export function getMotorListTemplate(jenisMotor: any[]): string {
     jenisMotor.forEach((jenis, index) => {
       const jumlahTersedia = jenis.unitMotor?.length || 0;
       if (jumlahTersedia > 0) {
-        // Tampilkan juga CC motor untuk informasi lengkap
         motorListText += `${index + 1}. ${jenis.merk} ${jenis.model} (${jenis.cc}cc) - ${jumlahTersedia} Unit\n`;
       }
     });
@@ -188,17 +153,11 @@ export function getMotorListTemplate(jenisMotor: any[]): string {
   return motorListText;
 }
 
-/**
- * Template harga sewa motor
- * @param jenisMotor Array jenis motor
- * @returns Text harga sewa
- */
 export function getRentalPricesTemplate(jenisMotor: any[]): string {
   let priceText = 'HARGA SEWA MOTOR\n\n';
   priceText += 'Berikut harga sewa motor per hari:\n\n';
 
   jenisMotor.forEach((jenis, index) => {
-    // Gunakan hargaSewa dari unitMotor pertama jika ada
     const hargaSewa =
       jenis.unitMotor && jenis.unitMotor.length > 0 ? jenis.unitMotor[0].hargaSewa : 0;
     priceText += `${index + 1}. ${jenis.merk} ${jenis.model} (${jenis.cc}cc) - Rp ${formatCurrency(hargaSewa)}/hari\n`;
@@ -209,12 +168,6 @@ export function getRentalPricesTemplate(jenisMotor: any[]): string {
   return priceText;
 }
 
-/**
- * Template informasi pemesanan
- * @param adminNumber Nomor admin
- * @param websiteUrl URL website dari database
- * @returns Text informasi pemesanan
- */
 export function getBookingInfoTemplate(
   adminNumber: string,
   websiteUrl = 'https://rosantibikemotorent.com',
@@ -234,10 +187,6 @@ export function getBookingInfoTemplate(
   );
 }
 
-/**
- * Template informasi status transaksi
- * @returns Text informasi status transaksi
- */
 export function getTransactionStatusInfoTemplate(): string {
   return (
     'CEK STATUS TRANSAKSI\n\n' +
@@ -247,10 +196,6 @@ export function getTransactionStatusInfoTemplate(): string {
   );
 }
 
-/**
- * Template menu bantuan
- * @returns Text menu bantuan
- */
 export function getHelpMenuTemplate(): string {
   return (
     'MENU BANTUAN\n\n' +
@@ -263,10 +208,6 @@ export function getHelpMenuTemplate(): string {
   );
 }
 
-/**
- * Template pesan sambutan
- * @returns Text pesan sambutan
- */
 export function getWelcomeMessageTemplate(): string {
   return (
     'Selamat datang di ROSANTIBIKE MOTORRENT!\n\n' +
@@ -275,10 +216,6 @@ export function getWelcomeMessageTemplate(): string {
   );
 }
 
-/**
- * Template syarat sewa
- * @returns Text syarat sewa
- */
 export function getRentalRequirementsTemplate(): string {
   return (
     'SYARAT SEWA MOTOR\n\n' +
@@ -295,11 +232,6 @@ export function getRentalRequirementsTemplate(): string {
   );
 }
 
-/**
- * Template info pembayaran
- * @param paymentInfo Info pembayaran dari database
- * @returns Text info pembayaran
- */
 export function getPaymentInfoTemplate(
   paymentInfo: {
     bank?: string;
@@ -333,11 +265,6 @@ export function getPaymentInfoTemplate(
   );
 }
 
-/**
- * Template kontak admin
- * @param adminInfo Info admin dari database
- * @returns Text kontak admin
- */
 export function getAdminContactTemplate(
   adminInfo: {
     name?: string;
@@ -374,10 +301,6 @@ export function getAdminContactTemplate(
   );
 }
 
-/**
- * Template FAQ
- * @returns Text FAQ
- */
 export function getFAQTemplate(): string {
   return (
     'FAQ (Pertanyaan Umum)\n\n' +
@@ -395,22 +318,15 @@ export function getFAQTemplate(): string {
   );
 }
 
-/**
- * Template notifikasi pemesanan
- * @param transaction Data transaksi
- * @returns Text notifikasi pemesanan
- */
 export function getBookingNotificationTemplate(transaction: any): string {
   const tanggalMulai = new Date(transaction.tanggalMulai);
   const tanggalSelesai = new Date(transaction.tanggalSelesai);
   const jenis = transaction.unitMotor.jenis;
   const unitMotor = transaction.unitMotor;
 
-  // Hitung durasi sewa dalam hari
   const diffTime = Math.abs(tanggalSelesai.getTime() - tanggalMulai.getTime());
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-  // Informasi tambahan seperti helm dan jas hujan
   const additionalItems: string[] = [];
   if (transaction.helm > 0) {
     additionalItems.push(`Helm: ${transaction.helm} buah`);
@@ -448,17 +364,11 @@ A4 - Bantuan
 Terima kasih!`;
 }
 
-/**
- * Template notifikasi pengingat pengembalian
- * @param transaction Data transaksi
- * @returns Text pengingat pengembalian
- */
 export function getReminderNotificationTemplate(transaction: any): string {
   const unitMotor = transaction.unitMotor;
   const jenis = unitMotor.jenis;
   const tanggalSelesai = new Date(transaction.tanggalSelesai);
 
-  // Format jam dengan padding nol di depan jika perlu
   const jam =
     transaction.jamSelesai ||
     `${tanggalSelesai.getHours()}:${String(tanggalSelesai.getMinutes()).padStart(2, '0')}`;
@@ -484,17 +394,11 @@ A4 - Bantuan
 Terima kasih!`;
 }
 
-/**
- * Template notifikasi overdue (keterlambatan)
- * @param transaction Data transaksi
- * @returns Text notifikasi overdue
- */
 export function getOverdueNotificationTemplate(transaction: any): string {
   const unitMotor = transaction.unitMotor;
   const jenis = unitMotor.jenis;
   const tanggalSelesai = new Date(transaction.tanggalSelesai);
 
-  // Format tanggal dan jam yang lebih user-friendly
   const tanggalFormat = tanggalSelesai.toLocaleDateString('id-ID', {
     weekday: 'long',
     year: 'numeric',
@@ -502,7 +406,6 @@ export function getOverdueNotificationTemplate(transaction: any): string {
     day: 'numeric',
   });
 
-  // Hitung keterlambatan dalam jam
   const now = new Date();
   const diffTime = Math.abs(now.getTime() - tanggalSelesai.getTime());
   const diffHours = Math.ceil(diffTime / (1000 * 60 * 60));
@@ -533,17 +436,11 @@ A4 - Hubungi admin
 Terima kasih atas pengertian dan kerjasamanya.`;
 }
 
-/**
- * Template notifikasi overdue untuk admin
- * @param transaction Data transaksi
- * @returns Text notifikasi overdue untuk admin
- */
 export function getAdminOverdueNotificationTemplate(transaction: any): string {
   const unitMotor = transaction.unitMotor;
   const jenis = unitMotor.jenis;
   const tanggalSelesai = new Date(transaction.tanggalSelesai);
 
-  // Hitung keterlambatan dalam jam
   const now = new Date();
   const diffTime = Math.abs(now.getTime() - tanggalSelesai.getTime());
   const diffHours = Math.ceil(diffTime / (1000 * 60 * 60));
@@ -566,24 +463,16 @@ Motor belum dikembalikan. Status otomatis diubah menjadi OVERDUE.
 Mohon segera hubungi penyewa untuk tindak lanjut.`;
 }
 
-/**
- * Template notifikasi penyelesaian transaksi
- * @param transaction Data transaksi
- * @returns Text notifikasi penyelesaian
- */
 export function getCompletionNotificationTemplate(transaction: any): string {
   const unitMotor = transaction.unitMotor;
   const jenis = unitMotor.jenis;
 
-  // Tanggal mulai dan selesai untuk informasi durasi sewa
   const tanggalMulai = new Date(transaction.tanggalMulai);
   const tanggalSelesai = new Date(transaction.tanggalSelesai);
 
-  // Hitung durasi sewa dalam hari
   const diffTime = Math.abs(tanggalSelesai.getTime() - tanggalMulai.getTime());
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-  // Periksa biaya denda jika ada
   const biayaDenda = transaction.biayaDenda || 0;
 
   return `Halo ${transaction.namaPenyewa}!
@@ -610,11 +499,6 @@ MENU - Lihat semua layanan
 Terima kasih!`;
 }
 
-/**
- * Template status pesan berdasarkan status transaksi
- * @param status Status transaksi
- * @returns Text status pesan
- */
 export function getStatusMessageTemplate(status: string): string {
   switch (status.toLowerCase()) {
     case 'pending': {
@@ -641,11 +525,6 @@ export function getStatusMessageTemplate(status: string): string {
   }
 }
 
-/**
- * Template informasi rental
- * @param rental Data rental
- * @returns Text informasi rental
- */
 export function getRentalInfoTemplate(rental: any): string {
   if (!rental) {
     return `INFO PENYEWAAN
@@ -662,7 +541,6 @@ Ketik MENU untuk kembali ke menu utama.`;
   const diffTime = Math.abs(tanggalSelesai.getTime() - tanggalMulai.getTime());
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-  // Tambahan item
   const additionalItems: string[] = [];
   if (rental.helm > 0) {
     additionalItems.push(`Helm: ${rental.helm} buah`);
@@ -701,10 +579,6 @@ A4 - untuk bantuan lebih lanjut
 MENU - untuk kembali ke menu utama`;
 }
 
-/**
- * Template informasi tentang kami
- * @returns Text informasi tentang kami
- */
 export function getAboutUsTemplate(): string {
   return `TENTANG ROSANTIBIKE MOTORENT
 

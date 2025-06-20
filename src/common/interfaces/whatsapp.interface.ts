@@ -41,3 +41,15 @@ export interface WhatsappMessageData {
   message: string;
   messageData: any;
 }
+
+export interface WhatsappConnectionServiceInterface {
+  getConnectionStatus(): WhatsappStatus;
+  getQrCode(): Promise<string | null>;
+  getSessionStatus(): Promise<any>;
+  resetConnection(): Promise<void>;
+  initialize(): Promise<any>;
+  startAllSessions(): Promise<any>;
+  getAllSessions(): Promise<any>;
+  logoutSession(): Promise<any>;
+  closeSession(): Promise<any>;
+}

@@ -7,7 +7,7 @@ export async function seedTransaksi(
   prisma: PrismaClient,
   unitMotor: UnitMotorType[],
 ): Promise<TransaksiType[]> {
-  // Contoh tanggal
+  
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -18,7 +18,7 @@ export async function seedTransaksi(
     {
       namaPenyewa: 'Budi Santoso',
       noWhatsapp: '628123456789',
-      unitId: unitMotor[0].id, // Honda Beat
+      unitId: unitMotor[0].id, 
       tanggalMulai: today,
       tanggalSelesai: tomorrow,
       status: StatusTransaksi.AKTIF,
@@ -27,17 +27,17 @@ export async function seedTransaksi(
     {
       namaPenyewa: 'Andi Wijaya',
       noWhatsapp: '628234567890',
-      unitId: unitMotor[2].id, // Yamaha NMAX
+      unitId: unitMotor[2].id, 
       tanggalMulai: today,
       tanggalSelesai: nextWeek,
       status: StatusTransaksi.AKTIF,
-      totalBiaya: new Decimal(875000), // 125000 x 7 hari
+      totalBiaya: new Decimal(875000), 
     },
   ];
 
   const transaksi: TransaksiType[] = [];
   for (const data of transaksiData) {
-    // Cek apakah transaksi dengan data yang sama sudah ada
+    
     const existingTransaksi = await prisma.transaksiSewa.findFirst({
       where: {
         namaPenyewa: data.namaPenyewa,
@@ -65,7 +65,7 @@ export async function seedTransaksi(
       });
       transaksi.push(newTransaksi);
       console.log(`Transaksi untuk ${newTransaksi.namaPenyewa} berhasil dibuat`);
-      // Update status motor menjadi DISEWA
+      
       await prisma.unitMotor.update({
         where: { id: data.unitId },
         data: { status: StatusMotor.DISEWA },

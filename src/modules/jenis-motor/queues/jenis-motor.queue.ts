@@ -11,9 +11,6 @@ export class JenisMotorQueue {
     this.logger.log('JenisMotorQueue service initialized');
   }
 
-  /**
-   * Menambahkan tugas untuk memproses gambar jenis motor
-   */
   async addProcessImageJob(jenisMotorId: string, imageData: any) {
     this.logger.debug(`Adding process image job to queue for jenis motor ID: ${jenisMotorId}`);
 
@@ -41,9 +38,6 @@ export class JenisMotorQueue {
     }
   }
 
-  /**
-   * Menambahkan tugas untuk memperbarui cache data jenis motor
-   */
   async addUpdateCacheJob() {
     this.logger.debug('Adding update cache job to queue');
 
@@ -69,9 +63,6 @@ export class JenisMotorQueue {
     }
   }
 
-  /**
-   * Menambahkan tugas untuk mengirim notifikasi jenis motor baru
-   */
   async addNotifyNewJenisMotorJob(jenisMotorId: string) {
     this.logger.debug(`Adding notify new jenis motor job to queue: ${jenisMotorId}`);
 

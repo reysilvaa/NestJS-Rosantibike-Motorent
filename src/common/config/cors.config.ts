@@ -4,12 +4,8 @@ import { Logger } from '@nestjs/common';
 
 const logger = new Logger('CorsConfig');
 
-/**
- * Konfigurasi CORS untuk aplikasi
- */
 export const corsOptions = {
   origin: (origin, callback) => {
-    // Ambil daftar origin dari variabel lingkungan jika tersedia
     const allowedOrigins = process.env.CORS_ORIGIN
       ? process.env.CORS_ORIGIN.split(',')
       : [
@@ -41,19 +37,12 @@ export const corsOptions = {
   optionsSuccessStatus: 200,
 };
 
-/**
- * Konfigurasi CORS dan body parser untuk aplikasi
- * @param app Aplikasi NestJS
- */
 export function setupCors(app: INestApplication): void {
-  // Log environment
   const isProduction = process.env.NODE_ENV === 'production';
   logger.log(`Mengatur CORS untuk lingkungan: ${isProduction ? 'production' : 'development'}`);
 
-  // Konfigurasi CORS yang lebih spesifik
   app.enableCors(corsOptions);
 
-  // Konfigurasi body parser dengan limit yang lebih besar
   app.use(json({ limit: '10mb' }));
   app.use(urlencoded({ limit: '10mb', extended: true }));
 }

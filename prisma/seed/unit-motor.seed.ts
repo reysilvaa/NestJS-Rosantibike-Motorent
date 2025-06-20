@@ -4,7 +4,7 @@ import { JenisMotorType, UnitMotorType } from './types';
 import { StatusMotor } from '../../src/common/enums/status.enum';
 
 function generateSlug(jenisMotor: JenisMotorType, platNomor: string): string {
-  // Gunakan slug dari jenis motor dan plat nomor yang disanitasi
+  
   const sanitizedPlat = platNomor.replaceAll(/\s+/g, '');
   return `${jenisMotor.slug}-${sanitizedPlat}`;
 }
@@ -13,12 +13,12 @@ export async function seedUnitMotor(
   prisma: PrismaClient,
   jenisMotor: JenisMotorType[],
 ): Promise<UnitMotorType[]> {
-  // Mendapatkan indeks jenis motor berdasarkan model
+  
   const getJenisIndex = (model: string): number => {
     return jenisMotor.findIndex(jm => jm.model.toLowerCase() === model.toLowerCase());
   };
 
-  // Indeks model motor
+  
   const beatFlIndex = getJenisIndex('Beat Fi');
   const scoopyIndex = getJenisIndex('Scoopy');
   const vario125Index = getJenisIndex('Vario 125');
@@ -28,7 +28,7 @@ export async function seedUnitMotor(
   const pcxIndex = getJenisIndex('PCX');
 
   const unitMotorData = [
-    // Honda Beat FL
+    
     {
       jenisId: jenisMotor[beatFlIndex].id,
       platNomor: 'N 2045 ADK',
@@ -48,7 +48,7 @@ export async function seedUnitMotor(
       status: StatusMotor.TERSEDIA,
     },
 
-    // Honda Scoopy
+    
     {
       jenisId: jenisMotor[scoopyIndex].id,
       platNomor: 'N 6393 EDN',
@@ -56,7 +56,7 @@ export async function seedUnitMotor(
       status: StatusMotor.TERSEDIA,
     },
 
-    // Honda Vario 125
+    
     {
       jenisId: jenisMotor[vario125Index].id,
       platNomor: 'N 2238 ABV',
@@ -64,7 +64,7 @@ export async function seedUnitMotor(
       status: StatusMotor.TERSEDIA,
     },
 
-    // Honda Vario 150
+    
     {
       jenisId: jenisMotor[vario150Index].id,
       platNomor: 'N 3561 AAV',
@@ -78,7 +78,7 @@ export async function seedUnitMotor(
       status: StatusMotor.TERSEDIA,
     },
 
-    // Yamaha Lexi
+    
     {
       jenisId: jenisMotor[lexiIndex].id,
       platNomor: 'N 5622 ABO',
@@ -98,7 +98,7 @@ export async function seedUnitMotor(
       status: StatusMotor.TERSEDIA,
     },
 
-    // Yamaha Soul GT
+    
     {
       jenisId: jenisMotor[soulGTIndex].id,
       platNomor: 'N 5993 ADJ',
@@ -106,7 +106,7 @@ export async function seedUnitMotor(
       status: StatusMotor.TERSEDIA,
     },
 
-    // Honda PCX
+    
     {
       jenisId: jenisMotor[pcxIndex].id,
       platNomor: 'N 2603 ACA',
@@ -117,25 +117,25 @@ export async function seedUnitMotor(
 
   const unitMotor: UnitMotorType[] = [];
   for (const data of unitMotorData) {
-    // Cek apakah unit motor sudah ada
+    
     const existingUnit = await prisma.unitMotor.findUnique({
       where: { platNomor: data.platNomor },
     });
 
-    // Dapatkan jenis motor terkait
+    
     const relatedJenisMotor = jenisMotor.find(jm => jm.id === data.jenisId);
     if (!relatedJenisMotor) {
       console.error(`Jenis motor dengan ID ${data.jenisId} tidak ditemukan.`);
       continue;
     }
 
-    // Generate slug dari jenis motor dan plat nomor
+    
     const slug = generateSlug(relatedJenisMotor, data.platNomor);
 
     if (existingUnit) {
       console.log(`Unit motor ${data.platNomor} sudah ada`);
       
-      // Update slug jika belum ada
+      
       if (!existingUnit.slug) {
         await prisma.unitMotor.update({
           where: { id: existingUnit.id },

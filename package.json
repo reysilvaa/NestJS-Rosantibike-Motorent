@@ -33,6 +33,8 @@
     "start:debug": "cross-env NODE_ENV=development DEBUG=* nest start --watch",
     "// Utils": "========= Utility Scripts =========",
     "kill:port": "npx kill-port 3030",
+    "strip-comments": "node scripts/strip-comments.js",
+    "strip-comments:prod": "NODE_ENV=production node scripts/strip-comments.js",
     "// Testing": "========= Testing Scripts =========",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "lint:test": "eslint \"src/**/*.spec.ts\" --config .eslintrc.test.js --fix",
@@ -143,6 +145,7 @@
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.7.1",
     "typescript": "^5.8.2"
   },
   "jest": {

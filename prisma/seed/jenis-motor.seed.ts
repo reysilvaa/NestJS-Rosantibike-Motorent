@@ -1,7 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import type { JenisMotorType } from './types';
 
-// Fungsi untuk menghasilkan slug dari merk dan model
+
 export async function seedJenisMotor(prisma: PrismaClient): Promise<JenisMotorType[]> {
   const jenisMotorData = [
     {
@@ -57,7 +57,7 @@ export async function seedJenisMotor(prisma: PrismaClient): Promise<JenisMotorTy
 
   const jenisMotor: JenisMotorType[] = [];
   for (const data of jenisMotorData) {
-    // Cek apakah jenis motor sudah ada
+    
     const existingJenis = await prisma.jenisMotor.findFirst({
       where: {
         merk: data.merk,
@@ -68,7 +68,7 @@ export async function seedJenisMotor(prisma: PrismaClient): Promise<JenisMotorTy
     if (existingJenis) {
       console.log(`Jenis motor ${data.merk} ${data.model} sudah ada`);
       
-      // Update slug jika belum ada
+      
       if (!existingJenis.slug) {
         await prisma.jenisMotor.update({
           where: { id: existingJenis.id },

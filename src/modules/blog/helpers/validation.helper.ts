@@ -2,9 +2,6 @@ import { NotFoundException, BadRequestException } from '@nestjs/common';
 import type { PrismaService } from '../../../common/prisma/prisma.service';
 import type { Logger } from '@nestjs/common';
 
-/**
- * Memverifikasi keberadaan blog post berdasarkan ID
- */
 export async function verifyBlogPostExists(id: string, prisma: PrismaService, logger: Logger) {
   try {
     const post = await prisma.blogPost.findUnique({
@@ -32,9 +29,6 @@ export async function verifyBlogPostExists(id: string, prisma: PrismaService, lo
   }
 }
 
-/**
- * Memverifikasi keberadaan blog post berdasarkan slug
- */
 export async function verifyBlogPostBySlugExists(
   slug: string,
   prisma: PrismaService,
@@ -66,9 +60,6 @@ export async function verifyBlogPostBySlugExists(
   }
 }
 
-/**
- * Memverifikasi apakah slug sudah digunakan
- */
 export async function verifySlugIsUnique(slug: string, prisma: PrismaService, excludeId?: string) {
   const existingPost = await prisma.blogPost.findUnique({
     where: { slug },

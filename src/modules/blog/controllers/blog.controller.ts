@@ -7,22 +7,17 @@ import {
   Patch,
   Post,
   Query,
-  UploadedFile,
   UseInterceptors,
   BadRequestException,
   NotFoundException,
-  InternalServerErrorException,
   UploadedFiles,
   Req,
 } from '@nestjs/common';
 import { BlogService } from '../services/blog.service';
 import { CreateBlogPostDto, UpdateBlogPostDto, FilterBlogPostDto } from '../dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
-import { FileInterceptor } from '@nestjs/platform-express';
 import { CloudinaryService } from '../../../common/services';
-import { memoryStorage } from 'multer';
 import { Logger } from '@nestjs/common';
-import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import {
   createFileUploadInterceptor,
   getFirstFile,
@@ -132,7 +127,6 @@ export class BlogController {
     @UploadedFiles() files?: Express.Multer.File[],
   ) {
     try {
-      // Jika slug tidak disediakan, isi dengan slug dari judul
       if (!createBlogDto.slug && createBlogDto.judul) {
         createBlogDto.slug = createBlogDto.judul
           .toLowerCase()
@@ -140,14 +134,12 @@ export class BlogController {
           .replaceAll(/(^-|-$)/g, '');
       }
 
-      // Jika ada file gambar, upload ke Cloudinary
       if (files && files.length > 0) {
         logInfo(this.logger, `Memproses pembuatan blog dengan gambar`);
         const file = getFirstFile(files, false);
         if (file) {
           logInfo(this.logger, getFileInfo(file));
 
-          // Upload gambar ke Cloudinary
           logInfo(this.logger, 'Mengunggah gambar ke Cloudinary...');
           const gambarUrl = await this.cloudinaryService.uploadBlogImage(file);
 
@@ -157,12 +149,10 @@ export class BlogController {
 
           logInfo(this.logger, `Gambar berhasil diupload ke: ${gambarUrl}`);
 
-          // Set thumbnail URL ke DTO
           createBlogDto.featuredImage = gambarUrl;
         }
       }
 
-      // Buat blog dengan atau tanpa gambar
       const createdBlog = await this.blogService.create(createBlogDto);
 
       return {
@@ -233,27 +223,23 @@ export class BlogController {
     @UploadedFiles() files?: Express.Multer.File[],
   ) {
     try {
-      // Dapatkan blog yang akan diupdate
       const blog = await this.blogService.findOne(id);
 
       if (!blog) {
         throw new NotFoundException(`Blog dengan ID "${id}" tidak ditemukan`);
       }
 
-      // Jika ada file gambar baru, upload ke Cloudinary
       if (files && files.length > 0) {
         logInfo(this.logger, `Memproses update blog dengan gambar baru`);
         const file = getFirstFile(files, false);
         if (file) {
           logInfo(this.logger, getFileInfo(file));
 
-          // Hapus gambar lama jika ada
           if (blog.thumbnail) {
             logInfo(this.logger, `Menghapus gambar lama: ${blog.thumbnail}`);
             await this.cloudinaryService.deleteFile(blog.thumbnail);
           }
 
-          // Upload gambar baru ke Cloudinary
           logInfo(this.logger, 'Mengunggah gambar baru ke Cloudinary...');
           const gambarUrl = await this.cloudinaryService.uploadBlogImage(file);
 
@@ -263,12 +249,10 @@ export class BlogController {
 
           logInfo(this.logger, `Gambar baru berhasil diupload ke: ${gambarUrl}`);
 
-          // Set thumbnail URL ke DTO
           updateBlogDto.featuredImage = gambarUrl;
         }
       }
 
-      // Update blog
       const updated = await this.blogService.update(id, updateBlogDto);
 
       return {

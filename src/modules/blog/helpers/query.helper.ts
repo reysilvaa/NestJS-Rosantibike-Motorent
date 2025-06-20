@@ -1,8 +1,5 @@
 import type { FilterBlogPostDto } from '../dto';
 
-/**
- * Membuat kondisi where untuk query blog post berdasarkan filter
- */
 export function createBlogWhereCondition(filter: FilterBlogPostDto) {
   const where = {
     ...(filter.status && { status: filter.status }),
@@ -25,7 +22,6 @@ export function createBlogWhereCondition(filter: FilterBlogPostDto) {
       : undefined,
   };
 
-  // Hapus filter yang undefined
   Object.keys(where).forEach(key => where[key] === undefined && delete where[key]);
 
   return where;

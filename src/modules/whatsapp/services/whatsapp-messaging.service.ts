@@ -8,9 +8,6 @@ export class WhatsappMessagingService {
 
   constructor(private readonly connectionService: WhatsappConnectionService) {}
 
-  /**
-   * Mengirim pesan WhatsApp
-   */
   async sendMessage(to: string, message: string) {
     if (!this.connectionService.isConnected()) {
       this.logger.error('WhatsApp is not connected');
@@ -21,7 +18,6 @@ export class WhatsappMessagingService {
       const token = await this.connectionService.getToken();
       const config = this.connectionService.getConfig();
 
-      // Cek apakah nomor sudah berisi @s@c.us.net atau @c.us
       let whatsappId;
       if (!to) {
         this.logger.error('Invalid phone number: empty');
@@ -29,13 +25,11 @@ export class WhatsappMessagingService {
       }
 
       if (to.includes('@')) {
-        whatsappId = to; // Sudah berformat lengkap untuk WPP Connect
+        whatsappId = to;
       } else {
-        // Format nomor dengan benar untuk WPPConnect
         whatsappId = `${to}@c.us`;
       }
 
-      // Validasi nomor untuk mencegah format yang tidak valid
       if (whatsappId === '@c.us') {
         this.logger.error(`Invalid phone number format: ${to}`);
         throw new Error('Invalid phone number format');
@@ -43,7 +37,6 @@ export class WhatsappMessagingService {
 
       this.logger.log(`Sending message to ${whatsappId}`);
 
-      // Implementasi retry untuk pengiriman pesan
       let attempts = 0;
       const maxAttempts = 3;
       let lastError: Error | null = null;
@@ -55,7 +48,7 @@ export class WhatsappMessagingService {
             {
               phone: whatsappId,
               message: message,
-              // Tambahkan parameter untuk memastikan pesan terkirim
+
               waitForAck: true,
             },
             {
@@ -64,7 +57,7 @@ export class WhatsappMessagingService {
                 contentType: 'application/json',
                 authorization: `Bearer ${token}`,
               },
-              timeout: 60_000, // Timeout 60 detik
+              timeout: 60_000,
             },
           );
 
@@ -75,7 +68,7 @@ export class WhatsappMessagingService {
             lastError = new Error(`Failed to send message: ${JSON.stringify(response.data)}`);
             attempts++;
             this.logger.warn(`Send attempt ${attempts} failed: non-success response`);
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retry
+            await new Promise(resolve => setTimeout(resolve, 2000));
           }
         } catch (error) {
           lastError = error;
@@ -84,12 +77,11 @@ export class WhatsappMessagingService {
 
           if (attempts < maxAttempts) {
             this.logger.log(`Retrying in 2 seconds...`);
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retry
+            await new Promise(resolve => setTimeout(resolve, 2000));
           }
         }
       }
 
-      // Jika semua percobaan gagal
       this.logger.error(`Failed to send after ${maxAttempts} attempts to ${to}`);
       throw lastError || new Error('Failed to send message after multiple attempts');
     } catch (error) {
@@ -107,7 +99,6 @@ export class WhatsappMessagingService {
         this.logger.log('Connection issue detected, attempting to reconnect...');
 
         if (error.response?.status === 401 || error.response?.status === 403) {
-          // Token mungkin kadaluarsa, coba generate ulang
           await this.connectionService.generateToken();
         }
 
@@ -122,9 +113,6 @@ export class WhatsappMessagingService {
     }
   }
 
-  /**
-   * Mengirim pesan ke admin
-   */
   async sendToAdmin(message: string) {
     try {
       const config = this.connectionService.getConfig();
@@ -134,11 +122,8 @@ export class WhatsappMessagingService {
         return false;
       }
 
-      // Format admin number
-      // Gunakan nomor admin langsung dan serahkan formatting ke sendMessage
       const adminNumber = config.adminNumber;
 
-      // Send message to admin
       return await this.sendMessage(adminNumber, message);
     } catch (error) {
       this.logger.error(`Error sending message to admin: ${error.message}`);
@@ -146,9 +131,6 @@ export class WhatsappMessagingService {
     }
   }
 
-  /**
-   * Mendapatkan daftar chat
-   */
   async getChats() {
     try {
       const token = await this.connectionService.getToken();
@@ -173,16 +155,11 @@ export class WhatsappMessagingService {
     }
   }
 
-  /**
-   * Mendapatkan pesan dalam chat
-   */
   async getMessagesInChat(phone: string) {
     try {
       const token = await this.connectionService.getToken();
       const config = this.connectionService.getConfig();
 
-      // Gunakan nomor langsung, karena sudah diformat saat disimpan
-      // Tetapi perlu cek apakah perlu tambahkan suffix @s@c.us.net
       const formattedId = phone.includes('@') ? phone : `${phone}`;
 
       const response = await axios.get(
@@ -202,16 +179,11 @@ export class WhatsappMessagingService {
     }
   }
 
-  /**
-   * Mendapatkan informasi kontak
-   */
   async getContact(phone: string) {
     try {
       const token = await this.connectionService.getToken();
       const config = this.connectionService.getConfig();
 
-      // Gunakan nomor langsung, karena sudah diformat saat disimpan
-      // Tetapi perlu cek apakah perlu tambahkan suffix @s@c.us.net
       const formattedId = phone.includes('@') ? phone : `${phone}`;
 
       const response = await axios.get(

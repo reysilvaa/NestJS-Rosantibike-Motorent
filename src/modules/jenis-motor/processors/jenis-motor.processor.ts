@@ -45,10 +45,8 @@ export class JenisMotorProcessor extends WorkerHost {
     this.logger.debug(`Processing sync-data job: ${job.id}`);
 
     try {
-      // Karena service tidak memiliki method syncData, kita implementasi sederhana
       await this.jenisMotorService.findAll();
 
-      // Simulasi hasil sinkronisasi
       const result = {
         updated: Math.floor(Math.random() * 5),
         created: Math.floor(Math.random() * 3),
@@ -75,7 +73,6 @@ export class JenisMotorProcessor extends WorkerHost {
     try {
       const { jenisMotorId, imageData } = job.data;
 
-      // Dapatkan informasi jenis motor
       const jenisMotor = await this.prisma.jenisMotor.findUnique({
         where: { id: jenisMotorId },
       });
@@ -84,14 +81,11 @@ export class JenisMotorProcessor extends WorkerHost {
         throw new Error(`Jenis motor dengan ID ${jenisMotorId} tidak ditemukan`);
       }
 
-      // Simulasi pemrosesan gambar (resize, compress, optimize, watermark, etc.)
       this.logger.debug('Processing image...');
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulasi waktu pemrosesan
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Update jenis motor dengan URL gambar baru
       const processedImageUrl = imageData.url.replaceAll('/original/', '/processed/');
 
-      // Update jenis motor
       const updatedJenisMotor = await this.prisma.jenisMotor.update({
         where: { id: jenisMotorId },
         data: { gambar: processedImageUrl },
@@ -109,7 +103,6 @@ export class JenisMotorProcessor extends WorkerHost {
     this.logger.debug(`Processing update cache job: ${job.id}`);
 
     try {
-      // Dapatkan semua jenis motor
       const jenisMotorList = await this.prisma.jenisMotor.findMany({
         include: {
           unitMotor: {
@@ -122,10 +115,8 @@ export class JenisMotorProcessor extends WorkerHost {
         },
       });
 
-      // Proses cache update - simulasi
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Broadcast ke client via WebSocket (jika diperlukan)
       this.realtimeGateway.server.emit('jenis-motor-cache-updated', {
         count: jenisMotorList.length,
         timestamp: new Date(),
@@ -145,7 +136,6 @@ export class JenisMotorProcessor extends WorkerHost {
     try {
       const { jenisMotorId } = job.data;
 
-      // Dapatkan informasi jenis motor
       const jenisMotor = await this.prisma.jenisMotor.findUnique({
         where: { id: jenisMotorId },
       });
@@ -154,24 +144,19 @@ export class JenisMotorProcessor extends WorkerHost {
         throw new Error(`Jenis motor dengan ID ${jenisMotorId} tidak ditemukan`);
       }
 
-      // Ambil semua pelanggan yang pernah transaksi
       const customers = await this.prisma.transaksiSewa.findMany({
         distinct: ['noWhatsapp'],
         select: { noWhatsapp: true },
       });
 
-      // Persiapkan pesan WhatsApp
       const message = `*Motor Baru di Rental Kami!*\n\n${jenisMotor.merk} ${jenisMotor.model} (${jenisMotor.cc} CC)\n\nMotor baru tersedia untuk disewa. Hubungi kami untuk informasi lebih lanjut dan reservasi!`;
 
-      // Dapatkan semua nomor WhatsApp unik
       const recipients = customers.map(c => c.noWhatsapp);
 
       if (recipients.length > 0) {
-        // Kirim broadcast via WhatsApp queue
         await this.whatsappQueue.addBroadcastJob(recipients, message);
       }
 
-      // Broadcast ke client via WebSocket
       this.realtimeGateway.server.emit('new-jenis-motor', {
         id: jenisMotor.id,
         merk: jenisMotor.merk,

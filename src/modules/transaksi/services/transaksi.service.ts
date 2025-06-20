@@ -33,10 +33,8 @@ export class TransaksiService {
 
   async findAll(filter: FilterTransaksiDto) {
     try {
-      // Cek apakah search query mungkin nomor WhatsApp
       let searchCondition;
       if (filter.search) {
-        // Coba format nomor WhatsApp jika terlihat seperti nomor telepon
         const isPhoneNumber = /^\+?\d{8,15}$/.test(filter.search.replaceAll(/[\s()-]/g, ''));
         if (isPhoneNumber) {
           const formattedNumber = formatWhatsappNumber(filter.search);
@@ -61,7 +59,6 @@ export class TransaksiService {
         ...(filter.status && Array.isArray(filter.status) && { status: { in: filter.status } }),
       };
 
-      // Hapus filter yang undefined
       Object.keys(where).forEach(key => where[key] === undefined && delete where[key]);
 
       const page = Number(filter.page) || 1;
@@ -127,28 +124,24 @@ export class TransaksiService {
 
   async create(createTransaksiDto: CreateTransaksiDto) {
     try {
-      // Pastikan unit motor ada
       const unitMotor = await verifyUnitMotorExists(
         createTransaksiDto.unitId,
         this.prisma,
         this.logger,
       );
 
-      // Periksa ketersediaan unit pada rentang waktu tertentu
       const tanggalMulai = new Date(createTransaksiDto.tanggalMulai);
       const tanggalSelesai = new Date(createTransaksiDto.tanggalSelesai);
 
-      // Verifikasi ketersediaan
       await verifyUnitMotorAvailability(
         createTransaksiDto.unitId,
         tanggalMulai,
         tanggalSelesai,
-        null, // tidak ada transaksi ID karena ini pembuatan baru
+        null,
         this.prisma,
         this.logger,
       );
 
-      // Hitung total biaya jika tidak disediakan
       let totalBiaya = createTransaksiDto.totalBiaya;
       if (!totalBiaya) {
         totalBiaya = hitungTotalBiaya(
@@ -163,22 +156,17 @@ export class TransaksiService {
 
       this.logger.log(`Total biaya sewa: ${totalBiaya}`, 'TransaksiService.create');
 
-      // Mulai transaksi
       const result = await this.prisma.$transaction(async tx => {
-        // Update status motor menjadi DIPESAN jika tanggal mulai di masa depan
-        // atau DISEWA jika tanggal mulai hari ini
         const now = new Date();
         const isToday = tanggalMulai.toDateString() === now.toDateString();
 
         const newStatus = isToday ? StatusMotor.DISEWA : StatusMotor.DIPESAN;
 
-        // Update status motor
         await tx.unitMotor.update({
           where: { id: unitMotor.id },
           data: { status: newStatus },
         });
 
-        // Buat transaksi sewa dengan default values untuk fields yang tidak ada di DTO
         const transaksi = await tx.transaksiSewa.create({
           data: {
             namaPenyewa: createTransaksiDto.namaPenyewa,
@@ -188,8 +176,8 @@ export class TransaksiService {
             tanggalSelesai,
             jamMulai: createTransaksiDto.jamMulai || '08:00',
             jamSelesai: createTransaksiDto.jamSelesai || '08:00',
-            helm: 1, // default values
-            jasHujan: 0, // default values
+            helm: 1,
+            jasHujan: 0,
             status: StatusTransaksi.AKTIF,
             totalBiaya,
           },
@@ -202,10 +190,8 @@ export class TransaksiService {
           },
         });
 
-        // Tambahkan ke antrian untuk pemrosesan asinkron (seperti notifikasi, dll)
         await this.transaksiQueue.addNotifikasiBookingJob(transaksi.id);
 
-        // Jadwalkan cek overdue untuk saat transaksi seharusnya selesai
         const overdueTime = new Date(tanggalSelesai);
         overdueTime.setHours(
           parseInt(transaksi.jamSelesai.split(':')[0]),
@@ -215,14 +201,12 @@ export class TransaksiService {
         );
         await this.transaksiQueue.addScheduleCekOverdueJob(transaksi.id, overdueTime);
 
-        // Jadwalkan pengingat pengembalian untuk 3 jam sebelum waktu pengembalian
         const reminderTime = new Date(overdueTime);
         reminderTime.setHours(reminderTime.getHours() - 3);
         if (reminderTime > new Date()) {
           await this.transaksiQueue.addPengingatPengembalianJob(transaksi.id);
         }
 
-        // Kirim notifikasi melalui WebSocket
         try {
           this.realtimeGateway.sendToAll('motor-status-update', {
             id: transaksi.unitId,
@@ -245,10 +229,8 @@ export class TransaksiService {
 
   async update(id: string, updateTransaksiDto: UpdateTransaksiDto) {
     try {
-      // Periksa apakah transaksi ada
       const existingTransaksi = await verifyTransaksiExists(id, this.prisma, this.logger);
 
-      // Tidak mengizinkan mengubah unit motor jika transaksi sudah aktif
       if (
         updateTransaksiDto.unitId &&
         updateTransaksiDto.unitId !== existingTransaksi.unitId &&
@@ -257,7 +239,6 @@ export class TransaksiService {
         throw new BadRequestException('Tidak dapat mengubah unit motor pada transaksi yang aktif');
       }
 
-      // Periksa ketersediaan jika mengubah unitId, tanggalMulai, atau tanggalSelesai
       if (
         updateTransaksiDto.unitId ||
         updateTransaksiDto.tanggalMulai ||
@@ -271,18 +252,16 @@ export class TransaksiService {
           ? new Date(updateTransaksiDto.tanggalSelesai)
           : existingTransaksi.tanggalSelesai;
 
-        // Verifikasi ketersediaan
         await verifyUnitMotorAvailability(
           unitId,
           tanggalMulai,
           tanggalSelesai,
-          id, // exclude current transaction
+          id,
           this.prisma,
           this.logger,
         );
       }
 
-      // Hitung total biaya jika parameter yang memengaruhi biaya diubah
       let totalBiaya = updateTransaksiDto.totalBiaya;
       if (
         !totalBiaya &&
@@ -314,7 +293,6 @@ export class TransaksiService {
         );
       }
 
-      // Persiapkan data yang akan diperbarui
       const updateData: any = {
         ...(updateTransaksiDto.namaPenyewa && { namaPenyewa: updateTransaksiDto.namaPenyewa }),
         ...(updateTransaksiDto.noWhatsapp && { noWhatsapp: updateTransaksiDto.noWhatsapp }),
@@ -331,28 +309,22 @@ export class TransaksiService {
         ...(totalBiaya && { totalBiaya }),
       };
 
-      // Jika tidak ada data yang diperbarui, kembalikan transaksi yang ada
       if (Object.keys(updateData).length === 0) {
         return existingTransaksi;
       }
 
       let result;
 
-      // Update transaksi dan status unit motor jika diperlukan dalam transaksi database
       if (updateTransaksiDto.status === StatusTransaksi.SELESAI) {
-        // Jika status diubah menjadi SELESAI, panggil method selesaiSewa
         result = await this.selesaiSewa(id);
       } else {
         result = await this.prisma.$transaction(async tx => {
-          // Jika unitId berubah, update status motor lama dan baru
           if (updateTransaksiDto.unitId && updateTransaksiDto.unitId !== existingTransaksi.unitId) {
-            // Update status motor lama menjadi tersedia
             await tx.unitMotor.update({
               where: { id: existingTransaksi.unitId },
               data: { status: StatusMotor.TERSEDIA },
             });
 
-            // Update status motor baru
             const tanggalMulai = updateTransaksiDto.tanggalMulai
               ? new Date(updateTransaksiDto.tanggalMulai)
               : existingTransaksi.tanggalMulai;
@@ -368,7 +340,6 @@ export class TransaksiService {
             updateTransaksiDto.tanggalMulai &&
             existingTransaksi.status === StatusTransaksi.AKTIF
           ) {
-            // Jika tanggal mulai berubah, mungkin perlu update status motor
             const tanggalMulai = new Date(updateTransaksiDto.tanggalMulai);
             const now = new Date();
             const isToday = tanggalMulai.toDateString() === now.toDateString();
@@ -380,7 +351,6 @@ export class TransaksiService {
             });
           }
 
-          // Update transaksi
           return tx.transaksiSewa.update({
             where: { id },
             data: updateData,
@@ -403,17 +373,13 @@ export class TransaksiService {
 
   async remove(id: string) {
     try {
-      // Periksa apakah transaksi ada
       const transaksi = await verifyTransaksiExists(id, this.prisma, this.logger);
 
-      // Hapus transaksi dan update status motor
       return await this.prisma.$transaction(async tx => {
-        // Hapus transaksi
         await tx.transaksiSewa.delete({
           where: { id },
         });
 
-        // Cek apakah ada transaksi aktif lain untuk unit motor ini
         const activeTransaksi = await tx.transaksiSewa.findFirst({
           where: {
             unitId: transaksi.unitId,
@@ -421,7 +387,6 @@ export class TransaksiService {
           },
         });
 
-        // Jika tidak ada transaksi aktif lain, set unit motor menjadi TERSEDIA
         if (!activeTransaksi) {
           await tx.unitMotor.update({
             where: { id: transaksi.unitId },
@@ -440,21 +405,16 @@ export class TransaksiService {
     try {
       const transaksi = await verifyTransaksiExists(id, this.prisma, this.logger);
 
-      // Verifikasi transaksi dapat diselesaikan
       verifyCanCompleteTransaksi(transaksi, this.logger);
 
-      // Hitung denda jika ada
       const biayaDenda = hitungDenda(transaksi, this.logger);
 
-      // Mulai transaksi
       const result = await this.prisma.$transaction(async tx => {
-        // Update status motor menjadi TERSEDIA
         await tx.unitMotor.update({
           where: { id: transaksi.unitId },
           data: { status: StatusMotor.TERSEDIA },
         });
 
-        // Update status transaksi menjadi SELESAI dan tambahkan denda jika ada
         const updateData: any = {
           status: StatusTransaksi.SELESAI,
           biayaDenda: biayaDenda,
@@ -475,10 +435,8 @@ export class TransaksiService {
         return transaksiUpdated;
       });
 
-      // Kirim notifikasi WhatsApp konfirmasi transaksi selesai
       await this.transaksiQueue.addNotifikasiSelesaiJob(result.id);
 
-      // Kirim notifikasi motor status update
       this.realtimeGateway.sendToAll('motor-status-update', {
         id: result.unitMotor.id,
         status: StatusMotor.TERSEDIA,
@@ -486,7 +444,6 @@ export class TransaksiService {
         message: `Unit motor ${result.unitMotor.platNomor} telah dikembalikan`,
       });
 
-      // Jika ada denda, kirim notifikasi denda
       if (biayaDenda > 0) {
         this.realtimeGateway.sendToAll('denda-notification', {
           id: result.id,
@@ -504,18 +461,13 @@ export class TransaksiService {
     }
   }
 
-  /**
-   * Mendapatkan laporan denda
-   */
   async getLaporanDenda(startDate: string, endDate: string) {
     try {
       const start = new Date(startDate);
       const end = new Date(endDate);
 
-      // Set end date to end of day
       end.setHours(23, 59, 59, 999);
 
-      // Gunakan where kondisi yang dinamis untuk menghindari error linter
       const whereClause: any = {
         status: StatusTransaksi.SELESAI,
         biayaDenda: { gt: 0 },
@@ -555,18 +507,13 @@ export class TransaksiService {
     }
   }
 
-  /**
-   * Mendapatkan laporan penggunaan fasilitas
-   */
   async getLaporanFasilitas(startDate: string, endDate: string) {
     try {
       const start = new Date(startDate);
       const end = new Date(endDate);
 
-      // Set end date to end of day
       end.setHours(23, 59, 59, 999);
 
-      // Gunakan where kondisi yang dinamis untuk menghindari error linter
       const whereClause: any = {
         updatedAt: {
           gte: start,
@@ -633,10 +580,8 @@ export class TransaksiService {
     }
   }
 
-  // Fungsi kalkulasi harga untuk API endpoint
   async calculatePrice(calculatePriceDto: CalculatePriceDto) {
     try {
-      // Validasi input
       if (!calculatePriceDto.unitId) {
         throw new BadRequestException('ID unit motor harus disediakan');
       }
@@ -645,14 +590,12 @@ export class TransaksiService {
         throw new BadRequestException('Tanggal mulai dan selesai harus disediakan');
       }
 
-      // Ambil informasi unit motor
       const unitMotor = await verifyUnitMotorExists(
         calculatePriceDto.unitId,
         this.prisma,
         this.logger,
       );
 
-      // Konversi tanggal ke objek Date
       const tanggalMulai = new Date(calculatePriceDto.tanggalMulai);
       const tanggalSelesai = new Date(calculatePriceDto.tanggalSelesai);
 
@@ -664,39 +607,32 @@ export class TransaksiService {
         throw new BadRequestException('Tanggal mulai harus sebelum tanggal selesai');
       }
 
-      // Gunakan helper function untuk menghitung biaya
       const jamMulai = calculatePriceDto.jamMulai || '08:00';
       const jamSelesai = calculatePriceDto.jamSelesai || '08:00';
       const hargaSewaPerHari = Number(unitMotor.hargaSewa);
 
-      // Gabungkan tanggal dan jam untuk perhitungan yang lebih akurat
       const tanggalJamMulai = new Date(tanggalMulai);
       const tanggalJamSelesai = new Date(tanggalSelesai);
 
-      // Set jam dari parameter
       const [jamMulaiHour, jamMulaiMinute] = jamMulai.split(':').map(Number);
       const [jamSelesaiHour, jamSelesaiMinute] = jamSelesai.split(':').map(Number);
 
       tanggalJamMulai.setHours(jamMulaiHour, jamMulaiMinute, 0, 0);
       tanggalJamSelesai.setHours(jamSelesaiHour, jamSelesaiMinute, 0, 0);
 
-      // Hitung total jam
       const diffHours = Math.max(
         1,
         Math.ceil((tanggalJamSelesai.getTime() - tanggalJamMulai.getTime()) / (1000 * 60 * 60)),
       );
 
-      // Hitung jumlah hari penuh dan jam tambahan
       let fullDays = Math.floor(diffHours / 24);
       let extraHours = diffHours % 24;
 
-      // Jika keterlambatan lebih dari 6 jam, dihitung sebagai 1 hari penuh
       if (extraHours > 6) {
         fullDays += 1;
         extraHours = 0;
       }
 
-      // Hitung biaya menggunakan helper function
       const totalBiaya = hitungTotalBiaya(
         tanggalMulai,
         tanggalSelesai,
@@ -706,8 +642,7 @@ export class TransaksiService {
         this.logger,
       );
 
-      // Hitung komponen biaya untuk detail
-      const dendaPerJam = process.env.DENDA_PER_JAM; // Tarif denda per jam
+      const dendaPerJam = process.env.DENDA_PER_JAM;
       const baseDailyPrice = fullDays * hargaSewaPerHari;
       const overduePrice = extraHours > 0 ? extraHours * Number(dendaPerJam) : 0;
 

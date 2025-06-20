@@ -11,9 +11,6 @@ export class BlogQueue {
     this.logger.log('BlogQueue service initialized');
   }
 
-  /**
-   * Menambahkan tugas untuk membuat blog
-   */
   async addCreateBlogJob(blogData: any) {
     this.logger.debug(`Adding create blog job to queue: ${blogData.title}`);
 
@@ -40,9 +37,6 @@ export class BlogQueue {
     }
   }
 
-  /**
-   * Menambahkan tugas untuk memproses gambar blog
-   */
   async addProcessImageJob(blogId: string, imageData: any) {
     this.logger.debug(`Adding process image job to queue for blog ID: ${blogId}`);
 
@@ -70,9 +64,6 @@ export class BlogQueue {
     }
   }
 
-  /**
-   * Menambahkan tugas untuk broadcast blog
-   */
   async addBroadcastBlogJob(blogId: string) {
     this.logger.debug(`Adding broadcast blog job to queue for blog ID: ${blogId}`);
 
