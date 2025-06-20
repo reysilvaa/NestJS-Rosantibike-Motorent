@@ -20,11 +20,18 @@ export const corsOptions = {
           'https://wa.rosantibikemotorent.com',
         ];
 
-    if (!origin || allowedOrigins.includes(origin)) {
+    logger.log(`Memeriksa origin: ${origin || 'no origin'}`);
+
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    if (origin.includes('rosantibikemotorent.com') || allowedOrigins.includes(origin)) {
+      logger.log(`Origin diizinkan: ${origin}`);
       return callback(null, true);
     } else {
       logger.warn(`Origin tidak diizinkan: ${origin}`);
-      callback(null, false);
+      return callback(null, false);
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
