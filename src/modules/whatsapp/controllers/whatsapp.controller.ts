@@ -120,6 +120,17 @@ export class WhatsappController {
     }
   }
 
+  @Post('logout-session')
+  @ApiOperation({ summary: 'Logout dari sesi WhatsApp' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Berhasil logout dari sesi WhatsApp' })
+  async logoutSession() {
+    try {
+      return await this.whatsappService.logoutSession();
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   @Get('chats')
   @ApiOperation({ summary: 'Mendapatkan daftar chat WhatsApp' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Daftar chat WhatsApp' })
