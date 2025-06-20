@@ -5,7 +5,12 @@ export class CustomIoAdapter extends IoAdapter {
   createIOServer(port: number, options?: any): any {
     const server = super.createIOServer(port, {
       ...options,
-      cors: corsOptions,
+      cors: {
+        origin: corsOptions.origin,
+        methods: corsOptions.methods,
+        credentials: true,
+        allowedHeaders: corsOptions.allowedHeaders,
+      },
       pingTimeout: 60_000,
       pingInterval: 25_000,
       transports: ['websocket', 'polling'],

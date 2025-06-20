@@ -6,7 +6,12 @@ import { Server } from 'socket.io';
 import { corsOptions } from '../config/cors.config';
 
 @WebSocketGateway({
-  cors: corsOptions,
+  cors: {
+    origin: corsOptions.origin,
+    methods: corsOptions.methods,
+    credentials: true,
+    allowedHeaders: corsOptions.allowedHeaders,
+  },
   namespace: '/realtime',
   transports: ['websocket', 'polling'],
   pingInterval: 25_000,

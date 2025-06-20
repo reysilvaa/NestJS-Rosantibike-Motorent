@@ -20,13 +20,10 @@ export const corsOptions = {
           'https://wa.rosantibikemotorent.com',
         ];
 
-    if (!origin) {
+    if (!origin || allowedOrigins.includes(origin)) {
       return callback(null, true);
-    }
-
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
     } else {
+      logger.warn(`Origin tidak diizinkan: ${origin}`);
       callback(null, false);
     }
   },
