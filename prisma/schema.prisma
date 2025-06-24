@@ -71,25 +71,43 @@ model BlogPost {
   slug      String        @unique @db.VarChar(255)
   konten    String
   thumbnail String?       @db.VarChar(255)
-  kategori  String        @db.VarChar(100)
+  kategoriId String?
   status    StatusArtikel @default(DRAFT)
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
   tags      BlogPostTag[]
+  kategori  BlogKategori? @relation(fields: [kategoriId], references: [id])
+  metaTitle String?       @db.VarChar(255)
+  metaDescription String? @db.Text
 
   @@index([slug])
   @@index([status])
-  @@index([kategori])
+  @@index([kategoriId])
   @@map("blog_posts")
+}
+
+model BlogKategori {
+  id        String     @id @default(uuid())
+  nama      String     @unique @db.VarChar(100)
+  slug      String     @unique @db.VarChar(255)
+  deskripsi String?    @db.Text
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  posts     BlogPost[]
+
+  @@index([slug])
+  @@map("blog_kategori")
 }
 
 model BlogTag {
   id        String        @id @default(uuid())
   nama      String        @unique @db.VarChar(100)
+  slug      String        @unique @db.VarChar(255)
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
   posts     BlogPostTag[]
 
+  @@index([slug])
   @@map("blog_tags")
 }
 

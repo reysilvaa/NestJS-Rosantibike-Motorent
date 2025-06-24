@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import type { CreateBlogPostDto, UpdateBlogPostDto } from '../dto';
 import {
@@ -16,18 +16,30 @@ export class BlogService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(query: any) {
-    const { page = 1, limit = 10, search = '', category = '' } = query;
+    const { page = 1, limit = 10, search = '', category = '', tag = '' } = query;
 
-    const where = {};
+    const where: any = {};
     if (search) {
       where['OR'] = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { content: { contains: search, mode: 'insensitive' } },
+        { judul: { contains: search, mode: 'insensitive' } },
+        { konten: { contains: search, mode: 'insensitive' } },
       ];
     }
 
     if (category) {
-      where['category'] = category;
+      where['kategori'] = {
+        slug: category,
+      };
+    }
+
+    if (tag) {
+      where['tags'] = {
+        some: {
+          tag: {
+            slug: tag,
+          },
+        },
+      };
     }
 
     const skip = (page - 1) * limit;
@@ -37,6 +49,7 @@ export class BlogService {
       this.prisma.blogPost.findMany({
         where,
         include: {
+          kategori: true,
           tags: {
             include: {
               tag: true,
@@ -51,8 +64,18 @@ export class BlogService {
       }),
     ]);
 
+    // Transform data untuk frontend
+    const transformedData = data.map(post => ({
+      ...post,
+      tags: post.tags.map(t => ({
+        id: t.tag.id,
+        nama: t.tag.nama,
+        slug: t.tag.slug,
+      })),
+    }));
+
     return {
-      data,
+      data: transformedData,
       meta: {
         total,
         page,
@@ -64,7 +87,15 @@ export class BlogService {
 
   async findOne(id: string) {
     try {
-      return await verifyBlogPostExists(id, this.prisma, this.logger);
+      const post = await verifyBlogPostExists(id, this.prisma, this.logger);
+      return {
+        ...post,
+        tags: post.tags.map(t => ({
+          id: t.tag.id,
+          nama: t.tag.nama,
+          slug: t.tag.slug,
+        })),
+      };
     } catch (error) {
       return handleError(this.logger, error, `Gagal mengambil detail artikel dengan ID ${id}`);
     }
@@ -97,8 +128,17 @@ export class BlogService {
             });
 
             if (!tag && normalizedTagName) {
+              // Generate slug untuk tag baru
+              const tagSlug = normalizedTagName
+                .toLowerCase()
+                .replaceAll(/[^\da-z]+/g, '-')
+                .replaceAll(/(^-|-$)/g, '');
+
               tag = await tx.blogTag.create({
-                data: { nama: normalizedTagName },
+                data: { 
+                  nama: normalizedTagName,
+                  slug: tagSlug
+                },
               });
             }
 
@@ -119,13 +159,16 @@ export class BlogService {
             konten: createBlogPostDto.konten,
             slug: createBlogPostDto.slug || '',
             thumbnail: createBlogPostDto.featuredImage || '',
-            kategori: 'UMUM',
+            metaTitle: createBlogPostDto.metaTitle,
+            metaDescription: createBlogPostDto.metaDescription,
+            kategoriId: createBlogPostDto.kategoriId,
             status: createBlogPostDto.status,
             tags: {
               create: tagConnections,
             },
           },
           include: {
+            kategori: true,
             tags: {
               include: {
                 tag: true,
@@ -134,7 +177,14 @@ export class BlogService {
           },
         });
 
-        return post;
+        return {
+          ...post,
+          tags: post.tags.map(t => ({
+            id: t.tag.id,
+            nama: t.tag.nama,
+            slug: t.tag.slug,
+          })),
+        };
       });
     } catch (error) {
       return handleError(this.logger, error, 'Gagal membuat artikel blog');
@@ -161,8 +211,17 @@ export class BlogService {
             });
 
             if (!tag && normalizedTagName) {
+              // Generate slug untuk tag baru
+              const tagSlug = normalizedTagName
+                .toLowerCase()
+                .replaceAll(/[^\da-z]+/g, '-')
+                .replaceAll(/(^-|-$)/g, '');
+
               tag = await tx.blogTag.create({
-                data: { nama: normalizedTagName },
+                data: { 
+                  nama: normalizedTagName,
+                  slug: tagSlug
+                },
               });
             }
 
@@ -185,6 +244,11 @@ export class BlogService {
             ...(updateBlogPostDto.slug && { slug: updateBlogPostDto.slug }),
             ...(updateBlogPostDto.featuredImage && { thumbnail: updateBlogPostDto.featuredImage }),
             ...(updateBlogPostDto.status && { status: updateBlogPostDto.status }),
+            ...(updateBlogPostDto.metaTitle && { metaTitle: updateBlogPostDto.metaTitle }),
+            ...(updateBlogPostDto.metaDescription && {
+              metaDescription: updateBlogPostDto.metaDescription,
+            }),
+            ...(updateBlogPostDto.kategoriId && { kategoriId: updateBlogPostDto.kategoriId }),
             ...(updateBlogPostDto.tags && {
               tags: {
                 deleteMany: {},
@@ -193,6 +257,7 @@ export class BlogService {
             }),
           },
           include: {
+            kategori: true,
             tags: {
               include: {
                 tag: true,
@@ -201,7 +266,14 @@ export class BlogService {
           },
         });
 
-        return post;
+        return {
+          ...post,
+          tags: post.tags.map(t => ({
+            id: t.tag.id,
+            nama: t.tag.nama,
+            slug: t.tag.slug,
+          })),
+        };
       });
     } catch (error) {
       return handleError(this.logger, error, `Gagal memperbarui artikel dengan ID ${id}`);
@@ -235,6 +307,25 @@ export class BlogService {
       });
     } catch (error) {
       return handleError(this.logger, error, 'Gagal mengambil daftar tag');
+    }
+  }
+
+  async findAllKategori() {
+    try {
+      return await this.prisma.blogKategori.findMany({
+        orderBy: {
+          nama: 'asc',
+        },
+        include: {
+          _count: {
+            select: {
+              posts: true,
+            },
+          },
+        },
+      });
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal mengambil daftar kategori');
     }
   }
 

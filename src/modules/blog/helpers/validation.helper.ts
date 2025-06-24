@@ -7,6 +7,7 @@ export async function verifyBlogPostExists(id: string, prisma: PrismaService, lo
     const post = await prisma.blogPost.findUnique({
       where: { id },
       include: {
+        kategori: true,
         tags: {
           include: {
             tag: true,
@@ -38,6 +39,7 @@ export async function verifyBlogPostBySlugExists(
     const post = await prisma.blogPost.findUnique({
       where: { slug },
       include: {
+        kategori: true,
         tags: {
           include: {
             tag: true,
@@ -70,4 +72,84 @@ export async function verifySlugIsUnique(slug: string, prisma: PrismaService, ex
   }
 
   return true;
+}
+
+export async function verifyKategoriExists(id: string, prisma: PrismaService, logger: Logger) {
+  try {
+    const kategori = await prisma.blogKategori.findUnique({
+      where: { id },
+    });
+
+    if (!kategori) {
+      throw new NotFoundException(`Kategori dengan ID ${id} tidak ditemukan`);
+    }
+
+    return kategori;
+  } catch (error) {
+    if (error instanceof NotFoundException) {
+      throw error;
+    }
+    logger.error(`Gagal memverifikasi kategori: ${error.message}`, error.stack);
+    throw error;
+  }
+}
+
+export async function verifyKategoriSlugExists(slug: string, prisma: PrismaService, logger: Logger) {
+  try {
+    const kategori = await prisma.blogKategori.findUnique({
+      where: { slug },
+    });
+
+    if (!kategori) {
+      throw new NotFoundException(`Kategori dengan slug ${slug} tidak ditemukan`);
+    }
+
+    return kategori;
+  } catch (error) {
+    if (error instanceof NotFoundException) {
+      throw error;
+    }
+    logger.error(`Gagal memverifikasi kategori: ${error.message}`, error.stack);
+    throw error;
+  }
+}
+
+export async function verifyTagExists(id: string, prisma: PrismaService, logger: Logger) {
+  try {
+    const tag = await prisma.blogTag.findUnique({
+      where: { id },
+    });
+
+    if (!tag) {
+      throw new NotFoundException(`Tag dengan ID ${id} tidak ditemukan`);
+    }
+
+    return tag;
+  } catch (error) {
+    if (error instanceof NotFoundException) {
+      throw error;
+    }
+    logger.error(`Gagal memverifikasi tag: ${error.message}`, error.stack);
+    throw error;
+  }
+}
+
+export async function verifyTagSlugExists(slug: string, prisma: PrismaService, logger: Logger) {
+  try {
+    const tag = await prisma.blogTag.findUnique({
+      where: { slug },
+    });
+
+    if (!tag) {
+      throw new NotFoundException(`Tag dengan slug ${slug} tidak ditemukan`);
+    }
+
+    return tag;
+  } catch (error) {
+    if (error instanceof NotFoundException) {
+      throw error;
+    }
+    logger.error(`Gagal memverifikasi tag: ${error.message}`, error.stack);
+    throw error;
+  }
 }

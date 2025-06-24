@@ -1,4 +1,5 @@
-import { IsString, IsOptional, IsArray, IsEnum } from 'class-validator';
+import { IsString, IsArray, IsOptional, IsEnum, IsUUID } from 'class-validator';
+import { Transform, Expose } from 'class-transformer';
 import { StatusArtikel } from '../../../common';
 
 export class UpdateBlogPostDto {
@@ -8,6 +9,18 @@ export class UpdateBlogPostDto {
 
   @IsString()
   @IsOptional()
+  @Expose()
+  @Transform(({ value, obj }) => {
+    if (value) return value;
+
+    if (obj.judul) {
+      return obj.judul
+        .toLowerCase()
+        .replaceAll(/[^\da-z]+/g, '-')
+        .replaceAll(/(^-|-$)/g, '');
+    }
+    return null;
+  })
   slug?: string;
 
   @IsString()
@@ -30,9 +43,9 @@ export class UpdateBlogPostDto {
   @IsOptional()
   featuredImage?: string;
 
-  @IsString()
+  @IsUUID()
   @IsOptional()
-  thumbnail?: string;
+  kategoriId?: string;
 
   @IsEnum(StatusArtikel)
   @IsOptional()

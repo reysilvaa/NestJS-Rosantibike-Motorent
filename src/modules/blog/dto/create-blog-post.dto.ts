@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsArray, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsNotEmpty, IsArray, IsOptional, IsEnum, IsUUID } from 'class-validator';
 import { Transform, Expose } from 'class-transformer';
 import { StatusArtikel } from '../../../common';
 
@@ -42,6 +42,10 @@ export class CreateBlogPostDto {
   @IsString()
   @IsOptional()
   featuredImage?: string;
+
+  @IsUUID()
+  @IsOptional()
+  kategoriId?: string;
 
   @IsEnum(StatusArtikel)
   @IsOptional()

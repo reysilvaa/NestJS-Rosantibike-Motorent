@@ -44,12 +44,49 @@ export class BlogController {
     return this.blogService.findAll(filter);
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Mendapatkan detail blog berdasarkan ID' })
-  @ApiResponse({ status: 200, description: 'Detail blog berhasil diambil' })
-  @ApiResponse({ status: 404, description: 'Blog tidak ditemukan' })
-  getBlog(@Param('id') id: string) {
-    return this.blogService.findOne(id);
+  @Get('all-tags')
+  @ApiOperation({ summary: 'Mendapatkan semua tag blog' })
+  @ApiResponse({ status: 200, description: 'Daftar tag berhasil diambil' })
+  async getAllTags() {
+    try {
+      const tags = await this.blogService.findAllTags();
+      return {
+        data: tags,
+        message: 'Daftar tag berhasil diambil',
+      };
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal mengambil daftar tag', 'getAllTags');
+    }
+  }
+
+  @Get('all-kategori')
+  @ApiOperation({ summary: 'Mendapatkan semua kategori blog' })
+  @ApiResponse({ status: 200, description: 'Daftar kategori berhasil diambil' })
+  async getAllKategori() {
+    try {
+      const kategori = await this.blogService.findAllKategori();
+      return {
+        data: kategori,
+        message: 'Daftar kategori berhasil diambil',
+      };
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal mengambil daftar kategori', 'getAllKategori');
+    }
+  }
+
+  @Get('tags/search')
+  @ApiOperation({ summary: 'Mencari tag berdasarkan query' })
+  @ApiResponse({ status: 200, description: 'Hasil pencarian tag' })
+  async searchTags(@Query('q') query: string) {
+    try {
+      const tags = await this.blogService.searchTags(query);
+      return {
+        data: tags,
+        message: 'Pencarian tag berhasil',
+      };
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal mencari tag', 'searchTags');
+    }
   }
 
   @Get('/by-slug/:slug')
@@ -66,6 +103,14 @@ export class BlogController {
     } catch (error) {
       return handleError(this.logger, error, 'Gagal mengambil blog', 'getBlogBySlug');
     }
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Mendapatkan detail blog berdasarkan ID' })
+  @ApiResponse({ status: 200, description: 'Detail blog berhasil diambil' })
+  @ApiResponse({ status: 404, description: 'Blog tidak ditemukan' })
+  getBlog(@Param('id') id: string) {
+    return this.blogService.findOne(id);
   }
 
   @Post()
@@ -277,36 +322,6 @@ export class BlogController {
       };
     } catch (error) {
       return handleError(this.logger, error, `Gagal menghapus blog dengan ID ${id}`, 'removeBlog');
-    }
-  }
-
-  @Get('tags')
-  @ApiOperation({ summary: 'Mendapatkan semua tag blog' })
-  @ApiResponse({ status: 200, description: 'Daftar tag berhasil diambil' })
-  async getAllTags() {
-    try {
-      const tags = await this.blogService.findAllTags();
-      return {
-        data: tags,
-        message: 'Daftar tag berhasil diambil',
-      };
-    } catch (error) {
-      return handleError(this.logger, error, 'Gagal mengambil daftar tag', 'getAllTags');
-    }
-  }
-
-  @Get('tags/search')
-  @ApiOperation({ summary: 'Mencari tag berdasarkan query' })
-  @ApiResponse({ status: 200, description: 'Hasil pencarian tag' })
-  async searchTags(@Query('q') query: string) {
-    try {
-      const tags = await this.blogService.searchTags(query);
-      return {
-        data: tags,
-        message: 'Pencarian tag berhasil',
-      };
-    } catch (error) {
-      return handleError(this.logger, error, 'Gagal mencari tag', 'searchTags');
     }
   }
 
