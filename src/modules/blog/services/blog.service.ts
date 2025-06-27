@@ -347,4 +347,109 @@ export class BlogService {
       return handleError(this.logger, error, 'Gagal mencari tag');
     }
   }
+
+  async createTag(createTagDto: { nama: string; slug?: string }) {
+    try {
+      const normalizedName = createTagDto.nama.trim().toLowerCase();
+      
+      // Cek apakah tag dengan nama yang sama sudah ada
+      const existingTag = await this.prisma.blogTag.findFirst({
+        where: { nama: normalizedName },
+      });
+
+      if (existingTag) {
+        return existingTag;
+      }
+
+      // Generate slug jika tidak disediakan
+      let slug = createTagDto.slug;
+      if (!slug) {
+        slug = normalizedName
+          .toLowerCase()
+          .replaceAll(/[^\da-z]+/g, '-')
+          .replaceAll(/(^-|-$)/g, '');
+      }
+
+      // Cek keunikan slug
+      const existingSlug = await this.prisma.blogTag.findFirst({
+        where: { slug },
+      });
+
+      if (existingSlug) {
+        // Tambahkan timestamp ke slug jika sudah ada
+        slug = `${slug}-${Date.now()}`;
+      }
+
+      return await this.prisma.blogTag.create({
+        data: {
+          nama: normalizedName,
+          slug,
+        },
+      });
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal membuat tag');
+    }
+  }
+
+  async updateTag(id: string, updateTagDto: { nama?: string; slug?: string }) {
+    try {
+      // Cek apakah tag ada
+      const existingTag = await this.prisma.blogTag.findUnique({
+        where: { id },
+      });
+
+      if (!existingTag) {
+        throw new NotFoundException(`Tag dengan ID ${id} tidak ditemukan`);
+      }
+
+      const data: { nama?: string; slug?: string } = {};
+
+      if (updateTagDto.nama) {
+        const normalizedName = updateTagDto.nama.trim().toLowerCase();
+        data.nama = normalizedName;
+      }
+
+      if (updateTagDto.slug) {
+        data.slug = updateTagDto.slug;
+      } else if (updateTagDto.nama && !updateTagDto.slug) {
+        // Generate slug dari nama baru jika nama diubah tapi slug tidak
+        data.slug = updateTagDto.nama
+          .toLowerCase()
+          .replaceAll(/[^\da-z]+/g, '-')
+          .replaceAll(/(^-|-$)/g, '');
+      }
+
+      return await this.prisma.blogTag.update({
+        where: { id },
+        data,
+      });
+    } catch (error) {
+      return handleError(this.logger, error, `Gagal memperbarui tag dengan ID ${id}`);
+    }
+  }
+
+  async deleteTag(id: string) {
+    try {
+      // Cek apakah tag ada
+      const existingTag = await this.prisma.blogTag.findUnique({
+        where: { id },
+      });
+
+      if (!existingTag) {
+        throw new NotFoundException(`Tag dengan ID ${id} tidak ditemukan`);
+      }
+
+      // Hapus relasi tag dengan post terlebih dahulu
+      await this.prisma.blogPostTag.deleteMany({
+        where: { tagId: id },
+      });
+
+      // Hapus tag
+      return await this.prisma.blogTag.delete({
+        where: { id },
+      });
+    } catch (error) {
+      return handleError(this.logger, error, `Gagal menghapus tag dengan ID ${id}`);
+    }
+  }
 }

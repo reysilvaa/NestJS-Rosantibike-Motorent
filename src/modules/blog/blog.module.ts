@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { BlogController } from './controllers/blog.controller';
 import { BlogKategoriController } from './controllers/blog-kategori.controller';
+import { BlogTagController } from './controllers/blog-tag.controller';
 import { BlogService } from './services/blog.service';
 import { BlogKategoriService } from './services/blog-kategori.service';
 import { PrismaModule } from '../../common/prisma/prisma.module';
@@ -19,7 +20,7 @@ import { WhatsappModule } from '../whatsapp/whatsapp.module';
       name: 'blog',
     }),
   ],
-  controllers: [BlogController, BlogKategoriController],
+  controllers: [BlogController, BlogKategoriController, BlogTagController],
   providers: [BlogService, BlogKategoriService, BlogQueue, BlogProcessor],
   exports: [BlogService, BlogKategoriService, BlogQueue],
 })

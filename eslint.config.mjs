@@ -107,7 +107,7 @@ export default [
           format: ['camelCase', 'UPPER_CASE', 'snake_case'],
           filter: {
             regex: '^_(count|sum|avg|min|max)$',
-            match: false,
+            match: true,
           },
         },
       ],
