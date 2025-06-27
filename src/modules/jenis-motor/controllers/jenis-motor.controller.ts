@@ -11,9 +11,10 @@ import {
   NotFoundException,
   Req,
   UploadedFiles,
+  Query,
 } from '@nestjs/common';
 import { JenisMotorService } from '../services/jenis-motor.service';
-import { CreateJenisMotorDto, UpdateJenisMotorDto } from '../dto';
+import { CreateJenisMotorDto, UpdateJenisMotorDto, FilterJenisMotorDto } from '../dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { CloudinaryService } from '../../../common/services';
 import { Logger } from '@nestjs/common';
@@ -23,7 +24,6 @@ import {
   getFileInfo,
   handleError,
   logInfo,
-  logRequestDebugInfo,
   successResponse,
 } from '../../../common/helpers';
 
@@ -38,10 +38,10 @@ export class JenisMotorController {
   ) {}
 
   @Get()
-  @ApiOperation({ summary: 'Mendapatkan semua jenis motor' })
+  @ApiOperation({ summary: 'Mendapatkan semua jenis motor dengan paginasi dan filter' })
   @ApiResponse({ status: 200, description: 'Daftar jenis motor berhasil diambil' })
-  findAll() {
-    return this.jenisMotorService.findAll();
+  findAll(@Query() filter: FilterJenisMotorDto) {
+    return this.jenisMotorService.findAll(filter);
   }
 
   @Get('slug/:slug')
@@ -248,18 +248,24 @@ export class JenisMotorController {
       if (jenisMotor && 'gambar' in jenisMotor && jenisMotor.gambar) {
         await this.cloudinaryService.deleteFile(jenisMotor.gambar);
       }
-    } catch (error) {
-      this.logger.error('Error saat menghapus gambar:', error.message);
-    }
 
-    return this.jenisMotorService.remove(id);
+      const result = await this.jenisMotorService.remove(id);
+      return {
+        message: `Jenis motor dengan ID ${id} berhasil dihapus`,
+        data: result,
+      };
+    } catch (error) {
+      return handleError(this.logger, error, `Gagal menghapus jenis motor dengan ID ${id}`);
+    }
   }
 
-  @Post('debug-upload')
-  @ApiOperation({ summary: 'Debug upload file untuk melihat field yang dikirim' })
-  @ApiConsumes('multipart/form-data')
-  @ApiResponse({ status: 200, description: 'Debug info' })
+  @Get('debug/upload')
+  @ApiOperation({ summary: 'Debug upload file (hanya untuk pengujian)' })
   async debugUpload(@Req() req: any) {
-    return logRequestDebugInfo(req, this.logger);
+    return {
+      message: 'Debug upload',
+      headers: req.headers,
+      body: req.body,
+    };
   }
 }

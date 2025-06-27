@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../common/prisma/prisma.service';
-import type { CreateJenisMotorDto, UpdateJenisMotorDto } from '../dto';
+import type { CreateJenisMotorDto, UpdateJenisMotorDto, FilterJenisMotorDto } from '../dto';
 import { verifyJenisMotorExists, verifyCanDeleteJenisMotor } from '../helpers';
 import { handleError } from '../../../common/helpers';
 
@@ -34,13 +34,58 @@ export class JenisMotorService {
     }
   }
 
-  async findAll() {
+  async findAll(filter: FilterJenisMotorDto = {}) {
     try {
-      return await this.prisma.jenisMotor.findMany({
+      const { page = 1, limit = 10, search, merk, ccMin, ccMax } = filter;
+      const skip = (page - 1) * Number(limit);
+
+      const whereCondition: any = {};
+
+      if (search) {
+        whereCondition.OR = [
+          { merk: { contains: search, mode: 'insensitive' as const } },
+          { model: { contains: search, mode: 'insensitive' as const } },
+        ];
+      }
+
+      if (merk) {
+        whereCondition.merk = { contains: merk, mode: 'insensitive' as const };
+      }
+
+      if (ccMin !== undefined || ccMax !== undefined) {
+        whereCondition.cc = {
+          ...(ccMin !== undefined && { gte: ccMin }),
+          ...(ccMax !== undefined && { lte: ccMax }),
+        };
+      }
+
+      const total = await this.prisma.jenisMotor.count({
+        where: whereCondition,
+      });
+
+      const data = await this.prisma.jenisMotor.findMany({
+        where: whereCondition,
         include: {
           unitMotor: true,
         },
+        skip,
+        take: Number(limit),
+        orderBy: { createdAt: 'desc' },
       });
+
+      const totalPages = Math.ceil(total / Number(limit));
+
+      return {
+        data,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      };
     } catch (error) {
       return handleError(this.logger, error, 'Gagal mengambil daftar jenis motor');
     }

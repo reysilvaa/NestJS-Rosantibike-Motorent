@@ -9,10 +9,10 @@ export const corsOptions = {
     const allowedOrigins = process.env.CORS_ORIGIN
       ? process.env.CORS_ORIGIN.split(',')
       : [
-          'http://localhost:3001',
+          `http://localhost:${process.env.PORT}`, // local backend
+          'http://localhost:3001', // local frontend
+          'http://localhost:3002', // local frotend admin
           'http://localhost:3000',
-          'http://localhost:3002',
-          'http://localhost:3030',
           'https://admin.rosantibikemotorent.com',
           'https://rosantibikemotorent.com',
           'https://www.rosantibikemotorent.com',
@@ -22,11 +22,23 @@ export const corsOptions = {
 
     logger.log(`Memeriksa origin: ${origin || 'no origin'}`);
 
+    // Selalu izinkan permintaan tanpa origin (seperti dari Postman atau curl)
     if (!origin) {
+      logger.log('Mengizinkan permintaan tanpa origin');
       return callback(null, true);
     }
 
-    if (origin.includes('rosantibikemotorent.com') || allowedOrigins.includes(origin)) {
+    // Izinkan semua origin dalam mode development
+    if (process.env.NODE_ENV !== 'production') {
+      logger.log(`Mode development: Mengizinkan semua origin: ${origin}`);
+      return callback(null, true);
+    }
+
+    if (
+      origin.includes('rosantibikemotorent.com') ||
+      allowedOrigins.includes(origin) ||
+      origin === `http://localhost:${process.env.PORT}`
+    ) {
       logger.log(`Origin diizinkan: ${origin}`);
       return callback(null, true);
     } else {

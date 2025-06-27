@@ -77,8 +77,6 @@ model BlogPost {
   updatedAt DateTime      @updatedAt
   tags      BlogPostTag[]
   kategori  BlogKategori? @relation(fields: [kategoriId], references: [id])
-  metaTitle String?       @db.VarChar(255)
-  metaDescription String? @db.Text
 
   @@index([slug])
   @@index([status])

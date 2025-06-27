@@ -20,7 +20,17 @@ export class UnitMotorService {
 
   async findAll(filter: FilterUnitMotorDto = {}) {
     try {
-      const { ccMin, ccMax, yearMin, yearMax, brands, ...otherFilters } = filter;
+      const {
+        ccMin,
+        ccMax,
+        yearMin,
+        yearMax,
+        brands,
+        page = 1,
+        limit = 10,
+        ...otherFilters
+      } = filter;
+      const skip = (page - 1) * Number(limit);
 
       let whereClause: any = {
         ...(otherFilters.jenisId && { jenisId: otherFilters.jenisId }),
@@ -93,13 +103,36 @@ export class UnitMotorService {
         this.logger.error('Gagal memeriksa struktur tabel:', error);
       }
 
-      return this.prisma.unitMotor.findMany({
+      // Hitung total data
+      const total = await this.prisma.unitMotor.count({
+        where: whereClause,
+      });
+
+      // Ambil data dengan paginasi
+      const data = await this.prisma.unitMotor.findMany({
         where: whereClause,
         include: {
           jenis: true,
         },
+        skip,
+        take: Number(limit),
         orderBy: { createdAt: 'desc' },
       });
+
+      // Hitung total halaman
+      const totalPages = Math.ceil(total / Number(limit));
+
+      return {
+        data,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      };
     } catch (error) {
       handleError(this.logger, error, 'Gagal mengambil daftar unit motor');
     }

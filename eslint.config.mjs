@@ -106,7 +106,7 @@ export default [
           selector: 'objectLiteralProperty',
           format: ['camelCase', 'UPPER_CASE', 'snake_case'],
           filter: {
-            regex: '^_(count|sum|avg|min|max)$',
+            regex: '^_(count|sum|avg|min|max|or)$',
             match: true,
           },
         },
