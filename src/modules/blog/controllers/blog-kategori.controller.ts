@@ -53,22 +53,6 @@ export class BlogKategoriController {
     }
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Mendapatkan detail kategori berdasarkan ID' })
-  @ApiResponse({ status: 200, description: 'Detail kategori berhasil diambil' })
-  @ApiResponse({ status: 404, description: 'Kategori tidak ditemukan' })
-  async getKategoriById(@Param('id') id: string) {
-    try {
-      const kategori = await this.blogKategoriService.findOne(id);
-      return {
-        data: kategori,
-        message: 'Detail kategori berhasil diambil',
-      };
-    } catch (error) {
-      return handleError(this.logger, error, `Gagal mengambil kategori dengan ID ${id}`);
-    }
-  }
-
   @Get('by-slug/:slug')
   @ApiOperation({ summary: 'Mendapatkan detail kategori berdasarkan slug' })
   @ApiResponse({ status: 200, description: 'Detail kategori berhasil diambil' })
@@ -82,6 +66,22 @@ export class BlogKategoriController {
       };
     } catch (error) {
       return handleError(this.logger, error, `Gagal mengambil kategori dengan slug ${slug}`);
+    }
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Mendapatkan detail kategori berdasarkan ID' })
+  @ApiResponse({ status: 200, description: 'Detail kategori berhasil diambil' })
+  @ApiResponse({ status: 404, description: 'Kategori tidak ditemukan' })
+  async getKategoriById(@Param('id') id: string) {
+    try {
+      const kategori = await this.blogKategoriService.findOne(id);
+      return {
+        data: kategori,
+        message: 'Detail kategori berhasil diambil',
+      };
+    } catch (error) {
+      return handleError(this.logger, error, `Gagal mengambil kategori dengan ID ${id}`);
     }
   }
 

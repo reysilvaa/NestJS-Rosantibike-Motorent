@@ -4,7 +4,8 @@ import {
   seedJenisMotor,
   seedUnitMotor,
   seedTransaksi,
-  // seedBlogTags,
+  seedBlogTags,
+  seedBlogPosts,
 } from './seed/index';
 // import { seedBlogPosts } from './seed/blog.seed';
 
@@ -31,12 +32,12 @@ async function main() {
     console.log(`${transaksi.length} transaksi telah di-seed`);
 
     
-    // const blogTags = await seedBlogTags(prisma);
-    // console.log(`${blogTags.length} tags blog telah di-seed`);
+    const blogTags = await seedBlogTags(prisma);
+    console.log(`${blogTags.length} tags blog telah di-seed`);
 
     
-    // const blogPosts = await seedBlogPosts(prisma, blogTags);
-    // console.log(`${blogPosts.length} artikel blog telah di-seed`);
+    const blogPosts = await seedBlogPosts(prisma, blogTags);
+    console.log(`${blogPosts.length} artikel blog telah di-seed`);
 
     console.log('Proses seed database selesai.');
   } catch (error) {
