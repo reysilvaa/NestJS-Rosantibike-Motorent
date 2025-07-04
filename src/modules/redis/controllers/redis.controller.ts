@@ -95,4 +95,33 @@ export class RedisController {
       return { status: 'error', message: 'Gagal menghapus key' };
     }
   }
+
+  @Get('eviction-policy')
+  @ApiOperation({ summary: 'Get Redis eviction policy' })
+  async getEvictionPolicy(): Promise<{ status: string; policy: string }> {
+    try {
+      const policy = await this.redisService.getEvictionPolicy();
+      return { status: 'success', policy };
+    } catch (error) {
+      return { status: 'error', policy: 'unknown' };
+    }
+  }
+
+  @Post('eviction-policy')
+  @ApiOperation({ summary: 'Set Redis eviction policy' })
+  @ApiQuery({ name: 'policy', description: 'Eviction policy to set', example: 'noeviction' })
+  async setEvictionPolicy(
+    @Query('policy') policy: string = 'noeviction',
+  ): Promise<{ status: string; message: string }> {
+    try {
+      const success = await this.redisService.setEvictionPolicy(policy);
+      if (success) {
+        return { status: 'success', message: `Eviction policy set to ${policy}` };
+      } else {
+        return { status: 'error', message: 'Gagal mengatur eviction policy' };
+      }
+    } catch (error) {
+      return { status: 'error', message: error.message };
+    }
+  }
 }

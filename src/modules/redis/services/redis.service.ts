@@ -38,8 +38,9 @@ export class RedisService {
         this.logger.log('Successfully connected to Redis');
       });
 
-      this.redisClient.on('ready', () => {
+      this.redisClient.on('ready', async () => {
         this.logger.log('Redis client is ready for use');
+        await this.setEvictionPolicy('noeviction');
       });
 
       this.redisClient.on('reconnecting', () => {
@@ -176,5 +177,26 @@ export class RedisService {
 
   getClient(): Redis {
     return this.redisClient;
+  }
+
+  async setEvictionPolicy(policy: string = 'noeviction'): Promise<boolean> {
+    try {
+      await this.redisClient.config('SET', 'maxmemory-policy', policy);
+      this.logger.log(`Redis eviction policy set to ${policy}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Failed to set Redis eviction policy: ${error.message}`);
+      return false;
+    }
+  }
+
+  async getEvictionPolicy(): Promise<string> {
+    try {
+      const result = await this.redisClient.config('GET', 'maxmemory-policy') as [string, string];
+      return result[1];
+    } catch (error) {
+      this.logger.error(`Failed to get Redis eviction policy: ${error.message}`);
+      return 'unknown';
+    }
   }
 }
