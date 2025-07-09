@@ -56,9 +56,6 @@ importers:
       '@types/passport-jwt':
         specifier: ^4.0.1
         version: 4.0.1
-      '@types/qrcode':
-        specifier: ^1.5.5
-        version: 1.5.5
       axios:
         specifier: ^1.8.4
         version: 1.8.4
@@ -210,6 +207,9 @@ importers:
       '@types/pino':
         specifier: ^7.0.4
         version: 7.0.5
+      '@types/qrcode':
+        specifier: ^1.5.5
+        version: 1.5.5
       '@types/qrcode-terminal':
         specifier: ^0.12.2
         version: 0.12.2
