@@ -23,13 +23,61 @@ export class TransaksiController {
   constructor(private readonly transaksiService: TransaksiService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Membuat transaksi baru' })
+  @ApiOperation({ summary: 'Membuat transaksi baru atau generate QRIS saja' })
   @ApiResponse({
     status: 201,
-    description: 'Transaksi berhasil dibuat',
+    description: 'Transaksi berhasil dibuat atau QRIS berhasil digenerate',
   })
   async create(@Body() createTransaksiDto: CreateTransaksiDto) {
     try {
+      // Check if we only need to generate QRIS without saving
+      if (createTransaksiDto.generateQRISOnly) {
+        // Calculate the total price without saving to database
+        const calculationResult = await this.transaksiService.calculatePrice({
+          unitId: createTransaksiDto.unitId,
+          tanggalMulai: createTransaksiDto.tanggalMulai,
+          tanggalSelesai: createTransaksiDto.tanggalSelesai,
+          jamMulai: createTransaksiDto.jamMulai,
+          jamSelesai: createTransaksiDto.jamSelesai,
+          helm: createTransaksiDto.helm || 0,
+          jasHujan: createTransaksiDto.jasHujan || 0,
+        });
+
+        const taxtype = 'r';
+        const fee = '1000';
+        const finalNominal = Math.floor(Number(calculationResult.totalBiaya) || 0).toString();
+
+        // Generate QRIS string
+        const qrisString = QrisHelper.makeDynamicString(QrisHelper.DEFAULT_QRIS_CODE, finalNominal, {
+          taxtype,
+          fee,
+        });
+
+        // Generate QR code as base64
+        const qrisBase64 = await QrisHelper.generateQRISBase64(QrisHelper.DEFAULT_QRIS_CODE, finalNominal, {
+          taxtype,
+          fee,
+        });
+
+        // Return QRIS data without saving transaction
+        return successResponse(
+          {
+            calculationResult,
+            qrisString,
+            qrisBase64,
+            qris: {
+              qrisString,
+              qrisBase64,
+              nominal: finalNominal,
+              fee,
+            },
+          },
+          'QRIS berhasil dibuat',
+          200
+        );
+      }
+
+      // Normal flow - create transaction in database
       const result = await this.transaksiService.create(createTransaksiDto);
 
       const taxtype = 'r';
