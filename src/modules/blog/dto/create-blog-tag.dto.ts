@@ -10,4 +10,4 @@ export class CreateBlogTagDto {
   @IsString()
   @IsOptional()
   slug?: string;
-} 
+}

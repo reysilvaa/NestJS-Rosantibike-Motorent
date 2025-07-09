@@ -107,10 +107,7 @@ export class BlogKategoriController {
   @ApiOperation({ summary: 'Memperbarui kategori berdasarkan ID' })
   @ApiResponse({ status: 200, description: 'Kategori berhasil diperbarui' })
   @ApiResponse({ status: 404, description: 'Kategori tidak ditemukan' })
-  async updateKategori(
-    @Param('id') id: string,
-    @Body() updateKategoriDto: UpdateBlogKategoriDto,
-  ) {
+  async updateKategori(@Param('id') id: string, @Body() updateKategoriDto: UpdateBlogKategoriDto) {
     try {
       const kategori = await this.blogKategoriService.update(id, updateKategoriDto);
       return {
@@ -137,4 +134,4 @@ export class BlogKategoriController {
       return handleError(this.logger, error, `Gagal menghapus kategori dengan ID ${id}`);
     }
   }
-} 
+}

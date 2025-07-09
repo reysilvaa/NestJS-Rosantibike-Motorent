@@ -6,14 +6,13 @@ import * as fs from 'fs';
  * Helper for QRIS operations using qris-dinamis package
  */
 export class QrisHelper {
-
-   /**
+  /**
    * Default QRIS code for Rosantike Motorent
    */
-    static readonly DEFAULT_QRIS_CODE = '00020101021126650013ID.CO.BCA.WWW011893600014000285360602150008850028536060303UMI51440014ID.CO.QRIS.WWW0215ID10253788672750303UMI5204751253033605802ID5918ROSANTIKE MOTORENT6006MALANG61056512262070703A016304491E';
+  static readonly DEFAULT_QRIS_CODE =
+    '00020101021126650013ID.CO.BCA.WWW011893600014000285360602150008850028536060303UMI51440014ID.CO.QRIS.WWW0215ID10253788672750303UMI5204751253033605802ID5918ROSANTIKE MOTORENT6006MALANG61056512262070703A016304491E';
 
   /**
-
    * Default tax type ('r' for rupiah, 'p' for percentage)
    */
   static readonly DEFAULT_TAX_TYPE: 'r' | 'p' = 'r';
@@ -30,7 +29,6 @@ export class QrisHelper {
    * @param options Additional options (taxtype, fee)
    * @returns Dynamic QRIS string
    */
-
   static makeDynamicString(
     qrisCode: string,
     nominal: string,
@@ -63,12 +61,12 @@ export class QrisHelper {
     // If path is not provided, use default path
     if (!options?.path) {
       const outputDir = join(process.cwd(), 'public', 'qris-output');
-      
+
       // Ensure directory exists
       if (!fs.existsSync(outputDir)) {
         fs.mkdirSync(outputDir, { recursive: true });
       }
-      
+
       const fileName = `qris-${Date.now()}.jpg`;
       options = { ...options, path: join(outputDir, fileName) };
     }
@@ -81,7 +79,7 @@ export class QrisHelper {
       base64: options?.base64,
     });
 
-          // If base64 is true, return the base64 string
+    // If base64 is true, return the base64 string
     // Otherwise return the relative path to the file
     if (options?.base64) {
       return result;
@@ -92,5 +90,35 @@ export class QrisHelper {
     }
   }
 
-
-} 
+  /**
+   * Generate QRIS QR code as base64 data URL directly using qris-dinamis
+   * @param qrisCode Static QRIS code
+   * @param nominal Amount in Rupiah
+   * @param options Additional options (taxtype, fee)
+   * @returns Base64 encoded image string
+   */
+  static async generateQRISBase64(
+    qrisCode: string,
+    nominal: string,
+    options?: {
+      taxtype?: 'r' | 'p';
+      fee?: string;
+    },
+  ): Promise<string> {
+    try {
+      // Use the built-in base64 capability of qris-dinamis
+      // Note: makeFile is an async function, so we need to await it
+      const base64Data = await qrisDinamis.makeFile(qrisCode, {
+        nominal: parseInt(nominal).toString(),
+        taxtype: options?.taxtype || this.DEFAULT_TAX_TYPE,
+        fee: options?.fee || this.DEFAULT_FEE,
+        base64: true,
+      });
+      
+      return base64Data;
+    } catch (error) {
+      console.error('Error generating QRIS base64:', error);
+      return '';
+    }
+  }
+}

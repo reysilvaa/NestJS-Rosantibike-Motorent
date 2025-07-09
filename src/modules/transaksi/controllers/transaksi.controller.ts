@@ -8,7 +8,12 @@ import {
 } from '../dto/index';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { StatusTransaksi } from '../../../common/enums/status.enum';
-import { successResponse, handleError, paginationResponse, QrisHelper } from '../../../common/helpers';
+import {
+  successResponse,
+  handleError,
+  paginationResponse,
+  QrisHelper,
+} from '../../../common/helpers';
 
 @ApiTags('Transaksi')
 @Controller('transaksi')
@@ -26,35 +31,36 @@ export class TransaksiController {
   async create(@Body() createTransaksiDto: CreateTransaksiDto) {
     try {
       const result = await this.transaksiService.create(createTransaksiDto);
-      
+
       const taxtype = 'r';
       const fee = '1000';
       const finalNominal = Math.floor(Number(result.totalBiaya) || 0).toString();
-      
-      // Generate QRIS string and file
-      const qrisString = QrisHelper.makeDynamicString(
-        QrisHelper.DEFAULT_QRIS_CODE,
-        finalNominal,
-        { taxtype, fee }
-      );
-      
-      const qrisImagePath = QrisHelper.makeDynamicFile(
-        QrisHelper.DEFAULT_QRIS_CODE,
-        finalNominal,
-        { taxtype, fee }
-      );
-      
+
+      // Generate QRIS string
+      const qrisString = QrisHelper.makeDynamicString(QrisHelper.DEFAULT_QRIS_CODE, finalNominal, {
+        taxtype,
+        fee,
+      });
+
+      // Generate QR code as base64
+      const qrisBase64 = await QrisHelper.generateQRISBase64(QrisHelper.DEFAULT_QRIS_CODE, finalNominal, {
+        taxtype,
+        fee,
+      });
+
       // Add QRIS data to the response
       const responseData = {
         ...result,
+        qrisString, // For backward compatibility
+        qrisBase64: qrisBase64, // For backward compatibility
         qris: {
           qrisString,
-          qrisImagePath,
+          qrisBase64,
           nominal: finalNominal,
-          fee
-        }
+          fee,
+        },
       };
-      
+
       return successResponse(responseData, 'Transaksi berhasil dibuat', 201);
     } catch (error) {
       return handleError(this.logger, error, 'Gagal membuat transaksi');
@@ -130,6 +136,37 @@ export class TransaksiController {
   async findOne(@Param('id') id: string) {
     try {
       const result = await this.transaksiService.findOne(id);
+
+      // If transaction exists, generate QR code for payment
+      if (result && result.totalBiaya) {
+        const finalNominal = Math.floor(Number(result.totalBiaya) || 0).toString();
+        const fee = '1000';
+
+        // Generate QRIS string
+        const qrisString = QrisHelper.makeDynamicString(QrisHelper.DEFAULT_QRIS_CODE, finalNominal, {
+          taxtype: 'r',
+          fee,
+        });
+
+        // Generate QR code as base64
+        const qrisBase64 = await QrisHelper.generateQRISBase64(
+          QrisHelper.DEFAULT_QRIS_CODE,
+          finalNominal,
+          { taxtype: 'r', fee }
+        );
+
+        // Add QRIS data to the response using type assertion
+        const resultWithQris = result as any;
+        resultWithQris.qrisString = qrisString; // For backward compatibility
+        resultWithQris.qrisBase64 = qrisBase64; // For backward compatibility
+        resultWithQris.qris = {
+          qrisString,
+          qrisBase64,
+          nominal: finalNominal,
+          fee,
+        };
+      }
+
       return successResponse(result, `Detail transaksi dengan ID ${id} berhasil diambil`);
     } catch (error) {
       return handleError(this.logger, error, `Gagal mengambil detail transaksi dengan ID ${id}`);
@@ -231,6 +268,4 @@ export class TransaksiController {
       return handleError(this.logger, error, 'Gagal menghitung harga sewa');
     }
   }
-
 }
-

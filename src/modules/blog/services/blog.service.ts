@@ -135,9 +135,9 @@ export class BlogService {
                 .replaceAll(/(^-|-$)/g, '');
 
               tag = await tx.blogTag.create({
-                data: { 
+                data: {
                   nama: normalizedTagName,
-                  slug: tagSlug
+                  slug: tagSlug,
                 },
               });
             }
@@ -218,9 +218,9 @@ export class BlogService {
                 .replaceAll(/(^-|-$)/g, '');
 
               tag = await tx.blogTag.create({
-                data: { 
+                data: {
                   nama: normalizedTagName,
-                  slug: tagSlug
+                  slug: tagSlug,
                 },
               });
             }
@@ -351,7 +351,7 @@ export class BlogService {
   async createTag(createTagDto: { nama: string; slug?: string }) {
     try {
       const normalizedName = createTagDto.nama.trim().toLowerCase();
-      
+
       // Cek apakah tag dengan nama yang sama sudah ada
       const existingTag = await this.prisma.blogTag.findFirst({
         where: { nama: normalizedName },

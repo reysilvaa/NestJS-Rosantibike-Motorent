@@ -192,7 +192,7 @@ export class RedisService {
 
   async getEvictionPolicy(): Promise<string> {
     try {
-      const result = await this.redisClient.config('GET', 'maxmemory-policy') as [string, string];
+      const result = (await this.redisClient.config('GET', 'maxmemory-policy')) as [string, string];
       return result[1];
     } catch (error) {
       this.logger.error(`Failed to get Redis eviction policy: ${error.message}`);
