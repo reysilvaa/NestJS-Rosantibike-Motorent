@@ -4,11 +4,11 @@ import { StatusArtikel } from '../../src/common/enums/status.enum';
 
 export async function seedBlogTags(prisma: PrismaClient): Promise<BlogTagType[]> {
   const tagData = [
-    { nama: 'Tips Berkendara' },
-    { nama: 'Perawatan Motor' },
-    { nama: 'Wisata' },
-    { nama: 'Rekomendasi' },
-    { nama: 'Info Rental' },
+    { nama: 'Tips Berkendara', slug: 'tips-berkendara' },
+    { nama: 'Perawatan Motor', slug: 'perawatan-motor' },
+    { nama: 'Wisata', slug: 'wisata' },
+    { nama: 'Rekomendasi', slug: 'rekomendasi' },
+    { nama: 'Info Rental', slug: 'info-rental' },
   ];
 
   const tags: BlogTagType[] = [];
@@ -20,10 +20,10 @@ export async function seedBlogTags(prisma: PrismaClient): Promise<BlogTagType[]>
 
     if (existingTag) {
       console.log(`Tag ${data.nama} sudah ada`);
-      tags.push(existingTag as BlogTagType);
+      tags.push(existingTag as unknown as BlogTagType);
     } else {
       const tag = await prisma.blogTag.create({ data });
-      tags.push(tag as BlogTagType);
+      tags.push(tag as unknown as BlogTagType);
       console.log(`Tag ${tag.nama} berhasil dibuat`);
     }
   }
@@ -34,10 +34,33 @@ export async function seedBlogPosts(
   prisma: PrismaClient,
   tags: BlogTagType[],
 ): Promise<BlogPostType[]> {
+  // Pertama, periksa atau buat kategori
+  const kategoriData = [
+    { nama: 'Perawatan Motor', slug: 'perawatan-motor', deskripsi: 'Artikel tentang perawatan motor' },
+    { nama: 'Tips Berkendara', slug: 'tips-berkendara', deskripsi: 'Tips dan trik berkendara' },
+  ];
+
+  const kategoriMap = new Map();
+  
+  for (const data of kategoriData) {
+    const existingKategori = await prisma.blogKategori.findUnique({
+      where: { slug: data.slug },
+    });
+
+    if (existingKategori) {
+      console.log(`Kategori ${data.nama} sudah ada`);
+      kategoriMap.set(data.nama, existingKategori.id);
+    } else {
+      const kategori = await prisma.blogKategori.create({ data });
+      kategoriMap.set(data.nama, kategori.id);
+      console.log(`Kategori ${kategori.nama} berhasil dibuat`);
+    }
+  }
+
   const blogPostData = [
     {
       judul: 'Tips Merawat Motor Agar Tetap Prima Selama Musim Hujan',
-      slug: 'tes-1231-artikel',
+      slug: 'tips-merawat-motor-musim-hujan',
       konten: `
         <h2>Pentingnya Perawatan Motor Saat Musim Hujan</h2>
         <p>Musim hujan seringkali membawa tantangan tersendiri bagi para pengendara motor. 
@@ -77,7 +100,7 @@ export async function seedBlogPosts(
         selalu lebih baik daripada perbaikan.</p>
       `,
       thumbnail: '/placeholder.svg?height=600&width=1200',
-      kategori: 'Perawatan Motor',
+      kategoriNama: 'Perawatan Motor',
       status: StatusArtikel.TERBIT,
     },
     {
@@ -116,7 +139,7 @@ export async function seedBlogPosts(
         antara performa, kenyamanan, dan kemudahan penggunaan.</p>
       `,
       thumbnail: '/placeholder.svg?height=600&width=1200',
-      kategori: 'Tips Berkendara',
+      kategoriNama: 'Tips Berkendara',
       status: StatusArtikel.TERBIT,
     },
   ];
@@ -130,10 +153,18 @@ export async function seedBlogPosts(
 
     if (existingPost) {
       console.log(`Artikel "${data.judul}" sudah ada`);
-      posts.push(existingPost as BlogPostType);
+      const kategori = await prisma.blogKategori.findUnique({
+        where: { id: existingPost.kategoriId || '' }
+      });
+      
+      posts.push({
+        ...existingPost,
+        kategori: kategori?.nama || '',
+      } as unknown as BlogPostType);
     } else {
       
       const randomTags = tags.sort(() => 0.5 - Math.random()).slice(0, 2);
+      const kategoriId = kategoriMap.get(data.kategoriNama);
 
       const post = await prisma.blogPost.create({
         data: {
@@ -141,7 +172,7 @@ export async function seedBlogPosts(
           slug: data.slug,
           konten: data.konten,
           thumbnail: data.thumbnail,
-          kategori: data.kategori,
+          kategoriId: kategoriId,
           status: data.status,
           tags: {
             create: randomTags.map(tag => ({
@@ -153,7 +184,10 @@ export async function seedBlogPosts(
         },
       });
 
-      posts.push(post);
+      posts.push({
+        ...post,
+        kategori: data.kategoriNama,
+      } as unknown as BlogPostType);
       console.log(`Artikel "${post.judul}" berhasil dibuat`);
     }
   }

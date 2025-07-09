@@ -94,7 +94,11 @@ export async function verifyKategoriExists(id: string, prisma: PrismaService, lo
   }
 }
 
-export async function verifyKategoriSlugExists(slug: string, prisma: PrismaService, logger: Logger) {
+export async function verifyKategoriSlugExists(
+  slug: string,
+  prisma: PrismaService,
+  logger: Logger,
+) {
   try {
     const kategori = await prisma.blogKategori.findUnique({
       where: { slug },

@@ -25,4 +25,4 @@ export class UpdateBlogKategoriDto {
   @IsString()
   @IsOptional()
   deskripsi?: string;
-} 
+}

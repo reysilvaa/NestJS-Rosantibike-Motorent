@@ -44,6 +44,21 @@ export class BlogController {
     return this.blogService.findAll(filter);
   }
 
+  @Get('kategori')
+  @ApiOperation({ summary: 'Mendapatkan semua kategori blog' })
+  @ApiResponse({ status: 200, description: 'Daftar kategori berhasil diambil' })
+  async getAllKategori() {
+    try {
+      const kategori = await this.blogService.findAllKategori();
+      return {
+        data: kategori,
+        message: 'Daftar kategori berhasil diambil',
+      };
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal mengambil daftar kategori', 'getAllKategori');
+    }
+  }
+
   @Get('tags')
   @ApiOperation({ summary: 'Mendapatkan semua tag blog' })
   @ApiResponse({ status: 200, description: 'Daftar tag berhasil diambil' })
@@ -74,7 +89,7 @@ export class BlogController {
     }
   }
 
-  @Get('/by-slug/:slug')
+  @Get('by-slug/:slug')
   @ApiOperation({ summary: 'Mendapatkan detail blog berdasarkan slug' })
   @ApiResponse({ status: 200, description: 'Detail blog berhasil diambil' })
   @ApiResponse({ status: 404, description: 'Blog tidak ditemukan' })

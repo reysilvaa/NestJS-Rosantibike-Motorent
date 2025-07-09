@@ -11,4 +11,4 @@ export class UpdateBlogTagDto {
   @IsString()
   @IsOptional()
   slug?: string;
-} 
+}

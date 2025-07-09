@@ -5,9 +5,9 @@ import {
   seedUnitMotor,
   seedTransaksi,
   seedBlogTags,
+  seedBlogPosts,
 } from './seed/index';
-import * as bcrypt from 'bcrypt';
-import { seedBlogPosts } from './seed/blog.seed';
+// import { seedBlogPosts } from './seed/blog.seed';
 
 const prisma = new PrismaClient();
 

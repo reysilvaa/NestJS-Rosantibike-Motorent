@@ -8,6 +8,8 @@ import {
   ValidateIf,
   Max,
   Matches,
+  IsBoolean,
+  IsOptional,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 
@@ -65,6 +67,15 @@ export class CreateTransaksiDto {
   @Transform(({ value }) => parseFloat(value))
   @ValidateIf(o => o.totalBiaya !== undefined)
   totalBiaya?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
+  generateQRISOnly?: boolean = false;
 }
 
 export class CalculatePriceDto {
