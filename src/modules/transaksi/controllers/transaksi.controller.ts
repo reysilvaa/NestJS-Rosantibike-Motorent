@@ -5,10 +5,11 @@ import {
   UpdateTransaksiDto,
   FilterTransaksiDto,
   CalculatePriceDto,
+  QrisTestDto,
 } from '../dto/index';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { StatusTransaksi } from '../../../common/enums/status.enum';
-import { successResponse, handleError, paginationResponse } from '../../../common/helpers';
+import { successResponse, handleError, paginationResponse, QrisHelper } from '../../../common/helpers';
 
 @ApiTags('Transaksi')
 @Controller('transaksi')
@@ -202,4 +203,94 @@ export class TransaksiController {
       return handleError(this.logger, error, 'Gagal menghitung harga sewa');
     }
   }
+
+  
+  @Post('qris/test')
+  @ApiOperation({ summary: 'Test QRIS generation' })
+  @ApiResponse({
+    status: 200,
+    description: 'QRIS berhasil dibuat',
+  })
+  async testQris(@Body() qrisTestDto: QrisTestDto) {
+    try {
+      const { transaksiId, nominal, taxtype, fee, base64 } = qrisTestDto;
+      
+      let finalNominal: string;
+      let transaksiData: any = null;
+      
+      // If transaksiId is provided, get the amount from the transaction
+      if (transaksiId) {
+        const result = await this.transaksiService.findOne(transaksiId);
+        if (!result) {
+          return handleError(this.logger, new Error('Transaksi tidak ditemukan'), 'Transaksi tidak ditemukan');
+        }
+        
+        transaksiData = result;
+        // Convert the total amount to string - remove decimal places and ensure it's a whole number
+        const amount = result.totalBiaya || 0;
+        finalNominal = Math.floor(Number(amount)).toString();
+      } else if (nominal) {
+        // Use the provided nominal - ensure it's a whole number without decimals
+        finalNominal = Math.floor(Number(nominal)).toString();
+      } else {
+        return handleError(
+          this.logger, 
+          new Error('Transaksi ID atau nominal harus disediakan'), 
+          'Transaksi ID atau nominal harus disediakan'
+        );
+      }
+      
+      // Generate QRIS
+      if (base64) {
+        const result = QrisHelper.makeDynamicFile(
+          QrisHelper.DEFAULT_QRIS_CODE,
+          finalNominal,
+          { 
+            taxtype: taxtype || QrisHelper.DEFAULT_TAX_TYPE, 
+            fee: fee || QrisHelper.DEFAULT_FEE, 
+            base64 
+          }
+        );
+        
+        const response = { 
+          qrisImage: result,
+          transaksi: transaksiData,
+          nominal: finalNominal
+        };
+        
+        return successResponse(response, 'QRIS base64 berhasil dibuat');
+      } else {
+        // Generate string and file
+        const qrisString = QrisHelper.makeDynamicString(
+          QrisHelper.DEFAULT_QRIS_CODE,
+          finalNominal,
+          { 
+            taxtype: taxtype || QrisHelper.DEFAULT_TAX_TYPE, 
+            fee: fee || QrisHelper.DEFAULT_FEE 
+          }
+        );
+        
+        const qrisImagePath = QrisHelper.makeDynamicFile(
+          QrisHelper.DEFAULT_QRIS_CODE,
+          finalNominal,
+          { 
+            taxtype: taxtype || QrisHelper.DEFAULT_TAX_TYPE, 
+            fee: fee || QrisHelper.DEFAULT_FEE 
+          }
+        );
+        
+        const response = { 
+          qrisString,
+          qrisImagePath,
+          transaksi: transaksiData,
+          nominal: finalNominal
+        };
+        
+        return successResponse(response, 'QRIS berhasil dibuat');
+      }
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal membuat QRIS');
+    }
+  }
 }
+
