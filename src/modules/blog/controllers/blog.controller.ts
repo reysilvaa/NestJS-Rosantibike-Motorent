@@ -13,6 +13,7 @@ import {
   UploadedFiles,
   Req,
 } from '@nestjs/common';
+import { CacheKey, CacheTTL } from '../../../common/interceptors/cache.interceptor';
 import { BlogService } from '../services/blog.service';
 import { CreateBlogPostDto, UpdateBlogPostDto, FilterBlogPostDto } from '../dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
@@ -40,6 +41,8 @@ export class BlogController {
   @Get()
   @ApiOperation({ summary: 'Mendapatkan semua blog dengan pagination' })
   @ApiResponse({ status: 200, description: 'Daftar blog berhasil diambil' })
+  @CacheKey('blog:list')
+  @CacheTTL(60 * 5) // Cache selama 5 menit
   getBlogs(@Query() filter: FilterBlogPostDto) {
     return this.blogService.findAll(filter);
   }
@@ -47,6 +50,8 @@ export class BlogController {
   @Get('tags')
   @ApiOperation({ summary: 'Mendapatkan semua tag blog' })
   @ApiResponse({ status: 200, description: 'Daftar tag berhasil diambil' })
+  @CacheKey('blog:tags')
+  @CacheTTL(60 * 30) // Cache selama 30 menit
   async getAllTags() {
     try {
       const tags = await this.blogService.findAllTags();
@@ -78,6 +83,8 @@ export class BlogController {
   @ApiOperation({ summary: 'Mendapatkan detail blog berdasarkan slug' })
   @ApiResponse({ status: 200, description: 'Detail blog berhasil diambil' })
   @ApiResponse({ status: 404, description: 'Blog tidak ditemukan' })
+  @CacheKey('blog:slug')
+  @CacheTTL(60 * 10) // Cache selama 10 menit
   async getBlogBySlug(@Param('slug') slug: string) {
     try {
       const blog = await this.blogService.findBySlug(slug);
@@ -94,6 +101,8 @@ export class BlogController {
   @ApiOperation({ summary: 'Mendapatkan detail blog berdasarkan ID' })
   @ApiResponse({ status: 200, description: 'Detail blog berhasil diambil' })
   @ApiResponse({ status: 404, description: 'Blog tidak ditemukan' })
+  @CacheKey('blog:detail')
+  @CacheTTL(60 * 10) // Cache selama 10 menit
   getBlog(@Param('id') id: string) {
     return this.blogService.findOne(id);
   }

@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService, MotorStatus, TransaksiStatus } from '../../../common';
+import { CacheService } from '../../../common/modules/cache/services/cache.service';
 import type {
   CreateUnitMotorDto,
   UpdateUnitMotorDto,
@@ -13,12 +14,26 @@ import { AvailabilityService } from '../../availability/services/availability.se
 @Injectable()
 export class UnitMotorService {
   private readonly logger = new Logger(UnitMotorService.name);
+  private readonly cacheKeyPrefix = 'unit-motor:';
 
   constructor(
     private prisma: PrismaService,
     private unitMotorQueue: UnitMotorQueue,
     private availabilityService: AvailabilityService,
+    private cacheService: CacheService,
   ) {}
+  
+  /**
+   * Menginvalidasi cache unit motor
+   */
+  private async invalidateCache(): Promise<void> {
+    try {
+      await this.cacheService.delByPattern(`${this.cacheKeyPrefix}*`);
+      this.logger.log('Cache unit motor berhasil diinvalidasi');
+    } catch (error) {
+      this.logger.error(`Gagal menginvalidasi cache unit motor: ${error.message}`);
+    }
+  }
 
   async findAll(filter: FilterUnitMotorDto = {}) {
     try {
@@ -211,6 +226,9 @@ export class UnitMotorService {
       await this.unitMotorQueue.addMaintenanceReminderJob(newUnit.id);
 
       await this.unitMotorQueue.addSyncDataJob();
+      
+      // Invalidasi cache setelah membuat unit baru
+      await this.invalidateCache();
 
       return newUnit;
     } catch (error) {
@@ -282,6 +300,9 @@ export class UnitMotorService {
       if (updateUnitMotorDto.status) {
         await this.unitMotorQueue.addUpdateStatusJob(id, updateUnitMotorDto.status);
       }
+      
+      // Invalidasi cache setelah update unit
+      await this.invalidateCache();
 
       return updatedUnit;
     } catch (error) {
@@ -316,6 +337,9 @@ export class UnitMotorService {
       });
 
       await this.unitMotorQueue.addSyncDataJob();
+      
+      // Invalidasi cache setelah menghapus unit
+      await this.invalidateCache();
 
       return deletedUnit;
     } catch (error) {

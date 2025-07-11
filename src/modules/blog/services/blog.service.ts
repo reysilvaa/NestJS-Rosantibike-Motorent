@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../common/modules/prisma/services/prisma.service';
+import { CacheService } from '../../../common/modules/cache/services/cache.service';
 import type { CreateBlogPostDto, UpdateBlogPostDto } from '../dto';
 import {
   verifyBlogPostExists,
@@ -12,8 +13,24 @@ import { handleError } from '../../../common/helpers';
 @Injectable()
 export class BlogService {
   private readonly logger = new Logger(BlogService.name);
+  private readonly cacheKeyPrefix = 'blog:';
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cacheService: CacheService,
+  ) {}
+
+  /**
+   * Menginvalidasi cache blog
+   */
+  private async invalidateCache(): Promise<void> {
+    try {
+      await this.cacheService.delByPattern(`${this.cacheKeyPrefix}*`);
+      this.logger.log('Cache blog berhasil diinvalidasi');
+    } catch (error) {
+      this.logger.error(`Gagal menginvalidasi cache blog: ${error.message}`);
+    }
+  }
 
   async findAll(query: any) {
     const { page = 1, limit = 10, search = '', category = '', tag = '' } = query;
@@ -115,7 +132,7 @@ export class BlogService {
         await verifySlugIsUnique(createBlogPostDto.slug, this.prisma);
       }
 
-      return await this.prisma.$transaction(async tx => {
+      const result = await this.prisma.$transaction(async tx => {
         let tagConnections: { tag: { connect: { id: string } } }[] = [];
 
         if (createBlogPostDto.tags && Array.isArray(createBlogPostDto.tags)) {
@@ -182,6 +199,11 @@ export class BlogService {
           })),
         };
       });
+
+      // Invalidasi cache setelah membuat post baru
+      await this.invalidateCache();
+      
+      return result;
     } catch (error) {
       return handleError(this.logger, error, 'Gagal membuat artikel blog');
     }
@@ -195,7 +217,7 @@ export class BlogService {
         await verifySlugIsUnique(updateBlogPostDto.slug, this.prisma, id);
       }
 
-      return await this.prisma.$transaction(async tx => {
+      const result = await this.prisma.$transaction(async tx => {
         let tagConnections: { tag: { connect: { id: string } } }[] = [];
 
         if (updateBlogPostDto.tags && Array.isArray(updateBlogPostDto.tags)) {
@@ -270,24 +292,28 @@ export class BlogService {
           })),
         };
       });
+
+      // Invalidasi cache setelah update post
+      await this.invalidateCache();
+      
+      return result;
     } catch (error) {
-      return handleError(this.logger, error, `Gagal memperbarui artikel dengan ID ${id}`);
+      return handleError(this.logger, error, `Gagal mengupdate artikel dengan ID ${id}`);
     }
   }
 
   async remove(id: string) {
     try {
-      await verifyBlogPostExists(id, this.prisma, this.logger);
+      const post = await verifyBlogPostExists(id, this.prisma, this.logger);
 
-      return await this.prisma.$transaction(async tx => {
-        await tx.blogPostTag.deleteMany({
-          where: { postId: id },
-        });
-
-        return tx.blogPost.delete({
-          where: { id },
-        });
+      const result = await this.prisma.blogPost.delete({
+        where: { id },
       });
+
+      // Invalidasi cache setelah menghapus post
+      await this.invalidateCache();
+      
+      return result;
     } catch (error) {
       return handleError(this.logger, error, `Gagal menghapus artikel dengan ID ${id}`);
     }

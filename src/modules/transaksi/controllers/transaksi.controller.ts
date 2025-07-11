@@ -9,6 +9,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { TransaksiStatus } from '../../../common/interfaces/enum';
 import { successResponse, handleError, paginationResponse } from '../../../common/helpers';
+import { CacheKey, CacheTTL } from '../../../common/interceptors/cache.interceptor';
 
 @ApiTags('Transaksi')
 @Controller('transaksi')
@@ -38,6 +39,8 @@ export class TransaksiController {
     status: 200,
     description: 'Daftar transaksi berhasil diambil',
   })
+  @CacheKey('transaksi:list')
+  @CacheTTL(60 * 2) // Cache selama 2 menit (lebih pendek karena data transaksi lebih dinamis)
   async findAll(@Query() filter: FilterTransaksiDto) {
     try {
       const result = await this.transaksiService.findAll(filter);
@@ -59,6 +62,8 @@ export class TransaksiController {
     status: 200,
     description: 'History transaksi berhasil diambil',
   })
+  @CacheKey('transaksi:history')
+  @CacheTTL(60 * 5) // Cache selama 5 menit (history lebih stabil)
   async getHistory(@Query() filter: FilterTransaksiDto) {
     try {
       filter.status = [TransaksiStatus.SELESAI, TransaksiStatus.OVERDUE];
@@ -98,6 +103,8 @@ export class TransaksiController {
     description: 'Detail transaksi berhasil diambil',
   })
   @ApiResponse({ status: 404, description: 'Transaksi tidak ditemukan' })
+  @CacheKey('transaksi:detail')
+  @CacheTTL(60 * 2) // Cache selama 2 menit
   async findOne(@Param('id') id: string) {
     try {
       const result = await this.transaksiService.findOne(id);
@@ -161,6 +168,8 @@ export class TransaksiController {
     status: 200,
     description: 'Laporan denda berhasil diambil',
   })
+  @CacheKey('transaksi:laporan:denda')
+  @CacheTTL(60 * 10) // Cache selama 10 menit
   async getLaporanDenda(@Query('startDate') startDate: string, @Query('endDate') endDate: string) {
     try {
       const result = await this.transaksiService.getLaporanDenda(startDate, endDate);
@@ -176,6 +185,8 @@ export class TransaksiController {
     status: 200,
     description: 'Laporan fasilitas berhasil diambil',
   })
+  @CacheKey('transaksi:laporan:fasilitas')
+  @CacheTTL(60 * 10) // Cache selama 10 menit
   async getLaporanFasilitas(
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,

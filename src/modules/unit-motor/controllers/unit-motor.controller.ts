@@ -8,6 +8,7 @@ import {
 } from '../dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { successResponse, handleError } from '../../../common/helpers';
+import { CacheKey, CacheTTL } from '../../../common/interceptors/cache.interceptor';
 
 @ApiTags('Unit Motor')
 @Controller('unit-motor')
@@ -19,6 +20,8 @@ export class UnitMotorController {
   @Get()
   @ApiOperation({ summary: 'Mendapatkan semua unit motor' })
   @ApiResponse({ status: 200, description: 'Daftar unit motor berhasil diambil' })
+  @CacheKey('unit-motor:list')
+  @CacheTTL(60 * 5) // Cache selama 5 menit
   async findAll(@Query() filter: FilterUnitMotorDto) {
     try {
       const result = await this.unitMotorService.findAll(filter);
@@ -31,6 +34,8 @@ export class UnitMotorController {
   @Get('brands')
   @ApiOperation({ summary: 'Mendapatkan daftar merek motor yang tersedia' })
   @ApiResponse({ status: 200, description: 'Daftar merek motor berhasil diambil' })
+  @CacheKey('unit-motor:brands')
+  @CacheTTL(60 * 60) // Cache selama 1 jam
   async getBrands() {
     try {
       const result = await this.unitMotorService.getBrands();
@@ -57,6 +62,8 @@ export class UnitMotorController {
   @ApiOperation({ summary: 'Mendapatkan detail unit motor berdasarkan slug' })
   @ApiResponse({ status: 200, description: 'Detail unit motor berhasil diambil' })
   @ApiResponse({ status: 404, description: 'Unit motor tidak ditemukan' })
+  @CacheKey('unit-motor:slug')
+  @CacheTTL(60 * 10) // Cache selama 10 menit
   async findBySlug(@Param('slug') slug: string) {
     try {
       const result = await this.unitMotorService.findBySlug(slug);
@@ -74,6 +81,8 @@ export class UnitMotorController {
   @ApiOperation({ summary: 'Mendapatkan detail unit motor berdasarkan ID' })
   @ApiResponse({ status: 200, description: 'Detail unit motor berhasil diambil' })
   @ApiResponse({ status: 404, description: 'Unit motor tidak ditemukan' })
+  @CacheKey('unit-motor:detail')
+  @CacheTTL(60 * 10) // Cache selama 10 menit
   async findOne(@Param('id') id: string) {
     try {
       const result = await this.unitMotorService.findOne(id);

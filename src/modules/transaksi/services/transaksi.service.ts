@@ -1,6 +1,7 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService, TransaksiStatus, MotorStatus } from '../../../common';
 import { RealtimeGateway } from '../../../common/modules/websocket';
+import { CacheService } from '../../../common/modules/cache/services/cache.service';
 import { handleError } from '../../../common/helpers';
 import { formatWhatsappNumber } from '../../../common/helpers/whatsapp-formatter.helper';
 import { TransaksiQueue } from '../queues/transaksi.queue';
@@ -23,6 +24,8 @@ import { AvailabilityService } from '../../availability/services/availability.se
 @Injectable()
 export class TransaksiService {
   private readonly logger = new Logger(TransaksiService.name);
+  private readonly cacheKeyPrefix = 'transaksi:';
+  
   constructor(
     private prisma: PrismaService,
     private unitMotorService: UnitMotorService,
@@ -30,7 +33,20 @@ export class TransaksiService {
     private whatsappQueue: WhatsappQueue,
     private realtimeGateway: RealtimeGateway,
     private availabilityService: AvailabilityService,
+    private cacheService: CacheService,
   ) {}
+  
+  /**
+   * Menginvalidasi cache transaksi
+   */
+  private async invalidateCache(): Promise<void> {
+    try {
+      await this.cacheService.delByPattern(`${this.cacheKeyPrefix}*`);
+      this.logger.log('Cache transaksi berhasil diinvalidasi');
+    } catch (error) {
+      this.logger.error(`Gagal menginvalidasi cache transaksi: ${error.message}`);
+    }
+  }
 
   async findAll(filter: FilterTransaksiDto) {
     try {
@@ -219,6 +235,9 @@ export class TransaksiService {
         return transaksi;
       });
 
+      // Invalidasi cache setelah membuat transaksi baru
+      await this.invalidateCache();
+      
       return result;
     } catch (error) {
       return handleError(this.logger, error, 'Gagal membuat transaksi');
@@ -354,6 +373,9 @@ export class TransaksiService {
             },
           });
         });
+        
+        // Invalidasi cache setelah update transaksi
+        await this.invalidateCache();
       }
 
       return result;
@@ -366,27 +388,21 @@ export class TransaksiService {
     try {
       const transaksi = await verifyTransaksiExists(id, this.prisma, this.logger);
 
-      return await this.prisma.$transaction(async tx => {
-        await tx.transaksiSewa.delete({
+      const result = await this.prisma.$transaction(async tx => {
+        await tx.unitMotor.update({
+          where: { id: transaksi.unitId },
+          data: { status: MotorStatus.TERSEDIA },
+        });
+
+        return tx.transaksiSewa.delete({
           where: { id },
         });
-
-        const activeTransaksi = await tx.transaksiSewa.findFirst({
-          where: {
-            unitId: transaksi.unitId,
-            status: TransaksiStatus.AKTIF,
-          },
-        });
-
-        if (!activeTransaksi) {
-          await tx.unitMotor.update({
-            where: { id: transaksi.unitId },
-            data: { status: MotorStatus.TERSEDIA },
-          });
-        }
-
-        return { message: 'Transaksi berhasil dihapus' };
       });
+
+      // Invalidasi cache setelah menghapus transaksi
+      await this.invalidateCache();
+      
+      return result;
     } catch (error) {
       return handleError(this.logger, error, `Gagal menghapus transaksi dengan ID ${id}`);
     }
@@ -446,6 +462,9 @@ export class TransaksiService {
         });
       }
 
+      // Invalidasi cache setelah menyelesaikan transaksi
+      await this.invalidateCache();
+      
       return result;
     } catch (error) {
       return handleError(this.logger, error, `Gagal menyelesaikan sewa dengan ID ${id}`);
