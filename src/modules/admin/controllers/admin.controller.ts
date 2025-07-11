@@ -1,27 +1,51 @@
-import { Controller, Post, Put, Delete, Body, Param, UseGuards, Get } from '@nestjs/common';
+import { Controller, Post, Put, Delete, Body, Param, UseGuards, Get, Logger } from '@nestjs/common';
 import { AdminService } from '../services/admin.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { CreateAdminDto, UpdateAdminDto } from '../dto';
+import { CacheKey, CacheTTL } from '../../../common/interceptors/cache.interceptor';
+import { handleError } from '../../../common/helpers';
 
 @ApiTags('Admin')
 @Controller('admin')
 export class AdminController {
+  private readonly logger = new Logger(AdminController.name);
+  
   constructor(private readonly adminService: AdminService) {}
 
   @Get('')
   @ApiOperation({ summary: 'Dapatkan daftar admin' })
   @ApiResponse({ status: 200, description: 'Daftar admin berhasil diambil' })
+  @CacheKey('admin:list')
+  @CacheTTL(60 * 5) // Cache selama 5 menit
   async findAll() {
-    return this.adminService.findAll();
+    try {
+      const admins = await this.adminService.findAll();
+      return {
+        data: admins,
+        message: 'Daftar admin berhasil diambil'
+      };
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal mengambil daftar admin', 'findAll');
+    }
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Dapatkan admin berdasarkan ID' })
   @ApiResponse({ status: 200, description: 'Admin berhasil diambil' })
   @ApiResponse({ status: 404, description: 'Admin tidak ditemukan' })
+  @CacheKey('admin:detail')
+  @CacheTTL(60 * 5) // Cache selama 5 menit
   async findById(@Param('id') id: string) {
-    return this.adminService.findById(id);
+    try {
+      const admin = await this.adminService.findById(id);
+      return {
+        data: admin,
+        message: 'Admin berhasil diambil'
+      };
+    } catch (error) {
+      return handleError(this.logger, error, 'Gagal mengambil admin', 'findById');
+    }
   }
 
   @Post()

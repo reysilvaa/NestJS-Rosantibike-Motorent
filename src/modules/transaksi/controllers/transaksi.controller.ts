@@ -83,6 +83,8 @@ export class TransaksiController {
   @Get('search')
   @ApiOperation({ summary: 'Mencari transaksi berdasarkan nomor telepon' })
   @ApiResponse({ status: 200, description: 'Transaksi berhasil ditemukan' })
+  @CacheKey('transaksi:search')
+  @CacheTTL(60 * 2) // Cache selama 2 menit
   async searchByPhone(@Query('noHP') noHP: string) {
     try {
       const result = await this.transaksiService.findByPhone(noHP);
@@ -205,6 +207,8 @@ export class TransaksiController {
     status: 200,
     description: 'Perhitungan harga berhasil',
   })
+  @CacheKey('transaksi:calculate-price')
+  @CacheTTL(60 * 5) // Cache selama 5 menit
   async calculatePrice(@Body() calculatePriceDto: CalculatePriceDto) {
     try {
       const result = await this.transaksiService.calculatePrice(calculatePriceDto);

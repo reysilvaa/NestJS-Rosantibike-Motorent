@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TransaksiController } from './controllers/transaksi.controller';
 import { TransaksiService } from './services/transaksi.service';
-import { PrismaModule, WebsocketModule } from '../../common';
+import { PrismaModule, WebsocketModule, CacheModule } from '../../common';
 import { UnitMotorModule } from '../unit-motor/unit-motor.module';
 import { BullModule } from '@nestjs/bullmq';
 import { TransaksiProcessor } from './processors/transaksi.processor';
@@ -16,6 +16,7 @@ import { AvailabilityModule } from '../availability/availability.module';
     UnitMotorModule,
     WhatsappModule,
     AvailabilityModule,
+    CacheModule,
     BullModule.registerQueue({
       name: 'transaksi',
     }),
