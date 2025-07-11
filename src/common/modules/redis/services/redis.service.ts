@@ -177,4 +177,4 @@ export class RedisService {
   getClient(): Redis {
     return this.redisClient;
   }
-}
+} 

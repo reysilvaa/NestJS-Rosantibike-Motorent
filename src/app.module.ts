@@ -5,6 +5,8 @@ import {
   PrismaModule,
   WebsocketModule,
   CLOUDINARY_CONFIG,
+  RedisModule,
+  QueueModule,
 } from './common';
 import {
   AuthModule,
@@ -13,8 +15,6 @@ import {
   UnitMotorModule,
   TransaksiModule,
   BlogModule,
-  QueueModule,
-  RedisModule,
 } from './modules';
 
 @Module({

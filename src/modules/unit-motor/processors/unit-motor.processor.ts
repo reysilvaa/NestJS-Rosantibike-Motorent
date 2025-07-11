@@ -1,7 +1,7 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
-import { CloudinaryService } from '../../../common/services/cloudinary.service';
+import { CloudinaryService } from '../../../common/modules/cloudinary/cloudinary.service';
 import { RealtimeGateway, PrismaService, MotorStatus } from '../../../common';
 import { WhatsappQueue } from '../../whatsapp/queues/whatsapp.queue';
 import { MotorStatusType } from '../../../common/interfaces/enum';

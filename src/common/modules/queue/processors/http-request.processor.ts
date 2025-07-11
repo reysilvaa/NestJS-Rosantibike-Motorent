@@ -122,4 +122,4 @@ export class HttpRequestProcessor extends WorkerHost {
 
     return { message: `Processed ${method} ${path}` };
   }
-}
+} 

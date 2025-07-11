@@ -1,6 +1,6 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService, TransaksiStatus, MotorStatus } from '../../../common';
-import { RealtimeGateway } from '../../../common/websocket';
+import { RealtimeGateway } from '../../../common/modules/websocket';
 import { handleError } from '../../../common/helpers';
 import { formatWhatsappNumber } from '../../../common/helpers/whatsapp-formatter.helper';
 import { TransaksiQueue } from '../queues/transaksi.queue';
