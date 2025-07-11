@@ -7,12 +7,14 @@ import { UnitMotorQueue } from './queues/unit-motor.queue';
 import { UnitMotorProcessor } from './processors/unit-motor.processor';
 import { WhatsappModule } from '../whatsapp/whatsapp.module';
 import { JenisMotorModule } from '../jenis-motor/jenis-motor.module';
+import { AvailabilityModule } from '../../common/services/availability.module';
 
 @Module({
   imports: [
     PrismaModule,
     WebsocketModule,
     WhatsappModule,
+    AvailabilityModule,
     BullModule.registerQueue({
       name: 'unit-motor',
     }),

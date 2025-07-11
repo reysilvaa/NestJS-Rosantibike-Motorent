@@ -44,7 +44,8 @@ export interface FilterUnitMotorDto {
 }
 
 export interface CheckAvailabilityDto {
+  startDate: string;
+  endDate: string;
+  jenisId?: string;
   unitId?: string;
-  tanggalMulai: Date | string;
-  tanggalSelesai: Date | string;
 }

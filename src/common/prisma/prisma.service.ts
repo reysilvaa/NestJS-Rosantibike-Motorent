@@ -4,58 +4,6 @@ import { PrismaClient } from '@prisma/client';
 import type { Prisma as _Prisma } from '@prisma/client';
 import { createWinstonLogger } from '../config/logger.config';
 
-export enum StatusMotor {
-  TERSEDIA = 'TERSEDIA',
-  DISEWA = 'DISEWA',
-  DIPESAN = 'DIPESAN',
-  OVERDUE = 'OVERDUE',
-  PERBAIKAN = 'PERBAIKAN',
-}
-
-export enum StatusTransaksi {
-  AKTIF = 'AKTIF',
-  SELESAI = 'SELESAI',
-  OVERDUE = 'OVERDUE',
-  PENDING = 'PENDING',
-  DIBATALKAN = 'DIBATALKAN',
-}
-
-export enum StatusArtikel {
-  DRAFT = 'DRAFT',
-  TERBIT = 'TERBIT',
-  ARSIP = 'ARSIP',
-}
-
-export interface TransaksiWithRelations {
-  id: string;
-  namaPenyewa: string;
-  noWhatsapp: string;
-  unitId: string;
-  tanggalMulai: Date;
-  tanggalSelesai: Date;
-  status: StatusTransaksi;
-  totalBiaya: number;
-  unitMotor: {
-    id: string;
-    platNomor: string;
-    status: StatusMotor;
-    hargaSewa: number;
-    jenis: {
-      id: string;
-      merk: string;
-      model: string;
-      cc: number;
-    };
-  };
-}
-
-export interface AdminType {
-  id: string;
-  username: string;
-  password: string;
-  nama: string;
-}
-
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   private readonly logger = createWinstonLogger('PrismaService');

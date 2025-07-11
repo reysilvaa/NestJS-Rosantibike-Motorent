@@ -1,6 +1,5 @@
 export { TransaksiStatus, MotorStatus, ArtikelStatus } from './interfaces/enum';
 
-export { TransaksiWithRelations } from './prisma/prisma.service';
 export { PrismaService } from './prisma/prisma.service';
 export { PrismaModule } from './prisma/prisma.module';
 

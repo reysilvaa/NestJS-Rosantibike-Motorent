@@ -8,6 +8,7 @@ import type {
 } from '../dto';
 import { handleError } from '../../../common/helpers';
 import { UnitMotorQueue } from '../queues/unit-motor.queue';
+import { AvailabilityService } from '../../../common/services';
 
 @Injectable()
 export class UnitMotorService {
@@ -16,6 +17,7 @@ export class UnitMotorService {
   constructor(
     private prisma: PrismaService,
     private unitMotorQueue: UnitMotorQueue,
+    private availabilityService: AvailabilityService,
   ) {}
 
   async findAll(filter: FilterUnitMotorDto = {}) {
@@ -382,121 +384,10 @@ export class UnitMotorService {
   async checkAvailability(checkAvailabilityDto: CheckAvailabilityDto) {
     try {
       const { startDate, endDate, jenisId } = checkAvailabilityDto;
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-
-      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-        throw new BadRequestException('Format tanggal tidak valid');
-      }
-
-      if (start > end) {
-        throw new BadRequestException('Tanggal mulai harus sebelum tanggal selesai');
-      }
-
-      this.logger.log(
-        `Checking availability from ${startDate} to ${endDate}${jenisId ? ` for jenisId: ${jenisId}` : ''}`,
-      );
-
-      const whereClause: any = {};
-      if (jenisId) {
-        whereClause.jenisId = jenisId;
-      }
-
-      const unitMotors = await this.prisma.unitMotor.findMany({
-        where: whereClause,
-        include: {
-          jenis: true,
-          sewa: {
-            where: {
-              OR: [
-                {
-                  AND: [
-                    { tanggalMulai: { lte: end } },
-                    { tanggalSelesai: { gte: start } },
-                    { status: { in: [TransaksiStatus.AKTIF, TransaksiStatus.OVERDUE] } },
-                  ],
-                },
-              ],
-            },
-          },
-        },
-      });
-
-      this.logger.log(`Found ${unitMotors.length} units to check availability for`);
-
-      const dayList = this.generateDayList(start, end);
-      this.logger.log(`Generated ${dayList.length} days to check`);
-
-      const availabilityData = unitMotors.map(unit => {
-        const bookedDates: Date[] = [];
-
-        for (const sewa of unit.sewa) {
-          const sewaStart = new Date(sewa.tanggalMulai);
-          const sewaEnd = new Date(sewa.tanggalSelesai);
-
-          const bookedRange = this.generateDayList(
-            sewaStart < start ? start : sewaStart,
-            sewaEnd > end ? end : sewaEnd,
-          );
-
-          bookedDates.push(...bookedRange);
-        }
-
-        const uniqueBookedDates = new Set(
-          new Set(bookedDates.map(date => date.toISOString().split('T')[0])),
-        );
-
-        const dailyAvailability = dayList.map(day => {
-          const dayString = day.toISOString().split('T')[0];
-          return {
-            date: dayString,
-            isAvailable: !uniqueBookedDates.has(dayString),
-          };
-        });
-
-        this.logger.log(
-          `Unit ${unit.platNomor} has ${uniqueBookedDates.size} booked dates out of ${dayList.length} days`,
-        );
-
-        return {
-          unitId: unit.id,
-          platNomor: unit.platNomor,
-          jenisMotor: {
-            id: unit.jenis.id,
-            merk: unit.jenis.merk,
-            model: unit.jenis.model,
-            cc: unit.jenis.cc,
-          },
-          hargaSewa: unit.hargaSewa,
-          status: unit.status,
-          availability: dailyAvailability,
-        };
-      });
-
-      const result = {
-        startDate: startDate,
-        endDate: endDate,
-        totalUnits: availabilityData.length,
-        units: availabilityData,
-      };
-
-      this.logger.log(`Returning availability data for ${result.totalUnits} units`);
-      return result;
+      return this.availabilityService.checkAvailability(startDate, endDate, jenisId);
     } catch (error) {
       handleError(this.logger, error, 'Gagal memeriksa ketersediaan motor');
     }
-  }
-
-  private generateDayList(startDate: Date, endDate: Date): Date[] {
-    const dayList: Date[] = [];
-    const currentDate = new Date(startDate);
-
-    while (currentDate <= endDate) {
-      dayList.push(new Date(currentDate));
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    return dayList;
   }
 
   async getBrands() {

@@ -1,24 +1,24 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
-import { PrismaService, MotorStatus, TransaksiStatus, RealtimeGateway } from '../../../common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { PrismaService, TransaksiStatus, MotorStatus } from '../../../common';
+import { RealtimeGateway } from '../../../common/websocket';
+import { handleError } from '../../../common/helpers';
+import { formatWhatsappNumber } from '../../../common/helpers/whatsapp-formatter.helper';
+import { TransaksiQueue } from '../queues/transaksi.queue';
+import { WhatsappQueue } from '../../whatsapp/queues/whatsapp.queue';
 import { UnitMotorService } from '../../unit-motor/services/unit-motor.service';
 import type {
   CreateTransaksiDto,
   UpdateTransaksiDto,
   FilterTransaksiDto,
   CalculatePriceDto,
-} from '../dto/index';
-import { handleError } from '../../../common/helpers';
-import { formatWhatsappNumber } from '../../../common/helpers/whatsapp-formatter.helper';
+} from '../dto';
 import {
-  hitungDenda,
-  hitungTotalBiaya,
   verifyTransaksiExists,
   verifyUnitMotorExists,
-  verifyUnitMotorAvailability,
   verifyCanCompleteTransaksi,
-} from '../helpers';
-import { TransaksiQueue } from '../queues/transaksi.queue';
-import { WhatsappQueue } from '../../whatsapp/queues/whatsapp.queue';
+} from '../helpers/validation.helper';
+import { hitungDenda, hitungTotalBiaya } from '../helpers';
+import { AvailabilityService } from '../../../common/services';
 
 @Injectable()
 export class TransaksiService {
@@ -29,6 +29,7 @@ export class TransaksiService {
     private transaksiQueue: TransaksiQueue,
     private whatsappQueue: WhatsappQueue,
     private realtimeGateway: RealtimeGateway,
+    private availabilityService: AvailabilityService,
   ) {}
 
   async findAll(filter: FilterTransaksiDto) {
@@ -133,13 +134,11 @@ export class TransaksiService {
       const tanggalMulai = new Date(createTransaksiDto.tanggalMulai);
       const tanggalSelesai = new Date(createTransaksiDto.tanggalSelesai);
 
-      await verifyUnitMotorAvailability(
+      // Use the centralized availability service
+      await this.availabilityService.isUnitAvailable(
         createTransaksiDto.unitId,
         tanggalMulai,
         tanggalSelesai,
-        null,
-        this.prisma,
-        this.logger,
       );
 
       let totalBiaya = createTransaksiDto.totalBiaya;
@@ -252,13 +251,12 @@ export class TransaksiService {
           ? new Date(updateTransaksiDto.tanggalSelesai)
           : existingTransaksi.tanggalSelesai;
 
-        await verifyUnitMotorAvailability(
+        // Use the centralized availability service
+        await this.availabilityService.isUnitAvailable(
           unitId,
           tanggalMulai,
           tanggalSelesai,
           id,
-          this.prisma,
-          this.logger,
         );
       }
 
