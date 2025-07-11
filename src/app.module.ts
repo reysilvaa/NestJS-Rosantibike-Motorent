@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import {
   CloudinaryModule,
-  LoggerModule,
   PrismaModule,
   WebsocketModule,
   CLOUDINARY_CONFIG,
@@ -29,8 +28,6 @@ import {
     CloudinaryModule,
 
     PrismaModule,
-
-    LoggerModule,
 
     WebsocketModule,
 

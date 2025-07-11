@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsOptional, IsEnum, IsString, IsUUID, IsInt, IsArray, Min, Max, IsNumberString } from 'class-validator';
-import { StatusMotor } from '../../../common/enums/status.enum';
+import { MotorStatus, MotorStatusType } from '../../../common/interfaces/enum';
 import { Type, Transform } from 'class-transformer';
 
 export class FilterUnitMotorDto {
@@ -9,10 +9,10 @@ export class FilterUnitMotorDto {
   @IsOptional()
   jenisId?: string;
 
-  @ApiProperty({ required: false, description: 'Status motor', enum: StatusMotor })
-  @IsEnum(StatusMotor)
+  @ApiProperty({ required: false, description: 'Status motor', enum: MotorStatus })
+  @IsEnum(MotorStatus)
   @IsOptional()
-  status?: StatusMotor;
+  status?: MotorStatusType;
 
   @ApiProperty({ required: false, description: 'Kata kunci pencarian' })
   @IsString()

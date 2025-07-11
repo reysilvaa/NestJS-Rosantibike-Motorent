@@ -1,12 +1,13 @@
 import type { NestMiddleware } from '@nestjs/common';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type { Request, Response, NextFunction } from 'express';
 import { QueueService } from '../../modules/queue/queue.service';
 import { v4 as uuidv4 } from 'uuid';
+import { createWinstonLogger } from '../config/logger.config';
 
 @Injectable()
 export class HttpQueueMiddleware implements NestMiddleware {
-  private readonly logger = new Logger(HttpQueueMiddleware.name);
+  private readonly logger = createWinstonLogger('HttpQueueMiddleware');
   private readonly excludedPaths = ['/api/docs', '/api/health', '/debug/queue', '/favicon.ico'];
 
   constructor(private queueService: QueueService) {}

@@ -1,79 +1,53 @@
+/**
+ * Konfigurasi utama aplikasi
+ * 
+ * File ini berisi konfigurasi middleware dan global pipes untuk aplikasi NestJS
+ */
 import type { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '@nestjs/common';
-import * as compression from 'compression';
-import helmet from 'helmet';
-import * as morgan from 'morgan';
-import * as cookieParser from 'cookie-parser';
-import { join } from 'node:path';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import type { NestExpressApplication } from '@nestjs/platform-express';
+import { createWinstonLogger } from './logger.config';
+import { NestFastifyApplication } from '@nestjs/platform-fastify';
+import helmet from '@fastify/helmet';
+import compress from '@fastify/compress';
 
-export const configureMiddleware = (app: INestApplication): void => {
-  app.use(
-    helmet({
-      crossOriginResourcePolicy: false,
-    }),
-  );
-  app.use(cookieParser());
+const appLogger = createWinstonLogger('AppConfig');
 
-  app.use(compression());
-
-  app.use(morgan('combined'));
+/**
+ * Konfigurasi middleware aplikasi
+ * 
+ * @param app - Instance aplikasi NestJS dengan Fastify
+ */
+export const configureMiddleware = async (app: NestFastifyApplication): Promise<void> => {
+  appLogger.log('Mengonfigurasi middleware aplikasi');
+  
+  // Step 1: Registrasi Helmet untuk keamanan HTTP header
+  await app.register(helmet as any, {
+    crossOriginResourcePolicy: false,
+  });
+  
+  // Step 2: Registrasi Compress untuk kompresi respons
+  await app.register(compress as any);
+  
+  appLogger.log('Middleware aplikasi berhasil dikonfigurasi');
 };
 
-export const configureStaticAssets = (app: NestExpressApplication): void => {
-  app.useStaticAssets(join(__dirname, '..', '..', '..', 'public'));
-};
-
+/**
+ * Konfigurasi global pipes untuk validasi
+ * 
+ * @param app - Instance aplikasi NestJS
+ */
 export const configureGlobalPipes = (app: INestApplication): void => {
+  appLogger.log('Mengonfigurasi global pipes untuk validasi');
+  
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,
-      transform: true,
-      forbidNonWhitelisted: true,
+      whitelist: true, // Hapus properti yang tidak terdefinisi di DTO
+      transform: true, // Transform payload ke instance DTO
+      forbidNonWhitelisted: true, // Tolak request dengan properti yang tidak terdefinisi
       transformOptions: {
-        enableImplicitConversion: true,
-        enableCircularCheck: true,
+        enableImplicitConversion: true, // Konversi tipe data secara implisit
+        enableCircularCheck: true, // Cek referensi sirkular
       },
     }),
   );
-};
-
-export const configureSwagger = (app: INestApplication): void => {
-  const config = new DocumentBuilder()
-    .setTitle('Rental Motor API')
-    .setDescription(
-      'API untuk aplikasi rental motor yang menyediakan layanan pengelolaan unit motor, transaksi sewa, dan administrasi.',
-    )
-    .setVersion('1.0')
-    .addTag('Jenis Motor', 'Endpoint untuk mengelola jenis-jenis motor')
-    .addTag('Unit Motor', 'Endpoint untuk mengelola unit motor yang tersedia')
-    .addTag('Transaksi', 'Endpoint untuk mengelola transaksi rental motor')
-    .addTag('Admin', 'Endpoint untuk manajemen admin')
-    .addTag('Auth', 'Endpoint untuk autentikasi pengguna')
-    .addTag('Blog', 'Endpoint untuk manajemen konten blog')
-    .addBearerAuth({
-      type: 'http',
-      scheme: 'bearer',
-      bearerFormat: 'JWT',
-      description: 'Masukkan token JWT dengan format: Bearer {token}',
-    })
-    .setContact(
-      'Tim Rental Motor',
-      'https://rentalmotor.example.com',
-      'contact@rentalmotor.example.com',
-    )
-    .setLicense('MIT', 'https://opensource.org/licenses/MIT')
-    .build();
-
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document, {
-    swaggerOptions: {
-      tagsSorter: 'alpha',
-      operationsSorter: 'alpha',
-      docExpansion: 'none',
-      persistAuthorization: true,
-    },
-    customSiteTitle: 'Rental Motor API Documentation',
-  });
 };

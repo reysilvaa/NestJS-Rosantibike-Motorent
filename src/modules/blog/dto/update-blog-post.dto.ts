@@ -1,6 +1,6 @@
 import { IsString, IsArray, IsOptional, IsEnum, IsUUID } from 'class-validator';
 import { Transform, Expose } from 'class-transformer';
-import { StatusArtikel } from '../../../common';
+import { ArtikelStatus, ArtikelStatusType } from '../../../common/interfaces/enum';
 
 export class UpdateBlogPostDto {
   @IsString()
@@ -47,7 +47,7 @@ export class UpdateBlogPostDto {
   @IsOptional()
   kategoriId?: string;
 
-  @IsEnum(StatusArtikel)
+  @IsEnum(ArtikelStatus)
   @IsOptional()
-  status?: StatusArtikel;
+  status?: ArtikelStatusType;
 }

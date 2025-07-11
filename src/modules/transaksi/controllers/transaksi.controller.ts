@@ -7,7 +7,7 @@ import {
   CalculatePriceDto,
 } from '../dto/index';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { StatusTransaksi } from '../../../common/enums/status.enum';
+import { TransaksiStatus } from '../../../common/interfaces/enum';
 import { successResponse, handleError, paginationResponse } from '../../../common/helpers';
 
 @ApiTags('Transaksi')
@@ -61,7 +61,7 @@ export class TransaksiController {
   })
   async getHistory(@Query() filter: FilterTransaksiDto) {
     try {
-      filter.status = [StatusTransaksi.SELESAI, StatusTransaksi.OVERDUE];
+      filter.status = [TransaksiStatus.SELESAI, TransaksiStatus.OVERDUE];
       const result = await this.transaksiService.findAll(filter);
       return paginationResponse(
         result.data,

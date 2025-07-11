@@ -11,7 +11,7 @@ import {
   Max,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { StatusMotor } from '../../../common/enums/status.enum';
+import { MotorStatus, MotorStatusType } from '../../../common/interfaces/enum';
 
 export class CreateUnitMotorDto {
   @IsUUID()
@@ -29,9 +29,9 @@ export class CreateUnitMotorDto {
   @Transform(({ value }) => parseFloat(value))
   hargaSewa: number;
 
-  @IsEnum(StatusMotor)
+  @IsEnum(MotorStatus)
   @IsOptional()
-  status?: StatusMotor;
+  status?: MotorStatusType;
 
   @IsInt()
   @IsOptional()

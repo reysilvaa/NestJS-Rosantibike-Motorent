@@ -1,9 +1,15 @@
+/**
+ * Konfigurasi CORS untuk aplikasi
+ */
 import type { INestApplication } from '@nestjs/common';
-import { json, urlencoded } from 'express';
-import { Logger } from '@nestjs/common';
+import { createWinstonLogger } from './logger.config';
+import { NestFastifyApplication } from '@nestjs/platform-fastify';
 
-const logger = new Logger('CorsConfig');
+const logger = createWinstonLogger('CorsConfig');
 
+/**
+ * Opsi konfigurasi CORS untuk aplikasi
+ */
 export const corsOptions = {
   origin: (origin, callback) => {
     const allowedOrigins = process.env.CORS_ORIGIN
@@ -20,17 +26,13 @@ export const corsOptions = {
           'https://wa.rosantibikemotorent.com',
         ];
 
-    logger.log(`Memeriksa origin: ${origin || 'no origin'}`);
-
     // Selalu izinkan permintaan tanpa origin (seperti dari Postman atau curl)
     if (!origin) {
-      logger.log('Mengizinkan permintaan tanpa origin');
       return callback(null, true);
     }
 
     // Izinkan semua origin dalam mode development
     if (process.env.NODE_ENV !== 'production') {
-      logger.log(`Mode development: Mengizinkan semua origin: ${origin}`);
       return callback(null, true);
     }
 
@@ -39,7 +41,6 @@ export const corsOptions = {
       allowedOrigins.includes(origin) ||
       origin === `http://localhost:${process.env.PORT}`
     ) {
-      logger.log(`Origin diizinkan: ${origin}`);
       return callback(null, true);
     } else {
       logger.warn(`Origin tidak diizinkan: ${origin}`);
@@ -53,12 +54,15 @@ export const corsOptions = {
   optionsSuccessStatus: 200,
 };
 
-export function setupCors(app: INestApplication): void {
+/**
+ * Mengonfigurasi CORS untuk aplikasi
+ * 
+ * @param app - Instance aplikasi NestJS dengan Fastify
+ */
+export function configureCors(app: NestFastifyApplication): void {
   const isProduction = process.env.NODE_ENV === 'production';
   logger.log(`Mengatur CORS untuk lingkungan: ${isProduction ? 'production' : 'development'}`);
 
+  // Registrasi CORS plugin untuk Fastify
   app.enableCors(corsOptions);
-
-  app.use(json({ limit: '10mb' }));
-  app.use(urlencoded({ limit: '10mb', extended: true }));
 }

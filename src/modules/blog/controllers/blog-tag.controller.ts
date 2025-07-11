@@ -17,7 +17,7 @@ import { handleError } from '../../../common/helpers';
 import { CreateBlogTagDto, UpdateBlogTagDto } from '../dto';
 
 @ApiTags('Blog Tag')
-@Controller('blog/tags')
+@Controller('blog-tags')
 export class BlogTagController {
   private readonly logger = new Logger(BlogTagController.name);
 

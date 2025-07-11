@@ -1,7 +1,7 @@
 import type { Logger } from '@nestjs/common';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import type { PrismaService } from '../../../common/prisma/prisma.service';
-import { StatusTransaksi } from '../../../common/enums/status.enum';
+import { TransaksiStatus } from '../../../common/interfaces/enum';
 
 export async function verifyTransaksiExists(id: string, prisma: PrismaService, logger: Logger) {
   const transaksi = await prisma.transaksiSewa.findUnique({
@@ -52,7 +52,7 @@ export async function verifyUnitMotorAvailability(
   const whereCondition: any = {
     id: transaksiId ? { not: transaksiId } : undefined,
     unitId,
-    status: { in: [StatusTransaksi.AKTIF] },
+    status: { in: [TransaksiStatus.AKTIF] },
     OR: [
       {
         tanggalMulai: { lte: tanggalMulai },
@@ -86,7 +86,7 @@ export async function verifyUnitMotorAvailability(
   const recentTransaction = await prisma.transaksiSewa.findFirst({
     where: {
       unitId,
-      status: StatusTransaksi.SELESAI,
+      status: TransaksiStatus.SELESAI,
       updatedAt: { gte: oneHourAgo },
     },
     orderBy: { updatedAt: 'desc' },
@@ -109,7 +109,7 @@ export async function verifyUnitMotorAvailability(
 }
 
 export function verifyCanCompleteTransaksi(transaksi: any, logger: Logger) {
-  if (transaksi.status === StatusTransaksi.SELESAI) {
+  if (transaksi.status === TransaksiStatus.SELESAI) {
     logger.error(`Transaksi dengan ID ${transaksi.id} sudah selesai`);
     throw new BadRequestException('Transaksi sewa ini sudah selesai');
   }

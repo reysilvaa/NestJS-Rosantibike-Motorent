@@ -1,6 +1,6 @@
 import { IsString, IsOptional, IsNumber, IsUUID, Min, IsEnum, IsInt, Max } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { StatusMotor } from '../../../common/enums/status.enum';
+import { MotorStatus, MotorStatusType } from '../../../common/interfaces/enum';
 
 export class UpdateUnitMotorDto {
   @IsUUID()
@@ -11,9 +11,9 @@ export class UpdateUnitMotorDto {
   @IsOptional()
   platNomor?: string;
 
-  @IsEnum(StatusMotor)
+  @IsEnum(MotorStatus)
   @IsOptional()
-  status?: StatusMotor;
+  status?: MotorStatusType;
 
   @IsNumber()
   @IsOptional()

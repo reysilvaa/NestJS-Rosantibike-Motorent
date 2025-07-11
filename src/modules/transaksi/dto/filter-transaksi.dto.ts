@@ -1,5 +1,5 @@
 import { IsOptional, IsString, IsDateString, IsUUID, IsNumber } from 'class-validator';
-import type { StatusTransaksi } from '../../../common/enums/status.enum';
+import { TransaksiStatusType } from '../../../common/interfaces/enum';
 import { Transform } from 'class-transformer';
 
 export class FilterTransaksiDto {
@@ -22,11 +22,11 @@ export class FilterTransaksiDto {
   @IsOptional()
   @Transform(({ value }) => {
     if (typeof value === 'string' && value.includes(',')) {
-      return value.split(',').map(status => status.trim() as StatusTransaksi);
+      return value.split(',').map(status => status.trim() as TransaksiStatusType);
     }
     return value;
   })
-  status?: StatusTransaksi | StatusTransaksi[];
+  status?: TransaksiStatusType | TransaksiStatusType[];
 
   @IsOptional()
   @IsNumber()

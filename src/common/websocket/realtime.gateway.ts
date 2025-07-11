@@ -3,21 +3,9 @@ import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Logger, Inject, Optional } from '@nestjs/common';
 import type { Socket } from 'socket.io';
 import { Server } from 'socket.io';
-import { corsOptions } from '../config/cors.config';
 
 @WebSocketGateway({
-  cors: {
-    origin: corsOptions.origin,
-    methods: corsOptions.methods,
-    credentials: true,
-    allowedHeaders: corsOptions.allowedHeaders,
-  },
   namespace: '/realtime',
-  transports: ['websocket', 'polling'],
-  pingInterval: 25_000,
-  pingTimeout: 60_000,
-  allowUpgrades: true,
-  upgradeTimeout: 30_000,
 })
 export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(RealtimeGateway.name);
@@ -160,15 +148,13 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
       client.handshake.address ||
       client.conn.remoteAddress;
 
-    if (clientIp) {
-      const ipSocketIds = this.ipConnections.get(clientIp as string);
-      if (ipSocketIds) {
-        ipSocketIds.delete(client.id);
-        if (ipSocketIds.size === 0) {
-          this.ipConnections.delete(clientIp as string);
-        } else {
-          this.ipConnections.set(clientIp as string, ipSocketIds);
-        }
+    const ipSocketIds = this.ipConnections.get(clientIp as string);
+    if (ipSocketIds) {
+      ipSocketIds.delete(client.id);
+      if (ipSocketIds.size === 0) {
+        this.ipConnections.delete(clientIp as string);
+      } else {
+        this.ipConnections.set(clientIp as string, ipSocketIds);
       }
     }
 
@@ -180,8 +166,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
       }
     }
 
-    this.totalConnections--;
-
+    this.totalConnections = Math.max(0, this.totalConnections - 1);
     this.updateRedisPubSubUsage();
 
     this.logger.log(`Client disconnected: ${client.id}`);
@@ -270,6 +255,48 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
       return false;
     } catch (error) {
       this.logger.error(`Error sending to user ${userId}: ${error.message}`);
+      return false;
+    }
+  }
+
+  sendToRoom(room: string, event: string, data: any) {
+    try {
+      this.server.to(room).emit(event, data);
+      this.logger.debug(`Sent event "${event}" to room ${room}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Error sending to room ${room}: ${error.message}`);
+      return false;
+    }
+  }
+
+  joinRoom(userId: string, room: string) {
+    try {
+      const client = this.clients.get(userId);
+      if (client && client.connected) {
+        client.join(room);
+        this.logger.debug(`User ${userId} joined room ${room}`);
+        return true;
+      }
+      this.logger.warn(`Failed to add user ${userId} to room ${room}: client not found`);
+      return false;
+    } catch (error) {
+      this.logger.error(`Error adding user ${userId} to room ${room}: ${error.message}`);
+      return false;
+    }
+  }
+
+  leaveRoom(userId: string, room: string) {
+    try {
+      const client = this.clients.get(userId);
+      if (client && client.connected) {
+        client.leave(room);
+        this.logger.debug(`User ${userId} left room ${room}`);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      this.logger.error(`Error removing user ${userId} from room ${room}: ${error.message}`);
       return false;
     }
   }

@@ -10,7 +10,7 @@ import {
   IsEnum,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { StatusTransaksi } from '../../../common/enums/status.enum';
+import { TransaksiStatus, TransaksiStatusType } from '../../../common/interfaces/enum';
 import { formatWhatsappNumber } from '../../../common/helpers/whatsapp-formatter.helper';
 
 export class CreateTransaksiDto {
@@ -63,9 +63,9 @@ export class UpdateTransaksiDto {
   @IsOptional()
   tanggalSelesai?: string;
 
-  @IsEnum(StatusTransaksi)
+  @IsEnum(TransaksiStatus)
   @IsOptional()
-  status?: StatusTransaksi;
+  status?: TransaksiStatusType;
 
   @IsNumber()
   @Min(0, { message: 'Total biaya harus lebih dari 0' })
@@ -98,7 +98,7 @@ export class FilterTransaksiDto {
     }
     return value;
   })
-  status?: StatusTransaksi | StatusTransaksi[];
+  status?: TransaksiStatusType | TransaksiStatusType[];
 
   @IsOptional()
   @Transform(({ value }) => parseInt(value, 10))

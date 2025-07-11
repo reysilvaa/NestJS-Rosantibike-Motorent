@@ -10,7 +10,7 @@ import {
   Max,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { StatusTransaksi } from '../../../common/enums/status.enum';
+import { TransaksiStatus, TransaksiStatusType } from '../../../common/interfaces/enum';
 import { formatWhatsappNumber } from '../../../common/helpers/whatsapp-formatter.helper';
 
 export class UpdateTransaksiDto {
@@ -63,9 +63,9 @@ export class UpdateTransaksiDto {
   @IsOptional()
   helm?: number;
 
-  @IsEnum(StatusTransaksi)
+  @IsEnum(TransaksiStatus)
   @IsOptional()
-  status?: StatusTransaksi;
+  status?: TransaksiStatusType;
 
   @IsNumber()
   @Min(0, { message: 'Total biaya harus lebih dari 0' })

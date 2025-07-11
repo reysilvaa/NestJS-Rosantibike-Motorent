@@ -1,7 +1,8 @@
 import type { OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import type { Prisma as _Prisma } from '@prisma/client';
+import { createWinstonLogger } from '../config/logger.config';
 
 export enum StatusMotor {
   TERSEDIA = 'TERSEDIA',
@@ -57,7 +58,7 @@ export interface AdminType {
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(PrismaService.name);
+  private readonly logger = createWinstonLogger('PrismaService');
 
   constructor() {
     super({
@@ -76,9 +77,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     this.logger.log('Connected to database');
 
     (this as any).$on('query', (e: any) => {
-      this.logger.debug(`Query: ${e.query}`);
-      this.logger.debug(`Params: ${e.params}`);
-      this.logger.debug(`Duration: ${e.duration}ms`);
+      if (this.logger.debug) {
+        this.logger.debug(`Query: ${e.query}`);
+        this.logger.debug(`Params: ${e.params}`);
+        this.logger.debug(`Duration: ${e.duration}ms`);
+      }
     });
   }
 

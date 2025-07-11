@@ -1,15 +1,15 @@
 import { IsOptional, IsString, IsEnum, IsNumber } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { StatusArtikel } from '../../../common';
+import { ArtikelStatus, ArtikelStatusType } from '../../../common/interfaces/enum';
 
 export class FilterBlogPostDto {
   @IsString()
   @IsOptional()
   search?: string;
 
-  @IsEnum(StatusArtikel)
+  @IsEnum(ArtikelStatus)
   @IsOptional()
-  status?: StatusArtikel;
+  status?: ArtikelStatusType;
 
   @IsString()
   @IsOptional()
