@@ -95,4 +95,4 @@ export class RedisController {
       return { status: 'error', message: 'Gagal menghapus key' };
     }
   }
-} 
+}

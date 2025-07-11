@@ -26,4 +26,4 @@ import { RedisController } from './controllers/redis.controller';
   providers: [RedisService],
   exports: [CacheModule, RedisService],
 })
-export class RedisModule {} 
+export class RedisModule {}

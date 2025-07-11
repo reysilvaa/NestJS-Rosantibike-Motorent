@@ -5,7 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-export const handleError = (logger: LoggerService, error: any, message: string, context?: string) => {
+export const handleError = (
+  logger: LoggerService,
+  error: any,
+  message: string,
+  context?: string,
+) => {
   logger.error(`Error: ${error.message}`, context);
   logger.error(`Error stack: ${error.stack}`, context);
 

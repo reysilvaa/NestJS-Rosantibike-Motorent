@@ -74,4 +74,4 @@ import { HttpRequestProcessor } from './processors/http-request.processor';
   providers: [QueueService, HttpRequestProcessor],
   exports: [BullModule, QueueService],
 })
-export class QueueModule {} 
+export class QueueModule {}

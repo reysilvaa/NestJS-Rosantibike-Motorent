@@ -105,12 +105,10 @@ export class UnitMotorService {
         this.logger.error('Gagal memeriksa struktur tabel:', error);
       }
 
-      // Hitung total data
       const total = await this.prisma.unitMotor.count({
         where: whereClause,
       });
 
-      // Ambil data dengan paginasi
       const data = await this.prisma.unitMotor.findMany({
         where: whereClause,
         include: {
@@ -121,7 +119,6 @@ export class UnitMotorService {
         orderBy: { createdAt: 'desc' },
       });
 
-      // Hitung total halaman
       const totalPages = Math.ceil(total / Number(limit));
 
       return {

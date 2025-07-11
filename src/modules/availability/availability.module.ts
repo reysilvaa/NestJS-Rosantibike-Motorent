@@ -7,4 +7,4 @@ import { PrismaModule } from '../../common/modules/prisma/prisma.module';
   providers: [AvailabilityService],
   exports: [AvailabilityService],
 })
-export class AvailabilityModule {} 
+export class AvailabilityModule {}

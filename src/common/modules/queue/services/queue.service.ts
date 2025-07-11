@@ -249,4 +249,4 @@ export class QueueService implements OnModuleDestroy {
   async onModuleDestroy() {
     await this.closeAll();
   }
-} 
+}

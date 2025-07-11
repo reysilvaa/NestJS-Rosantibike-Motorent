@@ -8,12 +8,6 @@ export class AvailabilityService {
 
   constructor(private prisma: PrismaService) {}
 
-  /**
-   * Validates date range
-   * @param startDate - Start date
-   * @param endDate - End date
-   * @throws BadRequestException if dates are invalid
-   */
   validateDateRange(startDate: Date, endDate: Date): void {
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
       throw new BadRequestException('Format tanggal tidak valid');
@@ -24,12 +18,6 @@ export class AvailabilityService {
     }
   }
 
-  /**
-   * Generates a list of days between two dates
-   * @param startDate - Start date
-   * @param endDate - End date
-   * @returns Array of dates
-   */
   generateDayList(startDate: Date, endDate: Date): Date[] {
     const dayList: Date[] = [];
     const currentDate = new Date(startDate);
@@ -42,14 +30,6 @@ export class AvailabilityService {
     return dayList;
   }
 
-  /**
-   * Checks if a specific unit is available for a given date range
-   * @param unitId - Unit ID to check
-   * @param startDate - Start date
-   * @param endDate - End date
-   * @param transaksiId - Optional transaction ID to exclude from check (for updates)
-   * @returns Promise<boolean> - true if available, throws exception if not
-   */
   async isUnitAvailable(
     unitId: string,
     startDate: Date,
@@ -94,11 +74,6 @@ export class AvailabilityService {
     return true;
   }
 
-  /**
-   * Checks if a unit was recently returned (within the last hour)
-   * @param unitId - Unit ID to check
-   * @throws BadRequestException if unit was recently returned
-   */
   async checkRecentReturn(unitId: string): Promise<void> {
     const oneHourAgo = new Date();
     oneHourAgo.setHours(oneHourAgo.getHours() - 1);
@@ -126,13 +101,6 @@ export class AvailabilityService {
     }
   }
 
-  /**
-   * Checks availability of multiple units for a given date range
-   * @param startDate - Start date string
-   * @param endDate - End date string
-   * @param jenisId - Optional jenis motor ID to filter by
-   * @returns Availability data for all matching units
-   */
   async checkAvailability(startDate: string, endDate: string, jenisId?: string) {
     const start = new Date(startDate);
     const end = new Date(endDate);
@@ -188,9 +156,7 @@ export class AvailabilityService {
         bookedDates.push(...bookedRange);
       }
 
-      const uniqueBookedDates = new Set(
-        bookedDates.map(date => date.toISOString().split('T')[0]),
-      );
+      const uniqueBookedDates = new Set(bookedDates.map(date => date.toISOString().split('T')[0]));
 
       const dailyAvailability = dayList.map(day => {
         const dayString = day.toISOString().split('T')[0];
@@ -229,4 +195,4 @@ export class AvailabilityService {
     this.logger.log(`Returning availability data for ${result.totalUnits} units`);
     return result;
   }
-} 
+}

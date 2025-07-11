@@ -76,7 +76,6 @@ export class BlogKategoriService {
 
   async create(createKategoriDto: CreateBlogKategoriDto) {
     try {
-      // Cek apakah slug sudah ada
       if (createKategoriDto.slug) {
         const existingSlug = await this.prisma.blogKategori.findUnique({
           where: { slug: createKategoriDto.slug },
@@ -109,7 +108,6 @@ export class BlogKategoriService {
         throw new NotFoundException(`Kategori dengan ID ${id} tidak ditemukan`);
       }
 
-      // Cek apakah slug sudah ada jika slug diubah
       if (updateKategoriDto.slug && updateKategoriDto.slug !== kategori.slug) {
         const existingSlug = await this.prisma.blogKategori.findUnique({
           where: { slug: updateKategoriDto.slug },

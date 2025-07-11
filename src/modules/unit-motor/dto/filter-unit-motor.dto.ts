@@ -1,5 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsEnum, IsString, IsUUID, IsInt, IsArray, Min, Max, IsNumberString } from 'class-validator';
+import {
+  IsOptional,
+  IsEnum,
+  IsString,
+  IsUUID,
+  IsInt,
+  IsArray,
+  Min,
+  Max,
+  IsNumberString,
+} from 'class-validator';
 import { MotorStatus, MotorStatusType } from '../../../common/interfaces/enum';
 import { Type, Transform } from 'class-transformer';
 

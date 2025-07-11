@@ -64,7 +64,6 @@ export class BlogService {
       }),
     ]);
 
-    // Transform data untuk frontend
     const transformedData = data.map(post => ({
       ...post,
       tags: post.tags.map(t => ({
@@ -128,16 +127,15 @@ export class BlogService {
             });
 
             if (!tag && normalizedTagName) {
-              // Generate slug untuk tag baru
               const tagSlug = normalizedTagName
                 .toLowerCase()
                 .replaceAll(/[^\da-z]+/g, '-')
                 .replaceAll(/(^-|-$)/g, '');
 
               tag = await tx.blogTag.create({
-                data: { 
+                data: {
                   nama: normalizedTagName,
-                  slug: tagSlug
+                  slug: tagSlug,
                 },
               });
             }
@@ -209,16 +207,15 @@ export class BlogService {
             });
 
             if (!tag && normalizedTagName) {
-              // Generate slug untuk tag baru
               const tagSlug = normalizedTagName
                 .toLowerCase()
                 .replaceAll(/[^\da-z]+/g, '-')
                 .replaceAll(/(^-|-$)/g, '');
 
               tag = await tx.blogTag.create({
-                data: { 
+                data: {
                   nama: normalizedTagName,
-                  slug: tagSlug
+                  slug: tagSlug,
                 },
               });
             }
@@ -349,8 +346,7 @@ export class BlogService {
   async createTag(createTagDto: { nama: string; slug?: string }) {
     try {
       const normalizedName = createTagDto.nama.trim().toLowerCase();
-      
-      // Cek apakah tag dengan nama yang sama sudah ada
+
       const existingTag = await this.prisma.blogTag.findFirst({
         where: { nama: normalizedName },
       });
@@ -359,7 +355,6 @@ export class BlogService {
         return existingTag;
       }
 
-      // Generate slug jika tidak disediakan
       let slug = createTagDto.slug;
       if (!slug) {
         slug = normalizedName
@@ -368,13 +363,11 @@ export class BlogService {
           .replaceAll(/(^-|-$)/g, '');
       }
 
-      // Cek keunikan slug
       const existingSlug = await this.prisma.blogTag.findFirst({
         where: { slug },
       });
 
       if (existingSlug) {
-        // Tambahkan timestamp ke slug jika sudah ada
         slug = `${slug}-${Date.now()}`;
       }
 
@@ -391,7 +384,6 @@ export class BlogService {
 
   async updateTag(id: string, updateTagDto: { nama?: string; slug?: string }) {
     try {
-      // Cek apakah tag ada
       const existingTag = await this.prisma.blogTag.findUnique({
         where: { id },
       });
@@ -410,7 +402,6 @@ export class BlogService {
       if (updateTagDto.slug) {
         data.slug = updateTagDto.slug;
       } else if (updateTagDto.nama && !updateTagDto.slug) {
-        // Generate slug dari nama baru jika nama diubah tapi slug tidak
         data.slug = updateTagDto.nama
           .toLowerCase()
           .replaceAll(/[^\da-z]+/g, '-')
@@ -428,7 +419,6 @@ export class BlogService {
 
   async deleteTag(id: string) {
     try {
-      // Cek apakah tag ada
       const existingTag = await this.prisma.blogTag.findUnique({
         where: { id },
       });
@@ -437,12 +427,10 @@ export class BlogService {
         throw new NotFoundException(`Tag dengan ID ${id} tidak ditemukan`);
       }
 
-      // Hapus relasi tag dengan post terlebih dahulu
       await this.prisma.blogPostTag.deleteMany({
         where: { tagId: id },
       });
 
-      // Hapus tag
       return await this.prisma.blogTag.delete({
         where: { id },
       });

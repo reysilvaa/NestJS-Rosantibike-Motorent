@@ -22,9 +22,9 @@ export function formatWhatsappNumber(phoneNumber: string): string {
 
     const finalNumber = isLocalIndonesia
       ? `62${noPlus.slice(1)}`
-      : (needsIndonesiaCode
+      : needsIndonesiaCode
         ? `62${noPlus}`
-        : noPlus);
+        : noPlus;
 
     logger.debug(`Formatted WhatsApp number from ${phoneNumber} to ${finalNumber}`);
     return finalNumber;

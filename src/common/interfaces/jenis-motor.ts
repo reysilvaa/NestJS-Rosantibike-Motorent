@@ -1,4 +1,4 @@
-import { UnitMotor } from "./unit-motor";
+import { UnitMotor } from './unit-motor';
 
 export interface JenisMotor {
   id: string;

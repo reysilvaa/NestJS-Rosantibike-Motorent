@@ -1,6 +1,3 @@
-/**
- * Konfigurasi Swagger untuk dokumentasi API
- */
 import type { INestApplication } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { createWinstonLogger } from './logger.config';
@@ -8,14 +5,9 @@ import { NestFastifyApplication } from '@nestjs/platform-fastify';
 
 const logger = createWinstonLogger('SwaggerConfig');
 
-/**
- * Mengonfigurasi Swagger untuk dokumentasi API
- * 
- * @param app - Instance aplikasi NestJS dengan Fastify
- */
 export function configureSwagger(app: NestFastifyApplication): void {
   logger.log('Mengonfigurasi Swagger API documentation');
-  
+
   const config = new DocumentBuilder()
     .setTitle('Rental Motor API')
     .setDescription(
@@ -43,8 +35,7 @@ export function configureSwagger(app: NestFastifyApplication): void {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  
-  // Konfigurasi Swagger untuk Fastify
+
   SwaggerModule.setup('api/docs', app, document, {
     swaggerOptions: {
       tagsSorter: 'alpha',

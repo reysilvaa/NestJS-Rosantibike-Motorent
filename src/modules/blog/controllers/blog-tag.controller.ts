@@ -60,7 +60,6 @@ export class BlogTagController {
   @ApiResponse({ status: 400, description: 'Data tidak valid' })
   async createTag(@Body() createTagDto: CreateBlogTagDto) {
     try {
-      // Implementasi pembuatan tag akan ditambahkan di BlogService
       const tag = await this.blogService.createTag(createTagDto);
       return {
         data: tag,
@@ -76,12 +75,8 @@ export class BlogTagController {
   @ApiOperation({ summary: 'Memperbarui tag berdasarkan ID' })
   @ApiResponse({ status: 200, description: 'Tag berhasil diperbarui' })
   @ApiResponse({ status: 404, description: 'Tag tidak ditemukan' })
-  async updateTag(
-    @Param('id') id: string,
-    @Body() updateTagDto: UpdateBlogTagDto,
-  ) {
+  async updateTag(@Param('id') id: string, @Body() updateTagDto: UpdateBlogTagDto) {
     try {
-      // Implementasi pembaruan tag akan ditambahkan di BlogService
       const tag = await this.blogService.updateTag(id, updateTagDto);
       return {
         data: tag,
@@ -99,7 +94,6 @@ export class BlogTagController {
   @ApiResponse({ status: 404, description: 'Tag tidak ditemukan' })
   async deleteTag(@Param('id') id: string) {
     try {
-      // Implementasi penghapusan tag akan ditambahkan di BlogService
       await this.blogService.deleteTag(id);
       return {
         message: 'Tag berhasil dihapus',
@@ -108,4 +102,4 @@ export class BlogTagController {
       return handleError(this.logger, error, `Gagal menghapus tag dengan ID ${id}`);
     }
   }
-} 
+}

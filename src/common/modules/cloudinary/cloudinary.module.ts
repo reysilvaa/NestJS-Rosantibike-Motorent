@@ -5,9 +5,7 @@ import { cloudinaryConfig } from '../../config/cloudinary.config';
 
 @Global()
 @Module({
-  imports: [
-    ConfigModule.forFeature(cloudinaryConfig)
-  ],
+  imports: [ConfigModule.forFeature(cloudinaryConfig)],
   providers: [CloudinaryService],
   exports: [CloudinaryService],
 })

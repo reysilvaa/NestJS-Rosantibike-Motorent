@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { WhatsappService } from '../services/whatsapp.service';
 import { ApiOperation, ApiResponse, ApiTags, ApiBody } from '@nestjs/swagger';
-import type { WhatsappMessageData } from '../../../common/interfaces/whatsapp.interface';
+import type { WhatsappMessageData } from '../../../common/interfaces/whatsapp';
 
 class TestMenuDto {
   phone: string;

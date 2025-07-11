@@ -1,16 +1,8 @@
-/**
- * Konfigurasi logger terpusat untuk aplikasi
- * 
- * File ini berisi konfigurasi Winston logger untuk digunakan di seluruh aplikasi
- */
 import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
 import { LoggerService } from '@nestjs/common';
 import { join } from 'path';
 
-/**
- * Konfigurasi untuk logger
- */
 export interface LoggerConfig {
   level: string;
   enableConsole: boolean;
@@ -18,7 +10,6 @@ export interface LoggerConfig {
   logDir: string;
 }
 
-// Default konfigurasi
 const defaultLoggerConfig: LoggerConfig = {
   level: process.env.LOG_LEVEL || 'debug',
   enableConsole: true,
@@ -26,14 +17,10 @@ const defaultLoggerConfig: LoggerConfig = {
   logDir: process.env.LOG_DIR || 'logs',
 };
 
-/**
- * Membuat winston logger dengan konfigurasi yang diberikan
- * 
- * @param context - Konteks logger (nama modul/service)
- * @param config - Konfigurasi logger (opsional)
- * @returns LoggerService yang dikonfigurasi
- */
-export const createWinstonLogger = (context?: string, config?: Partial<LoggerConfig>): LoggerService => {
+export const createWinstonLogger = (
+  context?: string,
+  config?: Partial<LoggerConfig>,
+): LoggerService => {
   const loggerConfig: LoggerConfig = {
     ...defaultLoggerConfig,
     ...config,
@@ -41,15 +28,15 @@ export const createWinstonLogger = (context?: string, config?: Partial<LoggerCon
 
   const transports: winston.transport[] = [];
 
-  // Format log yang konsisten
-  const logFormat = winston.format.printf(({ level, message, timestamp, context: msgContext, trace, ...meta }) => {
-    const contextStr = (msgContext || context) ? `[${msgContext || context}] ` : '';
-    const metaStr = Object.keys(meta).length > 0 ? `\n${JSON.stringify(meta, null, 2)}` : '';
-    const traceStr = trace ? `\n${trace}` : '';
-    return `${timestamp} ${level.toUpperCase().padEnd(7)} ${contextStr}${message}${metaStr}${traceStr}`;
-  });
+  const logFormat = winston.format.printf(
+    ({ level, message, timestamp, context: msgContext, trace, ...meta }) => {
+      const contextStr = msgContext || context ? `[${msgContext || context}] ` : '';
+      const metaStr = Object.keys(meta).length > 0 ? `\n${JSON.stringify(meta, null, 2)}` : '';
+      const traceStr = trace ? `\n${trace}` : '';
+      return `${timestamp} ${level.toUpperCase().padEnd(7)} ${contextStr}${message}${metaStr}${traceStr}`;
+    },
+  );
 
-  // Console transport
   if (loggerConfig.enableConsole) {
     transports.push(
       new winston.transports.Console({
@@ -62,10 +49,9 @@ export const createWinstonLogger = (context?: string, config?: Partial<LoggerCon
     );
   }
 
-  // File transport
   if (loggerConfig.enableFile) {
     const logDir = loggerConfig.logDir;
-    
+
     transports.push(
       new winston.transports.File({
         filename: join(logDir, 'error.log'),
@@ -91,15 +77,10 @@ export const createWinstonLogger = (context?: string, config?: Partial<LoggerCon
   });
 };
 
-// Singleton logger instance untuk digunakan di seluruh aplikasi
 export const appLogger = createWinstonLogger('App');
 
-/**
- * Logger khusus untuk proses bootstrap aplikasi
- */
 export const createBootstrapLogger = (): LoggerService => {
   return createWinstonLogger('Bootstrap');
 };
 
-// Export default logger untuk digunakan di module
-export default appLogger; 
+export default appLogger;

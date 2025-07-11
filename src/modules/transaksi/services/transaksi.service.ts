@@ -134,7 +134,6 @@ export class TransaksiService {
       const tanggalMulai = new Date(createTransaksiDto.tanggalMulai);
       const tanggalSelesai = new Date(createTransaksiDto.tanggalSelesai);
 
-      // Use the centralized availability service
       await this.availabilityService.isUnitAvailable(
         createTransaksiDto.unitId,
         tanggalMulai,
@@ -251,13 +250,7 @@ export class TransaksiService {
           ? new Date(updateTransaksiDto.tanggalSelesai)
           : existingTransaksi.tanggalSelesai;
 
-        // Use the centralized availability service
-        await this.availabilityService.isUnitAvailable(
-          unitId,
-          tanggalMulai,
-          tanggalSelesai,
-          id,
-        );
+        await this.availabilityService.isUnitAvailable(unitId, tanggalMulai, tanggalSelesai, id);
       }
 
       let totalBiaya = updateTransaksiDto.totalBiaya;

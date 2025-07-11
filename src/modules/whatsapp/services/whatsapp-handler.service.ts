@@ -92,7 +92,7 @@ export class WhatsappHandlerService {
   }
 
   private async initializeDataAndFindTransactions(formattedNumber: string) {
-    const prismaModule = await import('../../../common/prisma/prisma.service');
+    const prismaModule = await import('../../../common/modules/prisma/services/prisma.service');
     const prismaService = new prismaModule.PrismaService();
 
     const activeTransactions = await prismaService.transaksiSewa.findMany({
@@ -481,7 +481,7 @@ export class WhatsappHandlerService {
     try {
       const formattedNumber = formatWhatsappNumber(senderNumber);
 
-      const prismaModule = await import('../../../common/prisma/prisma.service');
+      const prismaModule = await import('../../../common/modules/prisma/services/prisma.service');
       const prismaService = new prismaModule.PrismaService();
 
       const transactions = await prismaService.transaksiSewa.findMany({

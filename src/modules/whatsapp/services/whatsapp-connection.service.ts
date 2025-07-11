@@ -1,11 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import type {
-  WhatsappConfig,
-  WhatsappConnectionStatus,
-  WhatsappStatus,
-} from '../../../common/interfaces/whatsapp.interface';
+import type { WhatsappConfig, WhatsappConnectionStatus, WhatsappStatus } from '../../../common';
 
 @Injectable()
 export class WhatsappConnectionService {

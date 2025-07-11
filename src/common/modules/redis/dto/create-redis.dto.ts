@@ -9,4 +9,4 @@ export class CreateRedisDto {
   @IsNotEmpty()
   @IsString()
   name: string;
-} 
+}
