@@ -1,3 +1,5 @@
+import { UnitMotor } from "./unit-motor";
+
 export interface JenisMotor {
   id: string;
   merk: string;
@@ -8,19 +10,6 @@ export interface JenisMotor {
   createdAt: Date;
   updatedAt: Date;
   unitMotor?: UnitMotor[];
-}
-
-export interface UnitMotor {
-  id: string;
-  jenisId: string;
-  platNomor: string;
-  slug: string;
-  status: string;
-  hargaSewa: number;
-  tahunPembuatan: number;
-  createdAt: Date;
-  updatedAt: Date;
-  jenis?: JenisMotor;
 }
 
 export interface CreateJenisMotorDto {

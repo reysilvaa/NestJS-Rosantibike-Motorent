@@ -4,9 +4,9 @@ import {
   CloudinaryModule,
   PrismaModule,
   WebsocketModule,
-  CLOUDINARY_CONFIG,
   RedisModule,
   QueueModule,
+  cloudinaryConfig,
 } from './common';
 import {
   AuthModule,
@@ -22,7 +22,7 @@ import {
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
-      load: [CLOUDINARY_CONFIG],
+      load: [cloudinaryConfig],
     }),
 
     CloudinaryModule,
