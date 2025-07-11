@@ -11,7 +11,4 @@ export * from './modules/queue';
 // Helpers
 export * from './helpers';
 
-// Services
-export * from './services';
-
 export * from './config';

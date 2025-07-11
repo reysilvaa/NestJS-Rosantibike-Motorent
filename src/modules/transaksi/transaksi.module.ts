@@ -7,7 +7,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { TransaksiProcessor } from './processors/transaksi.processor';
 import { WhatsappModule } from '../whatsapp/whatsapp.module';
 import { TransaksiQueue } from './queues/transaksi.queue';
-import { AvailabilityModule } from '../../common/services/availability.module';
+import { AvailabilityModule } from '../availability/availability.module';
 
 @Module({
   imports: [

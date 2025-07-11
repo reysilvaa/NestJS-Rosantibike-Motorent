@@ -18,7 +18,7 @@ import {
   verifyCanCompleteTransaksi,
 } from '../helpers/validation.helper';
 import { hitungDenda, hitungTotalBiaya } from '../helpers';
-import { AvailabilityService } from '../../../common/services';
+import { AvailabilityService } from '../../availability/services/availability.service';
 
 @Injectable()
 export class TransaksiService {

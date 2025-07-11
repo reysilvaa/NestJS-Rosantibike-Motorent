@@ -1,8 +1,8 @@
 import { Module, Global } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { QueueDebugController } from './queue.controller';
-import { QueueService } from './queue.service';
+import { QueueDebugController } from './controller/queue.controller';
+import { QueueService } from './services/queue.service';
 import { HttpRequestProcessor } from './processors/http-request.processor';
 
 @Global()

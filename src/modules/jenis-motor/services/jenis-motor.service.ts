@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
-import { PrismaService } from '../../../common/modules/prisma/prisma.service';
+import { PrismaService } from '../../../common/modules/prisma/services/prisma.service';
 import type { CreateJenisMotorDto, UpdateJenisMotorDto, FilterJenisMotorDto } from '../dto';
 import { verifyJenisMotorExists, verifyCanDeleteJenisMotor } from '../helpers';
 import { handleError } from '../../../common/helpers';

@@ -1,6 +1,6 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../modules/prisma/prisma.service';
-import { TransaksiStatus } from '../interfaces/enum';
+import { PrismaService } from '../../../common/modules/prisma/services/prisma.service';
+import { TransaksiStatus } from '../../../common/interfaces/enum';
 
 @Injectable()
 export class AvailabilityService {

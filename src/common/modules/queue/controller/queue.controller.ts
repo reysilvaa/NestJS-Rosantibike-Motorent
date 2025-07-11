@@ -2,7 +2,7 @@ import { Controller, Get, Post, Param, Delete, Query, Logger, Body } from '@nest
 import { ApiTags, ApiOperation, ApiParam, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { QueueService } from './queue.service';
+import { QueueService } from '../services/queue.service';
 import type { Job } from 'bullmq';
 
 @ApiTags('Queue Debug')

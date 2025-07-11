@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../../common/modules/prisma/prisma.service';
+import { PrismaService } from '../../../common/modules/prisma/services/prisma.service';
 import type { CreateBlogPostDto, UpdateBlogPostDto } from '../dto';
 import {
   verifyBlogPostExists,

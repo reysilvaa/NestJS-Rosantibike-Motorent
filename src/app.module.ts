@@ -6,7 +6,6 @@ import {
   WebsocketModule,
   RedisModule,
   QueueModule,
-  cloudinaryConfig,
 } from './common';
 import {
   AuthModule,
@@ -22,7 +21,6 @@ import {
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
-      load: [cloudinaryConfig],
     }),
 
     CloudinaryModule,

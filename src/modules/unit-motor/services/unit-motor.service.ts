@@ -8,7 +8,7 @@ import type {
 } from '../dto';
 import { handleError } from '../../../common/helpers';
 import { UnitMotorQueue } from '../queues/unit-motor.queue';
-import { AvailabilityService } from '../../../common/services';
+import { AvailabilityService } from '../../availability/services/availability.service';
 
 @Injectable()
 export class UnitMotorService {
