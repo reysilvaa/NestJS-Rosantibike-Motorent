@@ -7,6 +7,7 @@ import {
   RedisModule,
   QueueModule,
 } from './common';
+import { CacheModule } from './common/modules/cache/cache.module';
 import {
   AuthModule,
   AdminModule,
@@ -32,6 +33,9 @@ import {
     RedisModule,
 
     QueueModule,
+    
+    // Modul cache untuk otomatisasi caching
+    CacheModule,
 
     AuthModule,
     AdminModule,

@@ -1,7 +1,7 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
-import { PrismaService, RealtimeGateway } from '../../../common';
+import { PrismaService, RealtimeGateway, CacheService } from '../../../common';
 import { WhatsappQueue } from '../../whatsapp/queues/whatsapp.queue';
 import { JenisMotorService } from '../services/jenis-motor.service';
 
@@ -14,6 +14,7 @@ export class JenisMotorProcessor extends WorkerHost {
     private readonly realtimeGateway: RealtimeGateway,
     private readonly whatsappQueue: WhatsappQueue,
     private readonly jenisMotorService: JenisMotorService,
+    private readonly cacheService: CacheService,
   ) {
     super();
     this.logger.log('JenisMotorProcessor initialized');
@@ -29,8 +30,11 @@ export class JenisMotorProcessor extends WorkerHost {
       case 'process-image': {
         return this.handleProcessImage(job);
       }
-      case 'update-cache': {
-        return this.handleUpdateCache(job);
+      case 'notify-data-change': {
+        return this.handleNotifyDataChange(job);
+      }
+      case 'update-cache': { // Untuk kompatibilitas mundur
+        return this.handleNotifyDataChange(job);
       }
       case 'notify-new': {
         return this.handleNotifyNew(job);
@@ -99,8 +103,8 @@ export class JenisMotorProcessor extends WorkerHost {
     }
   }
 
-  private async handleUpdateCache(job: Job) {
-    this.logger.debug(`Processing update cache job: ${job.id}`);
+  private async handleNotifyDataChange(job: Job) {
+    this.logger.debug(`Processing data change notification job: ${job.id}`);
 
     try {
       const jenisMotorList = await this.prisma.jenisMotor.findMany({
@@ -117,15 +121,26 @@ export class JenisMotorProcessor extends WorkerHost {
 
       await new Promise(resolve => setTimeout(resolve, 1000));
 
+      // Invalidasi cache jenis motor
+      await this.cacheService.delByPattern('jenis-motor:*');
+      this.logger.debug('Cache jenis motor berhasil diinvalidasi');
+
+      // Kirim notifikasi melalui WebSocket
+      this.realtimeGateway.server.emit('jenis-motor-data-changed', {
+        count: jenisMotorList.length,
+        timestamp: new Date(),
+      });
+      
+      // Emit juga dengan nama lama untuk kompatibilitas
       this.realtimeGateway.server.emit('jenis-motor-cache-updated', {
         count: jenisMotorList.length,
         timestamp: new Date(),
       });
 
-      this.logger.debug(`Cache updated for ${jenisMotorList.length} jenis motor`);
+      this.logger.debug(`Data change notification sent for ${jenisMotorList.length} jenis motor`);
       return { success: true, count: jenisMotorList.length };
     } catch (error) {
-      this.logger.error(`Failed to update cache: ${error.message}`, error.stack);
+      this.logger.error(`Failed to notify data change: ${error.message}`, error.stack);
       throw error;
     }
   }

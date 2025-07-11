@@ -38,12 +38,12 @@ export class JenisMotorQueue {
     }
   }
 
-  async addUpdateCacheJob() {
-    this.logger.debug('Adding update cache job to queue');
+  async addNotifyDataChangeJob() {
+    this.logger.debug('Adding data change notification job to queue');
 
     try {
       return await this.jenisMotorQueue.add(
-        'update-cache',
+        'notify-data-change',
         {
           timestamp: new Date(),
         },
@@ -58,7 +58,10 @@ export class JenisMotorQueue {
         },
       );
     } catch (error) {
-      this.logger.error(`Failed to add update cache job to queue: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to add data change notification job to queue: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }

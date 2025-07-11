@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../common/modules/prisma/services/prisma.service';
+import { CacheService } from '../../../common/modules/cache/services/cache.service';
 import type { CreateJenisMotorDto, UpdateJenisMotorDto, FilterJenisMotorDto } from '../dto';
 import { verifyJenisMotorExists, verifyCanDeleteJenisMotor } from '../helpers';
 import { handleError } from '../../../common/helpers';
@@ -7,8 +8,12 @@ import { handleError } from '../../../common/helpers';
 @Injectable()
 export class JenisMotorService {
   private readonly logger = new Logger(JenisMotorService.name);
+  private readonly cacheKeyPrefix = 'jenis-motor:';
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cacheService: CacheService,
+  ) {}
 
   async create(data: CreateJenisMotorDto) {
     try {
@@ -20,7 +25,7 @@ export class JenisMotorService {
 
       const finalSlug = existingSlug ? `${slug}-${Date.now().toString().slice(-6)}` : slug;
 
-      return await this.prisma.jenisMotor.create({
+      const result = await this.prisma.jenisMotor.create({
         data: {
           merk: data.merk,
           model: data.model,
@@ -29,8 +34,25 @@ export class JenisMotorService {
           slug: finalSlug,
         },
       });
+      
+      // Invalidasi cache setelah membuat data baru
+      await this.invalidateCache();
+      
+      return result;
     } catch (error) {
       return handleError(this.logger, error, 'Gagal membuat jenis motor');
+    }
+  }
+  
+  /**
+   * Menginvalidasi cache jenis motor
+   */
+  private async invalidateCache(): Promise<void> {
+    try {
+      await this.cacheService.delByPattern(`${this.cacheKeyPrefix}*`);
+      this.logger.log('Cache jenis motor berhasil diinvalidasi');
+    } catch (error) {
+      this.logger.error(`Gagal menginvalidasi cache: ${error.message}`);
     }
   }
 
@@ -142,10 +164,15 @@ export class JenisMotorService {
         updateData.slug = finalSlug;
       }
 
-      return await this.prisma.jenisMotor.update({
+      const result = await this.prisma.jenisMotor.update({
         where: { id },
         data: updateData,
       });
+      
+      // Invalidasi cache setelah update data
+      await this.invalidateCache();
+      
+      return result;
     } catch (error) {
       return handleError(this.logger, error, `Gagal mengupdate jenis motor dengan ID ${id}`);
     }
@@ -157,9 +184,14 @@ export class JenisMotorService {
 
       await verifyCanDeleteJenisMotor(id, this.prisma, this.logger);
 
-      return await this.prisma.jenisMotor.delete({
+      const result = await this.prisma.jenisMotor.delete({
         where: { id },
       });
+      
+      // Invalidasi cache setelah menghapus data
+      await this.invalidateCache();
+      
+      return result;
     } catch (error) {
       return handleError(this.logger, error, `Gagal menghapus jenis motor dengan ID ${id}`);
     }

@@ -13,6 +13,7 @@ import {
   UploadedFiles,
   Query,
 } from '@nestjs/common';
+import { CacheKey, CacheTTL } from '../../../common/interceptors/cache.interceptor';
 import { JenisMotorService } from '../services/jenis-motor.service';
 import { CreateJenisMotorDto, UpdateJenisMotorDto, FilterJenisMotorDto } from '../dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
@@ -40,6 +41,8 @@ export class JenisMotorController {
   @Get()
   @ApiOperation({ summary: 'Mendapatkan semua jenis motor dengan paginasi dan filter' })
   @ApiResponse({ status: 200, description: 'Daftar jenis motor berhasil diambil' })
+  @CacheKey('jenis-motor:list')
+  @CacheTTL(60 * 5) // Cache selama 5 menit
   findAll(@Query() filter: FilterJenisMotorDto) {
     return this.jenisMotorService.findAll(filter);
   }
@@ -48,6 +51,8 @@ export class JenisMotorController {
   @ApiOperation({ summary: 'Mendapatkan detail jenis motor berdasarkan slug' })
   @ApiResponse({ status: 200, description: 'Detail jenis motor berhasil diambil' })
   @ApiResponse({ status: 404, description: 'Jenis motor tidak ditemukan' })
+  @CacheKey('jenis-motor:slug')
+  @CacheTTL(60 * 10) // Cache selama 10 menit
   async findBySlug(@Param('slug') slug: string) {
     try {
       const result = await this.jenisMotorService.findBySlug(slug);
@@ -65,6 +70,8 @@ export class JenisMotorController {
   @ApiOperation({ summary: 'Mendapatkan detail jenis motor berdasarkan ID' })
   @ApiResponse({ status: 200, description: 'Detail jenis motor berhasil diambil' })
   @ApiResponse({ status: 404, description: 'Jenis motor tidak ditemukan' })
+  @CacheKey('jenis-motor:detail')
+  @CacheTTL(60 * 10) // Cache selama 10 menit
   findOne(@Param('id') id: string) {
     return this.jenisMotorService.findOne(id);
   }

@@ -5,6 +5,7 @@ export * from './modules/websocket';
 export * from './modules/redis';
 export * from './modules/cloudinary';
 export * from './modules/queue';
+export * from './modules/cache';
 
 export * from './helpers';
 

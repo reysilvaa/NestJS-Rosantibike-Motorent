@@ -1,7 +1,7 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
-import { PrismaService, StatusMotor, StatusTransaksi, RealtimeGateway } from '../../../common';
+import { PrismaService, MotorStatus, TransaksiStatus, RealtimeGateway } from '../../../common';
 import { WhatsappService } from '../../whatsapp/services/whatsapp.service';
 import * as whatsappMenu from '../../../common/helpers/whatsapp-menu.helper';
 
@@ -122,7 +122,7 @@ export class TransaksiProcessor extends WorkerHost {
         return;
       }
 
-      if (transaksi.status !== StatusTransaksi.AKTIF) {
+      if (transaksi.status !== TransaksiStatus.AKTIF) {
         this.logger.log(`Transaksi ${transaksiId} sudah tidak aktif, pengingat tidak dikirim`);
         return;
       }
@@ -168,7 +168,7 @@ export class TransaksiProcessor extends WorkerHost {
         return;
       }
 
-      if (transaksi.status !== StatusTransaksi.AKTIF) {
+      if (transaksi.status !== TransaksiStatus.AKTIF) {
         this.logger.log(
           `Transaksi ${transaksiId} sudah selesai atau dibatalkan, tidak perlu cek overdue`,
         );
@@ -183,12 +183,12 @@ export class TransaksiProcessor extends WorkerHost {
 
         await this.prisma.transaksiSewa.update({
           where: { id: transaksiId },
-          data: { status: StatusTransaksi.OVERDUE },
+          data: { status: TransaksiStatus.OVERDUE },
         });
 
         await this.prisma.unitMotor.update({
           where: { id: transaksi.unitId },
-          data: { status: StatusMotor.OVERDUE },
+          data: { status: MotorStatus.OVERDUE },
         });
 
         const message = whatsappMenu.getOverdueNotificationTemplate(transaksi);
