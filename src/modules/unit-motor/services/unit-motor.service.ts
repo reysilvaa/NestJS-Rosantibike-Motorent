@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
-import { PrismaService, StatusMotor, StatusTransaksi } from '../../../common';
+import { PrismaService, MotorStatus, TransaksiStatus } from '../../../common';
 import type {
   CreateUnitMotorDto,
   UpdateUnitMotorDto,
@@ -308,7 +308,7 @@ export class UnitMotorService {
         throw new NotFoundException(`Unit motor dengan ID ${id} tidak ditemukan`);
       }
 
-      if (unit.status === StatusMotor.DISEWA || unit.status === StatusMotor.OVERDUE) {
+      if (unit.status === MotorStatus.DISEWA || unit.status === MotorStatus.OVERDUE) {
         throw new BadRequestException('Unit motor sedang disewa, tidak dapat dihapus');
       }
 
@@ -413,7 +413,7 @@ export class UnitMotorService {
                   AND: [
                     { tanggalMulai: { lte: end } },
                     { tanggalSelesai: { gte: start } },
-                    { status: { in: [StatusTransaksi.AKTIF, StatusTransaksi.OVERDUE] } },
+                    { status: { in: [TransaksiStatus.AKTIF, TransaksiStatus.OVERDUE] } },
                   ],
                 },
               ],

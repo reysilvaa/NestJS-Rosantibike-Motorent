@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
-import { PrismaService, StatusMotor, StatusTransaksi, RealtimeGateway } from '../../../common';
+import { PrismaService, MotorStatus, TransaksiStatus, RealtimeGateway } from '../../../common';
 import { UnitMotorService } from '../../unit-motor/services/unit-motor.service';
 import type {
   CreateTransaksiDto,
@@ -160,7 +160,7 @@ export class TransaksiService {
         const now = new Date();
         const isToday = tanggalMulai.toDateString() === now.toDateString();
 
-        const newStatus = isToday ? StatusMotor.DISEWA : StatusMotor.DIPESAN;
+        const newStatus = isToday ? MotorStatus.DISEWA : MotorStatus.DIPESAN;
 
         await tx.unitMotor.update({
           where: { id: unitMotor.id },
@@ -178,7 +178,7 @@ export class TransaksiService {
             jamSelesai: createTransaksiDto.jamSelesai || '08:00',
             helm: 1,
             jasHujan: 0,
-            status: StatusTransaksi.AKTIF,
+            status: TransaksiStatus.AKTIF,
             totalBiaya,
           },
           include: {
@@ -210,7 +210,7 @@ export class TransaksiService {
         try {
           this.realtimeGateway.sendToAll('motor-status-update', {
             id: transaksi.unitId,
-            status: StatusMotor.DISEWA,
+            status: MotorStatus.DISEWA,
             platNomor: transaksi.unitMotor.platNomor,
             message: `Transaksi baru: ${transaksi.namaPenyewa}`,
           });
@@ -234,7 +234,7 @@ export class TransaksiService {
       if (
         updateTransaksiDto.unitId &&
         updateTransaksiDto.unitId !== existingTransaksi.unitId &&
-        existingTransaksi.status === StatusTransaksi.AKTIF
+        existingTransaksi.status === TransaksiStatus.AKTIF
       ) {
         throw new BadRequestException('Tidak dapat mengubah unit motor pada transaksi yang aktif');
       }
@@ -315,14 +315,14 @@ export class TransaksiService {
 
       let result;
 
-      if (updateTransaksiDto.status === StatusTransaksi.SELESAI) {
+      if (updateTransaksiDto.status === TransaksiStatus.SELESAI) {
         result = await this.selesaiSewa(id);
       } else {
         result = await this.prisma.$transaction(async tx => {
           if (updateTransaksiDto.unitId && updateTransaksiDto.unitId !== existingTransaksi.unitId) {
             await tx.unitMotor.update({
               where: { id: existingTransaksi.unitId },
-              data: { status: StatusMotor.TERSEDIA },
+              data: { status: MotorStatus.TERSEDIA },
             });
 
             const tanggalMulai = updateTransaksiDto.tanggalMulai
@@ -330,7 +330,7 @@ export class TransaksiService {
               : existingTransaksi.tanggalMulai;
             const now = new Date();
             const isToday = tanggalMulai.toDateString() === now.toDateString();
-            const newStatus = isToday ? StatusMotor.DISEWA : StatusMotor.DIPESAN;
+            const newStatus = isToday ? MotorStatus.DISEWA : MotorStatus.DIPESAN;
 
             await tx.unitMotor.update({
               where: { id: updateTransaksiDto.unitId },
@@ -338,12 +338,12 @@ export class TransaksiService {
             });
           } else if (
             updateTransaksiDto.tanggalMulai &&
-            existingTransaksi.status === StatusTransaksi.AKTIF
+            existingTransaksi.status === TransaksiStatus.AKTIF
           ) {
             const tanggalMulai = new Date(updateTransaksiDto.tanggalMulai);
             const now = new Date();
             const isToday = tanggalMulai.toDateString() === now.toDateString();
-            const newStatus = isToday ? StatusMotor.DISEWA : StatusMotor.DIPESAN;
+            const newStatus = isToday ? MotorStatus.DISEWA : MotorStatus.DIPESAN;
 
             await tx.unitMotor.update({
               where: { id: existingTransaksi.unitId },
@@ -383,14 +383,14 @@ export class TransaksiService {
         const activeTransaksi = await tx.transaksiSewa.findFirst({
           where: {
             unitId: transaksi.unitId,
-            status: StatusTransaksi.AKTIF,
+            status: TransaksiStatus.AKTIF,
           },
         });
 
         if (!activeTransaksi) {
           await tx.unitMotor.update({
             where: { id: transaksi.unitId },
-            data: { status: StatusMotor.TERSEDIA },
+            data: { status: MotorStatus.TERSEDIA },
           });
         }
 
@@ -412,11 +412,11 @@ export class TransaksiService {
       const result = await this.prisma.$transaction(async tx => {
         await tx.unitMotor.update({
           where: { id: transaksi.unitId },
-          data: { status: StatusMotor.TERSEDIA },
+          data: { status: MotorStatus.TERSEDIA },
         });
 
         const updateData: any = {
-          status: StatusTransaksi.SELESAI,
+          status: TransaksiStatus.SELESAI,
           biayaDenda: biayaDenda,
         };
 
@@ -439,7 +439,7 @@ export class TransaksiService {
 
       this.realtimeGateway.sendToAll('motor-status-update', {
         id: result.unitMotor.id,
-        status: StatusMotor.TERSEDIA,
+        status: MotorStatus.TERSEDIA,
         platNomor: result.unitMotor.platNomor,
         message: `Unit motor ${result.unitMotor.platNomor} telah dikembalikan`,
       });
@@ -469,7 +469,7 @@ export class TransaksiService {
       end.setHours(23, 59, 59, 999);
 
       const whereClause: any = {
-        status: StatusTransaksi.SELESAI,
+        status: TransaksiStatus.SELESAI,
         biayaDenda: { gt: 0 },
         updatedAt: {
           gte: start,

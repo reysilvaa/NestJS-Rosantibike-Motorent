@@ -159,8 +159,6 @@ export class BlogService {
             konten: createBlogPostDto.konten,
             slug: createBlogPostDto.slug || '',
             thumbnail: createBlogPostDto.featuredImage || '',
-            metaTitle: createBlogPostDto.metaTitle,
-            metaDescription: createBlogPostDto.metaDescription,
             kategoriId: createBlogPostDto.kategoriId,
             status: createBlogPostDto.status,
             tags: {

@@ -2,8 +2,9 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import { CloudinaryService } from '../../../common/services/cloudinary.service';
-import { RealtimeGateway, PrismaService, StatusMotor } from '../../../common';
+import { RealtimeGateway, PrismaService, MotorStatus } from '../../../common';
 import { WhatsappQueue } from '../../whatsapp/queues/whatsapp.queue';
+import { MotorStatusType } from '../../../common/interfaces/enum';
 
 @Processor('unit-motor')
 export class UnitMotorProcessor extends WorkerHost {
@@ -126,13 +127,13 @@ Unit ini memerlukan pemeriksaan dan maintenance rutin. Harap dijadwalkan dalam w
     try {
       const { unitMotorId, status } = job.data;
 
-      if (!Object.values(StatusMotor).includes(status as StatusMotor)) {
+      if (!Object.values(MotorStatus).includes(status as MotorStatusType)) {
         throw new Error(`Status tidak valid: ${status}`);
       }
 
       const updatedUnit = await this.prisma.unitMotor.update({
         where: { id: unitMotorId },
-        data: { status: status as StatusMotor },
+        data: { status: status as MotorStatusType },
         include: {
           jenis: true,
         },
@@ -140,7 +141,7 @@ Unit ini memerlukan pemeriksaan dan maintenance rutin. Harap dijadwalkan dalam w
 
       this.realtimeGateway.sendToAll('motor-status-update', {
         id: updatedUnit.id,
-        status: updatedUnit.status as StatusMotor,
+        status: updatedUnit.status as MotorStatusType,
         platNomor: updatedUnit.platNomor,
         message: `Status unit motor ${updatedUnit.platNomor} berubah menjadi ${updatedUnit.status}`,
       });
