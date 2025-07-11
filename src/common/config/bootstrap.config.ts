@@ -1,60 +1,68 @@
+/**
+ * BOOTSTRAP FASTIFY SERVER
+ * 
+ * File ini bertanggung jawab untuk inisialisasi dan menjalankan server Fastify.
+ * Fokus utama adalah mempersiapkan dan menjalankan server HTTP.
+ */
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from '../../app.module';
-import { CustomIoAdapter } from './websocket.config';
-import { configureSwagger } from './swagger.config';
-import { configureCors } from './cors.config';
 import { createBootstrapLogger } from './logger.config';
-import { configureMiddleware, configureGlobalPipes } from './app.config';
 import { configureServer, configureShutdown } from './server.config';
+import { configureApplication } from './app.config';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import * as fs from 'fs';
 import * as path from 'path';
 import fastifyMultipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
 
-// Flag untuk menandai apakah aplikasi sudah berjalan
-let isApplicationRunning = false;
+// Flag untuk menandai apakah server sudah berjalan
+let isServerRunning = false;
 
-// Memastikan direktori logs ada
-const ensureLogDir = (logDir: string): void => {
+/**
+ * Persiapan Lingkungan Server
+ * Memastikan direktori dan struktur yang dibutuhkan tersedia
+ */
+const setupEnvironment = (): void => {
+  // Pastikan direktori logs ada
+  const logDir = process.env.LOG_DIR || 'logs';
   if (!fs.existsSync(logDir)) {
     fs.mkdirSync(logDir, { recursive: true });
   }
 };
 
 /**
- * Konfigurasi Fastify adapter dengan pengaturan yang optimal
+ * Membuat Fastify adapter dengan pengaturan optimal
  */
 const createFastifyAdapter = (): FastifyAdapter => {
   return new FastifyAdapter({
     logger: false, // Gunakan logger NestJS
     bodyLimit: 10 * 1024 * 1024, // 10MB limit untuk request body
-    ignoreTrailingSlash: true, // Ignore trailing slashes in routes
-    caseSensitive: false, // Case insensitive routes
+    ignoreTrailingSlash: true, // Abaikan trailing slash di routes
+    caseSensitive: false, // Route tidak case sensitive
   });
 };
 
 /**
- * Konfigurasi plugin untuk Fastify
+ * Konfigurasi plugin Fastify untuk penanganan file
  */
 const configureFastifyPlugins = async (adapter: FastifyAdapter): Promise<void> => {
   // Konfigurasi multipart untuk upload file
   await adapter.register(fastifyMultipart as any, {
     limits: {
-      fieldNameSize: 100, // Max field name size in bytes
-      fieldSize: 1024 * 1024, // Max field value size in bytes (1MB)
-      fields: 10, // Max number of non-file fields
-      fileSize: 5 * 1024 * 1024, // Max file size in bytes (5MB)
-      files: 5, // Max number of file fields
+      fieldNameSize: 100, // Ukuran maksimal nama field dalam bytes
+      fieldSize: 1024 * 1024, // Ukuran maksimal nilai field dalam bytes (1MB)
+      fields: 10, // Jumlah maksimal field non-file
+      fileSize: 5 * 1024 * 1024, // Ukuran maksimal file dalam bytes (5MB)
+      files: 5, // Jumlah maksimal field file
     },
   });
 };
 
 /**
- * Konfigurasi static file serving
+ * Konfigurasi akses file statis
  */
-const configureStaticAssets = async (app: NestFastifyApplication): Promise<void> => {
+const configureStaticFiles = async (app: NestFastifyApplication): Promise<void> => {
   await app.register(fastifyStatic as any, {
     root: path.join(process.cwd(), 'public'),
     prefix: '/public/',
@@ -62,7 +70,7 @@ const configureStaticAssets = async (app: NestFastifyApplication): Promise<void>
 };
 
 /**
- * Inisialisasi aplikasi NestJS dengan Fastify
+ * Membuat instance aplikasi NestJS dengan Fastify
  */
 const createNestApplication = async (
   fastifyAdapter: FastifyAdapter,
@@ -79,62 +87,61 @@ const createNestApplication = async (
 };
 
 /**
- * Bootstrap aplikasi NestJS
- * Fungsi utama untuk menginisialisasi dan menjalankan aplikasi
+ * FUNGSI BOOTSTRAP UTAMA
+ * 
+ * Menginisialisasi dan menjalankan server Fastify
  */
 export async function bootstrap(): Promise<void> {
-  // Jika aplikasi sudah berjalan, jangan inisialisasi ulang
-  if (isApplicationRunning) {
-    console.log('Aplikasi sudah berjalan, menghindari inisialisasi ganda');
+  // Cegah inisialisasi ganda
+  if (isServerRunning) {
+    console.log('Server sudah berjalan, menghindari inisialisasi ganda');
     return;
   }
 
-  // Pastikan direktori logs ada
-  const logDir = process.env.LOG_DIR || 'logs';
-  ensureLogDir(path.resolve(process.cwd(), logDir));
+  // Persiapkan lingkungan server
+  setupEnvironment();
 
   // Gunakan logger terpusat
   const logger = createBootstrapLogger();
   
   try {
-    logger.log('Memulai proses bootstrap aplikasi');
+    logger.log('MEMULAI PROSES BOOTSTRAP SERVER FASTIFY');
     
-    // Step 1: Buat dan konfigurasi Fastify adapter
+    // TAHAP 1: PERSIAPAN SERVER FASTIFY
+    logger.log('Tahap 1: Persiapan Fastify adapter');
     const fastifyAdapter = createFastifyAdapter();
     await configureFastifyPlugins(fastifyAdapter);
     
-    // Step 2: Buat aplikasi NestJS dengan Fastify
+    // TAHAP 2: INISIALISASI APLIKASI DENGAN FASTIFY
+    logger.log('Tahap 2: Inisialisasi aplikasi NestJS dengan Fastify');
     const app = await createNestApplication(fastifyAdapter, logger);
-
-    // Step 3: Konfigurasi aplikasi
-    app.setGlobalPrefix('api');
-    configureGlobalPipes(app);
-    configureCors(app);
-    await configureStaticAssets(app);
-    await configureMiddleware(app);
-    
-    // Step 4: Konfigurasi WebSocket
-    const ioAdapter = new CustomIoAdapter(app);
-    app.useWebSocketAdapter(ioAdapter);
-
-    // Step 5: Konfigurasi Swagger API docs
-    configureSwagger(app);
-
-    // Step 6: Mulai server
-    logger.log('Memulai server aplikasi');
     const configService = app.get(ConfigService);
+
+    // TAHAP 3: KONFIGURASI DASAR SERVER
+    logger.log('Tahap 3: Konfigurasi dasar server');
+    app.setGlobalPrefix('api');
+    await configureStaticFiles(app);
+    
+    // TAHAP 4: KONFIGURASI FITUR APLIKASI (WebSocket, Swagger, dll)
+    logger.log('Tahap 4: Menerapkan fitur aplikasi');
+    await configureApplication(app, configService, logger);
+
+    // TAHAP 5: MENJALANKAN SERVER
+    logger.log('Tahap 5: Menjalankan server Fastify');
     const { server, port } = await configureServer(app, configService, logger);
     
-    // Step 7: Konfigurasi graceful shutdown
+    // TAHAP 6: KONFIGURASI SHUTDOWN YANG AMAN
+    logger.log('Tahap 6: Konfigurasi graceful shutdown');
     configureShutdown(server, logger);
     
-    // Tandai aplikasi sudah berjalan
-    isApplicationRunning = true;
+    // Tandai server sudah berjalan
+    isServerRunning = true;
     
-    logger.log(`Aplikasi berjalan di http://localhost:${port}`);
+    logger.log(`SERVER FASTIFY BERHASIL DIJALANKAN`);
+    logger.log(`Server berjalan di http://localhost:${port}`);
     logger.log(`Dokumentasi API tersedia di http://localhost:${port}/api/docs`);
   } catch (error) {
-    logger.error(`Error saat menjalankan aplikasi: ${error.message}`);
+    logger.error(`KEGAGALAN BOOTSTRAP SERVER: ${error.message}`);
     logger.error(error.stack);
     process.exit(1);
   }
