@@ -1,6 +1,6 @@
 import { Module, Global } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { CloudinaryService } from './cloudinary.service';
+import { CloudinaryService } from './services/cloudinary.service';
 import { cloudinaryConfig } from '../../config/cloudinary.config';
 
 @Global()

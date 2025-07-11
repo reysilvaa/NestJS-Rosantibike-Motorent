@@ -16,7 +16,7 @@ import {
 import { BlogService } from '../services/blog.service';
 import { CreateBlogPostDto, UpdateBlogPostDto, FilterBlogPostDto } from '../dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
-import { CloudinaryService } from '../../../common/modules/cloudinary/cloudinary.service';
+import { CloudinaryService } from '../../../common/modules/cloudinary/services/cloudinary.service';
 import { Logger } from '@nestjs/common';
 import {
   createFileUploadInterceptor,

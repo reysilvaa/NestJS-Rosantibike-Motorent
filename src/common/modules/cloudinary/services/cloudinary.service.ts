@@ -1,16 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary } from 'cloudinary';
+import { cloudinaryConfig } from '../../../config/cloudinary.config';
 
 @Injectable()
 export class CloudinaryService {
   private readonly logger = new Logger(CloudinaryService.name);
 
-  constructor(private configService: ConfigService) {
+  constructor() {
     cloudinary.config({
-      cloud_name: this.configService.get('cloudinary.cloudName'),
-      api_key: this.configService.get('cloudinary.apiKey'),
-      api_secret: this.configService.get('cloudinary.apiSecret'),
+      cloud_name: cloudinaryConfig().cloudName,
+      api_key: cloudinaryConfig().apiKey,
+      api_secret: cloudinaryConfig().apiSecret,
       secure: true,
     });
 
@@ -28,10 +28,11 @@ export class CloudinaryService {
         `Mencoba upload file: ${file.originalname}, mimetype: ${file.mimetype}, size: ${file.size} bytes ke folder: ${folder}`,
       );
 
+      const config = cloudinaryConfig();
       if (
-        !this.configService.get('cloudinary.cloudName') ||
-        !this.configService.get('cloudinary.apiKey') ||
-        !this.configService.get('cloudinary.apiSecret')
+        !config.cloudName ||
+        !config.apiKey ||
+        !config.apiSecret
       ) {
         this.logger.error('Konfigurasi Cloudinary tidak lengkap');
         throw new Error('Konfigurasi Cloudinary tidak valid');
@@ -62,13 +63,13 @@ export class CloudinaryService {
   }
 
   async uploadJenisMotorImage(file: Express.Multer.File): Promise<string> {
-    const folder = this.configService.get('cloudinary.jenisMotoFolder');
-    return this.uploadFile(file, folder);
+    const config = cloudinaryConfig();
+    return this.uploadFile(file, config.jenisMotoFolder);
   }
 
   async uploadBlogImage(file: Express.Multer.File): Promise<string> {
-    const folder = this.configService.get('cloudinary.blogFolder');
-    return this.uploadFile(file, folder);
+    const config = cloudinaryConfig();
+    return this.uploadFile(file, config.blogFolder);
   }
 
   async deleteFile(url: string): Promise<void> {

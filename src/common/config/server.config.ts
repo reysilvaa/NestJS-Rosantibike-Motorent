@@ -1,10 +1,6 @@
-import type { INestApplication } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import type { LoggerService } from '@nestjs/common';
 import { NestFastifyApplication } from '@nestjs/platform-fastify';
-import * as fs from 'fs';
-import * as path from 'path';
-
 let lastSuccessfulPort: number | null = null;
 
 const isPortAvailable = (port: number): Promise<boolean> => {

@@ -1,17 +1,20 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
+import { Injectable, Logger } from '@nestjs/common';
 import { Redis } from 'ioredis';
+import { ConfigService } from '@nestjs/config';
+import { redisConfig } from '../../../config/redis.config';
 
 @Injectable()
 export class RedisService {
   private redisClient: Redis;
   private readonly logger = new Logger(RedisService.name);
+  private defaultTtl: number;
 
-  constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {
+  constructor(private configService: ConfigService) {
     try {
-      const host = process.env.REDIS_HOST || 'localhost';
-      const port = parseInt(process.env.REDIS_PORT || '6379', 10);
+      const config = redisConfig();
+      const host = config.host;
+      const port = config.port;
+      this.defaultTtl = config.ttl;
 
       this.logger.log(`Connecting to Redis at ${host}:${port}`);
 
@@ -79,11 +82,11 @@ export class RedisService {
 
   async get<T>(key: string): Promise<T | null> {
     try {
-      const result = await this.cacheManager.get<T>(key);
+      const result = await this.redisClient.get(key);
       this.logger.debug(
         `Cache GET - Key: ${key}, Found: ${result !== null && result !== undefined}`,
       );
-      return result;
+      return result ? JSON.parse(result) : null;
     } catch (error) {
       this.logger.error(`Error getting cache key ${key}: ${error.message}`);
       return null;
@@ -92,8 +95,12 @@ export class RedisService {
 
   async set(key: string, value: any, ttl?: number): Promise<void> {
     try {
-      await this.cacheManager.set(key, value, ttl);
-      this.logger.debug(`Cache SET - Key: ${key}, TTL: ${ttl || 'default'}`);
+      const serializedValue = JSON.stringify(value);
+      const expireTime = ttl || this.defaultTtl;
+      
+      await this.redisClient.set(key, serializedValue, 'EX', expireTime);
+      
+      this.logger.debug(`Cache SET - Key: ${key}, TTL: ${expireTime}`);
     } catch (error) {
       this.logger.error(`Error setting cache key ${key}: ${error.message}`);
     }
@@ -101,7 +108,7 @@ export class RedisService {
 
   async del(key: string): Promise<void> {
     try {
-      await this.cacheManager.del(key);
+      await this.redisClient.del(key);
       this.logger.debug(`Cache DEL - Key: ${key}`);
     } catch (error) {
       this.logger.error(`Error deleting cache key ${key}: ${error.message}`);

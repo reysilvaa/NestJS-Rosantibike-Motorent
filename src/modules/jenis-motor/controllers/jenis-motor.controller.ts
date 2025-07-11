@@ -16,7 +16,7 @@ import {
 import { JenisMotorService } from '../services/jenis-motor.service';
 import { CreateJenisMotorDto, UpdateJenisMotorDto, FilterJenisMotorDto } from '../dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
-import { CloudinaryService } from '../../../common/modules/cloudinary/cloudinary.service';
+import { CloudinaryService } from '../../../common/modules/cloudinary/services/cloudinary.service';
 import { Logger } from '@nestjs/common';
 import {
   createFileUploadInterceptor,
